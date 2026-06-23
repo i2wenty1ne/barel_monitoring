@@ -9,9 +9,22 @@ import type {
 export type SystemInfo = {
   appName: string;
   appVersion: string;
+  electronVersion?: string;
+  nodeVersion?: string;
+  chromeVersion?: string;
   platform: NodeJS.Platform;
+  arch: string;
+  appMode?: string;
   configPath: string;
   logsPath: string;
+  currentDeviceName?: string;
+  currentDeviceModel?: string;
+  currentDeviceAddress?: number;
+  currentConnectionPort?: string;
+  currentConnectionBaudRate?: number;
+  currentConnectionParity?: string;
+  currentConnectionStopBits?: number;
+  currentConnectionDataBits?: number;
 };
 
 export type IpcActionResult = {

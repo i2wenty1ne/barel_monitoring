@@ -10,21 +10,50 @@ export function registerSystemIpc(
   eventLogService: EventLogService
 ): void {
   ipcMain.handle(IPC_CHANNELS.system.getInfo, async (_event): Promise<SystemInfo> => {
+    const config = configService.getCurrentConfig();
+
     return {
       appName: app.getName(),
       appVersion: app.getVersion(),
+      electronVersion: process.versions.electron,
+      nodeVersion: process.versions.node,
+      chromeVersion: process.versions.chrome,
       platform: process.platform,
+      arch: process.arch,
+      appMode: config.app.mode,
       configPath: configService.getConfigPath(),
-      logsPath: eventLogService.getEventsLogPath()
+      logsPath: eventLogService.getEventsLogPath(),
+      currentDeviceName: config.device.name,
+      currentDeviceModel: config.device.model,
+      currentDeviceAddress: config.device.modbusAddress,
+      currentConnectionPort: config.connection.port,
+      currentConnectionBaudRate: config.connection.baudRate,
+      currentConnectionParity: config.connection.parity,
+      currentConnectionStopBits: config.connection.stopBits,
+      currentConnectionDataBits: config.connection.dataBits
     };
   });
 
   ipcMain.handle(IPC_CHANNELS.system.openConfigFolder, async (_event): Promise<IpcActionResult> => {
-    return openPath(dirname(configService.getConfigPath()));
+    const result = await openPath(dirname(configService.getConfigPath()));
+    await eventLogService.addEvent({
+      level: result.success ? 'info' : 'error',
+      source: 'system',
+      message: 'Open config folder clicked',
+      details: result
+    });
+    return result;
   });
 
   ipcMain.handle(IPC_CHANNELS.system.openLogsFolder, async (_event): Promise<IpcActionResult> => {
-    return openPath(dirname(eventLogService.getEventsLogPath()));
+    const result = await openPath(dirname(eventLogService.getEventsLogPath()));
+    await eventLogService.addEvent({
+      level: result.success ? 'info' : 'error',
+      source: 'system',
+      message: 'Open logs folder clicked',
+      details: result
+    });
+    return result;
   });
 }
 

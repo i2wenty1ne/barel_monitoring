@@ -18,6 +18,11 @@ export function registerEventsIpc(
   ipcMain.handle(IPC_CHANNELS.events.clear, async (_event): Promise<IpcActionResult> => {
     try {
       await eventLogService.clearEvents();
+      await eventLogService.addEvent({
+        level: 'warning',
+        source: 'events',
+        message: 'Event log cleared'
+      });
       return { success: true };
     } catch (error) {
       return {

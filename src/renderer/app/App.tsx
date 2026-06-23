@@ -1,5 +1,8 @@
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { AboutPage } from '../pages/about/ui/AboutPage';
 import { BarrelDetailsPage } from '../pages/barrel-details/ui/BarrelDetailsPage';
+import { DiagnosticsPage } from '../pages/diagnostics/ui/DiagnosticsPage';
+import { EventLogPage } from '../pages/event-log/ui/EventLogPage';
 import { MonitoringPage } from '../pages/monitoring/ui/MonitoringPage';
 import { PlaceholderPage } from '../pages/placeholder/ui/PlaceholderPage';
 import { SettingsPage } from '../pages/settings/ui/SettingsPage';
@@ -14,25 +17,9 @@ export function App(): React.JSX.Element {
           <Route path="/monitoring" element={<MonitoringPage />} />
           <Route path="/barrels/:barrelId" element={<BarrelDetailsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
-          <Route
-            path="/diagnostics"
-            element={
-              <PlaceholderPage title="Диагностика" message="Будет реализовано на этапе 4" />
-            }
-          />
-          <Route
-            path="/events"
-            element={<PlaceholderPage title="Журнал" message="Будет реализовано на этапе 4" />}
-          />
-          <Route
-            path="/about"
-            element={
-              <PlaceholderPage
-                title="О приложении"
-                message="Экран будет реализован на следующем этапе"
-              />
-            }
-          />
+          <Route path="/diagnostics" element={<DiagnosticsPage />} />
+          <Route path="/events" element={<EventLogPage />} />
+          <Route path="/about" element={<AboutPage />} />
           <Route
             path="*"
             element={

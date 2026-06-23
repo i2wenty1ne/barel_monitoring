@@ -37,10 +37,57 @@ export function formatDateTime(value: string | null | undefined): string {
   }
 
   return new Intl.DateTimeFormat('ru-RU', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit'
   }).format(date);
+}
+
+export function formatTime(value: string | null | undefined): string {
+  if (!value) {
+    return '—';
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return '—';
+  }
+
+  return new Intl.DateTimeFormat('ru-RU', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  }).format(date);
+}
+
+export function formatStatusLabel(value: string | null | undefined): string {
+  const labels: Record<string, string> = {
+    ok: 'OK',
+    warning: 'Предупреждение',
+    alarm: 'Авария',
+    'no-data': 'Нет данных',
+    'connection-error': 'Ошибка связи'
+  };
+
+  return value ? (labels[value] ?? value) : '—';
+}
+
+export function formatEventLevel(value: string | null | undefined): string {
+  const labels: Record<string, string> = {
+    info: 'Информация',
+    warning: 'Предупреждение',
+    error: 'Ошибка'
+  };
+
+  return value ? (labels[value] ?? value) : '—';
+}
+
+export function stringifyPrettyJson(value: unknown): string {
+  return JSON.stringify(value, null, 2);
 }
 
 export function formatRelativeTime(value: string | null | undefined): string {
