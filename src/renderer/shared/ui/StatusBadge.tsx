@@ -1,11 +1,11 @@
 import type { Status } from '../../../shared/types/monitoring.types';
 
 const statusLabels: Record<Status, string> = {
-  ok: 'ok',
-  warning: 'warning',
-  alarm: 'alarm',
-  'no-data': 'no data',
-  'connection-error': 'connection error'
+  ok: 'OK',
+  warning: 'Предупреждение',
+  alarm: 'Авария',
+  'no-data': 'Нет данных',
+  'connection-error': 'Ошибка связи'
 };
 
 const statusClasses: Record<Status, string> = {
@@ -18,14 +18,15 @@ const statusClasses: Record<Status, string> = {
 
 type StatusBadgeProps = {
   status: Status;
+  label?: string;
 };
 
-export function StatusBadge({ status }: StatusBadgeProps): React.JSX.Element {
+export function StatusBadge({ status, label }: StatusBadgeProps): React.JSX.Element {
   return (
     <span
       className={`inline-flex h-7 items-center rounded-md px-2.5 text-xs font-medium ring-1 ${statusClasses[status]}`}
     >
-      {statusLabels[status]}
+      {label ?? statusLabels[status]}
     </span>
   );
 }
