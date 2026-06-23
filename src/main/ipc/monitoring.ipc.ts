@@ -2,6 +2,8 @@ import type { BrowserWindow } from 'electron';
 import { ipcMain } from 'electron';
 import type {
   DataServiceStatus,
+  ManualReadRequest,
+  ManualReadResult,
   MonitoringSnapshot,
   TestConnectionResult
 } from '../../shared/types/monitoring.types';
@@ -40,6 +42,20 @@ export function registerMonitoringIpc(
         });
         throw error;
       }
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.monitoring.readRegisters,
+    async (_event, request: ManualReadRequest): Promise<ManualReadResult> => {
+      const result = await dataServiceManager.readRegisters(request);
+      await eventLogService.addEvent({
+        level: result.success ? 'info' : 'error',
+        source: 'diagnostics',
+        message: result.success ? 'Manual register read completed' : 'Manual register read failed',
+        details: { request, result }
+      });
+      return result;
     }
   );
 

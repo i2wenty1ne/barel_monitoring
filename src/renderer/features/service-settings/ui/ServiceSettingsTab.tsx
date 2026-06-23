@@ -1,5 +1,6 @@
 import type { AppConfig } from '../../../../shared/types/config.types';
 import type { SystemInfo } from '../../../../shared/types/ipc.types';
+import { Alert } from '../../../shared/ui/Alert';
 import { Button } from '../../../shared/ui/Button';
 import { Panel } from '../../../shared/ui/Panel';
 import { Select } from '../../../shared/ui/Select';
@@ -37,8 +38,13 @@ export function ServiceSettingsTab({
             value={config.app.mode}
           />
           <div className="rounded-md border border-white/10 bg-slate-950/45 p-3 text-sm text-slate-300">
-            При выборе `real` будет использована безопасная заглушка ModbusDataService.
+            При выборе `real` будет использоваться read-only Modbus RTU сервис.
           </div>
+          {config.app.mode === 'real' ? (
+            <Alert type="warning">
+              Для real mode требуется подключённый USB-RS485 адаптер и корректные параметры Modbus.
+            </Alert>
+          ) : null}
         </div>
       </Panel>
 

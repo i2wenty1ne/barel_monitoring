@@ -1,6 +1,7 @@
 import { app, ipcMain, shell } from 'electron';
 import { dirname } from 'node:path';
-import type { IpcActionResult, SystemInfo } from '../../shared/types/ipc.types';
+import { SerialPort } from 'serialport';
+import type { IpcActionResult, SerialPortInfo, SystemInfo } from '../../shared/types/ipc.types';
 import type { ConfigService } from '../services/config/config.service';
 import type { EventLogService } from '../services/event-log/event-log.service';
 import { IPC_CHANNELS } from './ipc-channels';
@@ -32,6 +33,28 @@ export function registerSystemIpc(
       currentConnectionStopBits: config.connection.stopBits,
       currentConnectionDataBits: config.connection.dataBits
     };
+  });
+
+  ipcMain.handle(IPC_CHANNELS.system.listSerialPorts, async (_event): Promise<SerialPortInfo[]> => {
+    try {
+      const ports = await SerialPort.list();
+      return ports.map((port) => ({
+        path: port.path,
+        manufacturer: port.manufacturer,
+        serialNumber: port.serialNumber,
+        vendorId: port.vendorId,
+        productId: port.productId,
+        friendlyName: port.friendlyName
+      }));
+    } catch (error) {
+      await eventLogService.addEvent({
+        level: 'error',
+        source: 'system',
+        message: 'List serial ports failed',
+        details: { error: error instanceof Error ? error.message : 'Unknown serial ports error' }
+      });
+      return [];
+    }
   });
 
   ipcMain.handle(IPC_CHANNELS.system.openConfigFolder, async (_event): Promise<IpcActionResult> => {

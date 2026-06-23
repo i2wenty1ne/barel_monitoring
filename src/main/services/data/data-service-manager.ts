@@ -1,19 +1,24 @@
 import type { AppConfig } from '../../../shared/types/config.types';
 import type {
   DataServiceStatus,
+  ManualReadRequest,
+  ManualReadResult,
   MonitoringSnapshot,
   TestConnectionResult
 } from '../../../shared/types/monitoring.types';
+import type { EventLogService } from '../event-log/event-log.service';
 import type { DataService, MonitoringSnapshotListener } from './data-service.types';
 import { MockDataService } from './mock-data.service';
 import { ModbusDataService } from './modbus-data.service';
 
 export class DataServiceManager implements DataService {
+  private readonly eventLogService: EventLogService;
   private service: DataService;
   private readonly listeners = new Set<MonitoringSnapshotListener>();
   private unsubscribeFromService: (() => void) | null = null;
 
-  public constructor(config: AppConfig) {
+  public constructor(config: AppConfig, eventLogService: EventLogService) {
+    this.eventLogService = eventLogService;
     this.service = this.createService(config);
     this.bindService();
   }
@@ -39,6 +44,10 @@ export class DataServiceManager implements DataService {
     return this.service.readAllChannels();
   }
 
+  public async readRegisters(request: ManualReadRequest): Promise<ManualReadResult> {
+    return this.service.readRegisters(request);
+  }
+
   public async testConnection(): Promise<TestConnectionResult> {
     return this.service.testConnection();
   }
@@ -57,7 +66,7 @@ export class DataServiceManager implements DataService {
 
   private createService(config: AppConfig): DataService {
     if (config.app.mode === 'real') {
-      return new ModbusDataService(config);
+      return new ModbusDataService(config, this.eventLogService);
     }
 
     return new MockDataService(config);

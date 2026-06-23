@@ -6,10 +6,13 @@ import type {
   ConfigGetResult,
   ConfigSaveResult,
   IpcActionResult,
+  SerialPortInfo,
   SystemInfo
 } from '../shared/types/ipc.types';
 import type {
   DataServiceStatus,
+  ManualReadRequest,
+  ManualReadResult,
   MonitoringSnapshot,
   TestConnectionResult
 } from '../shared/types/monitoring.types';
@@ -28,6 +31,8 @@ const api: BarrelMonitorApi = {
       ipcRenderer.invoke(IPC_CHANNELS.monitoring.getSnapshot) as Promise<MonitoringSnapshot>,
     readAllNow: () =>
       ipcRenderer.invoke(IPC_CHANNELS.monitoring.readAllNow) as Promise<MonitoringSnapshot>,
+    readRegisters: (request: ManualReadRequest) =>
+      ipcRenderer.invoke(IPC_CHANNELS.monitoring.readRegisters, request) as Promise<ManualReadResult>,
     testConnection: () =>
       ipcRenderer.invoke(IPC_CHANNELS.monitoring.testConnection) as Promise<TestConnectionResult>,
     getStatus: () =>
@@ -62,6 +67,8 @@ const api: BarrelMonitorApi = {
   },
   system: {
     getInfo: () => ipcRenderer.invoke(IPC_CHANNELS.system.getInfo) as Promise<SystemInfo>,
+    listSerialPorts: () =>
+      ipcRenderer.invoke(IPC_CHANNELS.system.listSerialPorts) as Promise<SerialPortInfo[]>,
     openConfigFolder: () =>
       ipcRenderer.invoke(IPC_CHANNELS.system.openConfigFolder) as Promise<IpcActionResult>,
     openLogsFolder: () =>

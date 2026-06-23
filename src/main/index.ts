@@ -53,7 +53,7 @@ async function bootstrap(): Promise<void> {
     });
   }
 
-  dataServiceManager = new DataServiceManager(configResult.config);
+  dataServiceManager = new DataServiceManager(configResult.config, eventLogService);
   mainWindow = await createMainWindow();
 
   registerIpcHandlers({

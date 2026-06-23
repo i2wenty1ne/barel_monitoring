@@ -1,6 +1,8 @@
 import type { AppConfig } from '../../../shared/types/config.types';
 import type {
   DataServiceStatus,
+  ManualReadRequest,
+  ManualReadResult,
   MonitoringSnapshot,
   TestConnectionResult
 } from '../../../shared/types/monitoring.types';
@@ -12,6 +14,7 @@ export type DataService = {
   stop: () => Promise<void>;
   restart: (config: AppConfig) => Promise<void>;
   readAllChannels: () => Promise<MonitoringSnapshot>;
+  readRegisters: (request: ManualReadRequest) => Promise<ManualReadResult>;
   testConnection: () => Promise<TestConnectionResult>;
   getStatus: () => DataServiceStatus;
   subscribe: (listener: MonitoringSnapshotListener) => () => void;

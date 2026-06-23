@@ -4,6 +4,7 @@ import { ChannelsDiagnosticsTable } from '../../../features/diagnostics/ui/Chann
 import { ConnectionDiagnosticsPanel } from '../../../features/diagnostics/ui/ConnectionDiagnosticsPanel';
 import { DeviceDiagnosticsPanel } from '../../../features/diagnostics/ui/DeviceDiagnosticsPanel';
 import { DiagnosticActionsPanel } from '../../../features/diagnostics/ui/DiagnosticActionsPanel';
+import { ManualReadPanel } from '../../../features/diagnostics/ui/ManualReadPanel';
 import { RawSnapshotPanel } from '../../../features/diagnostics/ui/RawSnapshotPanel';
 import { useDiagnostics } from '../../../features/diagnostics/model/useDiagnostics';
 import { Alert } from '../../../shared/ui/Alert';
@@ -82,6 +83,7 @@ export function DiagnosticsPage(): React.JSX.Element {
           <DeviceDiagnosticsPanel device={config.device} />
         </div>
 
+        <ManualReadPanel config={config} />
         <ChannelsDiagnosticsTable config={config} snapshot={snapshot} />
         <BarrelsDiagnosticsTable config={config} snapshot={snapshot} />
         <RawSnapshotPanel snapshot={snapshot} />

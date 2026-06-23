@@ -2,9 +2,20 @@ import type { AppConfig } from './config.types';
 import type { EventLogEntry, EventLogFilter } from './event.types';
 import type {
   DataServiceStatus,
+  ManualReadRequest,
+  ManualReadResult,
   MonitoringSnapshot,
   TestConnectionResult
 } from './monitoring.types';
+
+export type SerialPortInfo = {
+  path: string;
+  manufacturer?: string;
+  serialNumber?: string;
+  vendorId?: string;
+  productId?: string;
+  friendlyName?: string;
+};
 
 export type SystemInfo = {
   appName: string;
@@ -57,6 +68,7 @@ export type BarrelMonitorApi = {
   monitoring: {
     getSnapshot: () => Promise<MonitoringSnapshot>;
     readAllNow: () => Promise<MonitoringSnapshot>;
+    readRegisters: (request: ManualReadRequest) => Promise<ManualReadResult>;
     testConnection: () => Promise<TestConnectionResult>;
     getStatus: () => Promise<DataServiceStatus>;
     subscribe: (callback: (snapshot: MonitoringSnapshot) => void) => () => void;
@@ -68,6 +80,7 @@ export type BarrelMonitorApi = {
   };
   system: {
     getInfo: () => Promise<SystemInfo>;
+    listSerialPorts: () => Promise<SerialPortInfo[]>;
     openConfigFolder: () => Promise<IpcActionResult>;
     openLogsFolder: () => Promise<IpcActionResult>;
   };

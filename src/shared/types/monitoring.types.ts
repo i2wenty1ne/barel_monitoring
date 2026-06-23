@@ -1,4 +1,5 @@
 import type { AppMode } from './config.types';
+import type { ChannelDataType, ChannelConfig } from './config.types';
 
 export type Status = 'ok' | 'warning' | 'alarm' | 'no-data' | 'connection-error';
 
@@ -42,4 +43,21 @@ export type TestConnectionResult = {
   success: boolean;
   message: string;
   details?: Record<string, unknown>;
+};
+
+export type ManualReadRequest = {
+  deviceAddress?: number;
+  modbusFunction: 3 | 4;
+  registerAddress: number;
+  registerCount: number;
+  dataType: ChannelDataType;
+  byteOrder: ChannelConfig['byteOrder'];
+};
+
+export type ManualReadResult = {
+  success: boolean;
+  registers?: number[];
+  decodedValue?: number;
+  message: string;
+  error?: string;
 };

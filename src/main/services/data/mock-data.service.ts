@@ -3,6 +3,8 @@ import type {
   BarrelReading,
   ChannelReading,
   DataServiceStatus,
+  ManualReadRequest,
+  ManualReadResult,
   MonitoringSnapshot,
   Status,
   TestConnectionResult
@@ -81,6 +83,15 @@ export class MockDataService implements DataService {
     this.lastSnapshot = snapshot;
     this.lastSuccessfulReadAt = updatedAt;
     return snapshot;
+  }
+
+  public async readRegisters(request: ManualReadRequest): Promise<ManualReadResult> {
+    return {
+      success: true,
+      registers: Array.from({ length: request.registerCount }, (_, index) => 1000 + index),
+      decodedValue: 42,
+      message: 'Mock manual register read',
+    };
   }
 
   public async testConnection(): Promise<TestConnectionResult> {

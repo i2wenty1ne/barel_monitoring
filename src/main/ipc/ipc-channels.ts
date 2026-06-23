@@ -8,6 +8,7 @@ export const IPC_CHANNELS = {
   monitoring: {
     getSnapshot: 'monitoring:get-snapshot',
     readAllNow: 'monitoring:read-all-now',
+    readRegisters: 'monitoring:read-registers',
     testConnection: 'monitoring:test-connection',
     getStatus: 'monitoring:get-status',
     snapshotUpdated: 'monitoring:snapshot-updated'
@@ -19,6 +20,7 @@ export const IPC_CHANNELS = {
   },
   system: {
     getInfo: 'system:get-info',
+    listSerialPorts: 'system:list-serial-ports',
     openConfigFolder: 'system:open-config-folder',
     openLogsFolder: 'system:open-logs-folder'
   }
