@@ -19,15 +19,25 @@ export type IpcActionResult = {
   message?: string;
 };
 
+export type ConfigValidationError = {
+  path: string;
+  message: string;
+};
+
 export type ConfigGetResult = {
   config: AppConfig;
   validationError?: string;
 };
 
+export type ConfigSaveResult = IpcActionResult & {
+  config?: AppConfig;
+  validationErrors?: ConfigValidationError[];
+};
+
 export type BarrelMonitorApi = {
   config: {
     get: () => Promise<ConfigGetResult>;
-    save: (config: AppConfig) => Promise<IpcActionResult>;
+    save: (config: AppConfig) => Promise<ConfigSaveResult>;
     reload: () => Promise<ConfigGetResult>;
     reset: () => Promise<ConfigGetResult>;
   };

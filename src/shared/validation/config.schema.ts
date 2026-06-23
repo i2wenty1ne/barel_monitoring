@@ -104,7 +104,7 @@ export const appConfigSchema = z
   .object({
     app: z.object({
       mode: z.enum(['mock', 'real']),
-      pollingIntervalMs: z.number().int().positive()
+      pollingIntervalMs: z.number().int().min(250, 'pollingIntervalMs должен быть не меньше 250')
     }),
     connection: z.object({
       type: z.literal('modbus-rtu'),

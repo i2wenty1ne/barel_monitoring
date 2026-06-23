@@ -6,11 +6,13 @@ import type {
   TestConnectionResult
 } from '../../shared/types/monitoring.types';
 import type { DataServiceManager } from '../services/data/data-service-manager';
+import type { EventLogService } from '../services/event-log/event-log.service';
 import { IPC_CHANNELS } from './ipc-channels';
 
 export function registerMonitoringIpc(
   mainWindow: BrowserWindow,
-  dataServiceManager: DataServiceManager
+  dataServiceManager: DataServiceManager,
+  eventLogService: EventLogService
 ): void {
   ipcMain.handle(
     IPC_CHANNELS.monitoring.getSnapshot,
@@ -24,7 +26,16 @@ export function registerMonitoringIpc(
 
   ipcMain.handle(
     IPC_CHANNELS.monitoring.testConnection,
-    async (_event): Promise<TestConnectionResult> => dataServiceManager.testConnection()
+    async (_event): Promise<TestConnectionResult> => {
+      const result = await dataServiceManager.testConnection();
+      await eventLogService.addEvent({
+        level: result.success ? 'info' : 'warning',
+        source: 'settings',
+        message: 'Test connection from settings',
+        details: { result }
+      });
+      return result;
+    }
   );
 
   ipcMain.handle(

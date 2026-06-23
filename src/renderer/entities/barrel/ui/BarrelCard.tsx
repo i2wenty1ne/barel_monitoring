@@ -14,6 +14,7 @@ type BarrelCardProps = {
   level: ChannelReading | null;
   status: Status;
   updatedAt: string | null;
+  showLastUpdate: boolean;
   onClick: () => void;
 };
 
@@ -23,6 +24,7 @@ export function BarrelCard({
   level,
   status,
   updatedAt,
+  showLastUpdate,
   onClick
 }: BarrelCardProps): React.JSX.Element {
   return (
@@ -40,13 +42,13 @@ export function BarrelCard({
       </div>
 
       <div className="flex flex-1 items-center justify-center py-2">
-        <BarrelTank levelPercent={level?.displayValue} status={status} />
+        <BarrelTank levelPercent={level?.displayValue} size={barrel.cardSize} status={status} />
       </div>
 
       <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
         <Metric label="Заполненность" value={formatPercent(level?.displayValue)} />
         <Metric label="Температура" value={formatTemperature(temperature?.displayValue)} />
-        <Metric label="Обновлено" value={formatDateTime(updatedAt)} />
+        {showLastUpdate ? <Metric label="Обновлено" value={formatDateTime(updatedAt)} /> : null}
         <Metric label="Статус" value={<BarrelStatus status={status} />} />
       </dl>
     </button>

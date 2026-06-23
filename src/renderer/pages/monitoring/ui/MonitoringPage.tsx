@@ -28,6 +28,7 @@ export function MonitoringPage(): React.JSX.Element {
   const isLoading =
     (configState.isLoading || snapshotState.isLoading) && !configState.config && !snapshotState.data;
   const error = configState.error ?? snapshotState.error;
+  const gridClassName = getGridClassName(configState.config?.interface.columns);
 
   function handleRetry(): void {
     void configState.refresh();
@@ -103,7 +104,7 @@ export function MonitoringPage(): React.JSX.Element {
           description="Добавление бочек будет доступно на этапе настроек"
         />
       ) : (
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+        <div className={gridClassName}>
           {barrelCards.map((item) => (
             <BarrelCard
               key={item.barrel.id}
@@ -112,6 +113,7 @@ export function MonitoringPage(): React.JSX.Element {
               level={item.level}
               status={item.status}
               updatedAt={item.updatedAt}
+              showLastUpdate={configState.config?.interface.showLastUpdate ?? true}
               onClick={() => navigate(`/barrels/${item.barrel.id}`)}
             />
           ))}
@@ -119,6 +121,26 @@ export function MonitoringPage(): React.JSX.Element {
       )}
     </section>
   );
+}
+
+function getGridClassName(columns: number | 'auto' | undefined): string {
+  if (columns === 1) {
+    return 'grid grid-cols-1 gap-5';
+  }
+
+  if (columns === 2) {
+    return 'grid grid-cols-1 gap-5 md:grid-cols-2';
+  }
+
+  if (columns === 3) {
+    return 'grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3';
+  }
+
+  if (columns === 4) {
+    return 'grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4';
+  }
+
+  return 'grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4';
 }
 
 type SummaryPanelProps = {

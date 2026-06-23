@@ -2,6 +2,7 @@ import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { BarrelDetailsPage } from '../pages/barrel-details/ui/BarrelDetailsPage';
 import { MonitoringPage } from '../pages/monitoring/ui/MonitoringPage';
 import { PlaceholderPage } from '../pages/placeholder/ui/PlaceholderPage';
+import { SettingsPage } from '../pages/settings/ui/SettingsPage';
 import { AppLayout } from '../widgets/app-layout/ui/AppLayout';
 
 export function App(): React.JSX.Element {
@@ -12,15 +13,7 @@ export function App(): React.JSX.Element {
           <Route index element={<Navigate replace to="/monitoring" />} />
           <Route path="/monitoring" element={<MonitoringPage />} />
           <Route path="/barrels/:barrelId" element={<BarrelDetailsPage />} />
-          <Route
-            path="/settings"
-            element={
-              <PlaceholderPage
-                title="Настройки"
-                message="Настройки будут реализованы на этапе 3"
-              />
-            }
-          />
+          <Route path="/settings" element={<SettingsPage />} />
           <Route
             path="/diagnostics"
             element={

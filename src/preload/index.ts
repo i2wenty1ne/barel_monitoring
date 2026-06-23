@@ -4,6 +4,7 @@ import type { EventLogEntry, EventLogFilter } from '../shared/types/event.types'
 import type {
   BarrelMonitorApi,
   ConfigGetResult,
+  ConfigSaveResult,
   IpcActionResult,
   SystemInfo
 } from '../shared/types/ipc.types';
@@ -18,7 +19,7 @@ const api: BarrelMonitorApi = {
   config: {
     get: () => ipcRenderer.invoke(IPC_CHANNELS.config.get) as Promise<ConfigGetResult>,
     save: (config: AppConfig) =>
-      ipcRenderer.invoke(IPC_CHANNELS.config.save, config) as Promise<IpcActionResult>,
+      ipcRenderer.invoke(IPC_CHANNELS.config.save, config) as Promise<ConfigSaveResult>,
     reload: () => ipcRenderer.invoke(IPC_CHANNELS.config.reload) as Promise<ConfigGetResult>,
     reset: () => ipcRenderer.invoke(IPC_CHANNELS.config.reset) as Promise<ConfigGetResult>
   },

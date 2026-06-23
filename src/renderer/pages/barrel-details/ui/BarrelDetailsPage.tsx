@@ -127,10 +127,12 @@ export function BarrelDetailsPage(): React.JSX.Element {
             <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <ValueTile label="Температура" value={formatTemperature(viewModel.temperature?.displayValue)} />
               <ValueTile label="Заполненность" value={formatPercent(viewModel.level?.displayValue)} />
-              <ValueTile
-                label="Raw level"
-                value={formatRawValue(viewModel.level?.rawValue, viewModel.level?.rawUnit)}
-              />
+              {configState.config.interface.showRawValuesInDetails ? (
+                <ValueTile
+                  label="Raw level"
+                  value={formatRawValue(viewModel.level?.rawValue, viewModel.level?.rawUnit)}
+                />
+              ) : null}
               <ValueTile label="Статус" value={<StatusBadge status={viewModel.status} />} />
             </div>
           </Panel>

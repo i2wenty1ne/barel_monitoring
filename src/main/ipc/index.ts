@@ -14,7 +14,7 @@ export function registerIpcHandlers(options: {
   dataServiceManager: DataServiceManager;
 }): void {
   registerConfigIpc(options.configService, options.dataServiceManager, options.eventLogService);
-  registerMonitoringIpc(options.mainWindow, options.dataServiceManager);
+  registerMonitoringIpc(options.mainWindow, options.dataServiceManager, options.eventLogService);
   registerEventsIpc(options.mainWindow, options.eventLogService);
   registerSystemIpc(options.configService, options.eventLogService);
 }
