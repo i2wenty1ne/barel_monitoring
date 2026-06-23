@@ -1,0 +1,323 @@
+name: Build Windows Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release version without v prefix. Leave empty to use package.json version.
+        required: false
+        type: string
+      tag:
+        description: Git tag. Leave empty to use v{version}.
+        required: false
+        type: string
+      release_name:
+        description: Release name. Leave empty to use Barrel Monitor v{version}.
+        required: false
+        type: string
+      prerelease:
+        description: Mark release as prerelease
+        required: true
+        type: boolean
+        default: false
+      draft:
+        description: Create release as draft
+        required: true
+        type: boolean
+        default: false
+      overwrite_existing:
+        description: Delete existing release/tag with the same name before publishing
+        required: true
+        type: boolean
+        default: false
+      run_tests:
+        description: Run npm test if test script exists
+        required: true
+        type: boolean
+        default: true
+      release_notes:
+        description: Optional release notes. Leave empty to auto-generate.
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-windows-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-windows-release:
+    name: Build and publish Windows release
+    runs-on: windows-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      INPUT_VERSION: ${{ inputs.version }}
+      INPUT_TAG: ${{ inputs.tag }}
+      INPUT_RELEASE_NAME: ${{ inputs.release_name }}
+      INPUT_PRERELEASE: ${{ inputs.prerelease }}
+      INPUT_DRAFT: ${{ inputs.draft }}
+      INPUT_OVERWRITE_EXISTING: ${{ inputs.overwrite_existing }}
+      INPUT_RUN_TESTS: ${{ inputs.run_tests }}
+      INPUT_RELEASE_NOTES: ${{ inputs.release_notes }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Resolve release metadata
+        shell: pwsh
+        run: |
+          if (-not (Test-Path package.json)) {
+            throw "package.json not found"
+          }
+
+          $package = Get-Content package.json -Raw | ConvertFrom-Json
+          $version = $env:INPUT_VERSION.Trim()
+
+          if ([string]::IsNullOrWhiteSpace($version)) {
+            $version = $package.version
+          }
+
+          if ($version.StartsWith("v")) {
+            $version = $version.Substring(1)
+          }
+
+          if ([string]::IsNullOrWhiteSpace($version)) {
+            throw "Release version is empty"
+          }
+
+          if (-not [string]::IsNullOrWhiteSpace($env:INPUT_VERSION)) {
+            npm version $version --no-git-tag-version
+          }
+
+          $tag = $env:INPUT_TAG.Trim()
+          if ([string]::IsNullOrWhiteSpace($tag)) {
+            $tag = "v$version"
+          }
+
+          $releaseName = $env:INPUT_RELEASE_NAME.Trim()
+          if ([string]::IsNullOrWhiteSpace($releaseName)) {
+            $releaseName = "Barrel Monitor v$version"
+          }
+
+          "RELEASE_VERSION=$version" >> $env:GITHUB_ENV
+          "RELEASE_TAG=$tag" >> $env:GITHUB_ENV
+          "RELEASE_NAME=$releaseName" >> $env:GITHUB_ENV
+
+          "Resolved version: $version"
+          "Resolved tag: $tag"
+          "Resolved release name: $releaseName"
+
+      - name: Check existing release and tag
+        shell: pwsh
+        run: |
+          $releaseExists = $false
+          gh release view $env:RELEASE_TAG *> $null
+          if ($LASTEXITCODE -eq 0) {
+            $releaseExists = $true
+          }
+
+          $tagExists = $false
+          git ls-remote --exit-code --tags origin "refs/tags/$env:RELEASE_TAG" *> $null
+          if ($LASTEXITCODE -eq 0) {
+            $tagExists = $true
+          }
+
+          if (($releaseExists -or $tagExists) -and $env:INPUT_OVERWRITE_EXISTING -ne "true") {
+            throw "Release or tag '$env:RELEASE_TAG' already exists. Re-run with overwrite_existing=true to replace it."
+          }
+
+          if ($env:INPUT_OVERWRITE_EXISTING -eq "true") {
+            if ($releaseExists) {
+              gh release delete $env:RELEASE_TAG --yes --cleanup-tag
+            }
+
+            $tagStillExists = $false
+            git ls-remote --exit-code --tags origin "refs/tags/$env:RELEASE_TAG" *> $null
+            if ($LASTEXITCODE -eq 0) {
+              $tagStillExists = $true
+            }
+
+            if ($tagStillExists) {
+              git push origin ":refs/tags/$env:RELEASE_TAG"
+            }
+          }
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint if configured
+        shell: pwsh
+        run: |
+          $scripts = (Get-Content package.json -Raw | ConvertFrom-Json).scripts
+          if ($scripts.PSObject.Properties.Name -contains "lint") {
+            npm run lint
+          } else {
+            "No lint script configured; skipping."
+          }
+
+      - name: Test if configured
+        shell: pwsh
+        run: |
+          $scripts = (Get-Content package.json -Raw | ConvertFrom-Json).scripts
+          if ($env:INPUT_RUN_TESTS -eq "true" -and $scripts.PSObject.Properties.Name -contains "test") {
+            npm run test
+          } else {
+            "No test script configured or run_tests=false; skipping."
+          }
+
+      - name: Build
+        run: npm run build
+
+      - name: Build Windows package
+        run: npm run dist:win
+
+      - name: Collect Windows artifacts
+        shell: pwsh
+        run: |
+          $patterns = @(
+            "release/*.exe",
+            "release/*.msi",
+            "release/*.zip",
+            "release/*.7z",
+            "release/*.blockmap",
+            "release/*.yml",
+            "release/*.yaml"
+          )
+
+          $files = @()
+          foreach ($pattern in $patterns) {
+            $files += Get-ChildItem -Path $pattern -File -ErrorAction SilentlyContinue
+          }
+
+          $files = $files | Sort-Object FullName -Unique
+
+          if ($files.Count -eq 0) {
+            throw "No release artifacts found in release/"
+          }
+
+          $files.FullName | Set-Content -Path artifacts.txt
+          $files.Name | Set-Content -Path artifact-names.txt
+
+          "ARTIFACT_COUNT=$($files.Count)" >> $env:GITHUB_ENV
+          "Artifacts:"
+          $files | ForEach-Object { " - $($_.FullName)" }
+
+      - name: Create release notes
+        shell: pwsh
+        run: |
+          $notes = $env:INPUT_RELEASE_NOTES.Trim()
+          $artifactList = (Get-Content artifact-names.txt) | ForEach-Object { "- $_" }
+          $commitList = git log -20 --pretty=format:"- %h %s"
+          $buildDate = (Get-Date).ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ss 'UTC'")
+
+          if ([string]::IsNullOrWhiteSpace($notes)) {
+            $notes = @"
+          # Barrel Monitor $env:RELEASE_TAG
+
+          Manual Windows release build.
+
+          ## Build info
+
+          - Version: $env:RELEASE_VERSION
+          - Tag: $env:RELEASE_TAG
+          - Commit: $env:GITHUB_SHA
+          - Branch: $env:GITHUB_REF_NAME
+          - Build date: $buildDate
+
+          ## Artifacts
+
+          $($artifactList -join "`n")
+
+          ## Recent commits
+
+          $commitList
+          "@
+          }
+
+          $notes | Set-Content -Path release-notes.md
+
+      - name: Upload Actions artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: barrel-monitor-windows-${{ env.RELEASE_TAG }}
+          path: |
+            release/*.exe
+            release/*.msi
+            release/*.zip
+            release/*.7z
+            release/*.blockmap
+            release/*.yml
+            release/*.yaml
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Create GitHub Release
+        shell: pwsh
+        run: |
+          $args = @(
+            "release",
+            "create",
+            $env:RELEASE_TAG,
+            "--target",
+            $env:GITHUB_SHA,
+            "--title",
+            $env:RELEASE_NAME,
+            "--notes-file",
+            "release-notes.md"
+          )
+
+          if ($env:INPUT_DRAFT -eq "true") {
+            $args += "--draft"
+          }
+
+          if ($env:INPUT_PRERELEASE -eq "true") {
+            $args += "--prerelease"
+          }
+
+          $args += Get-Content artifacts.txt
+          gh @args
+
+          "RELEASE_URL=https://github.com/${{ github.repository }}/releases/tag/$env:RELEASE_TAG" >> $env:GITHUB_ENV
+
+      - name: Write workflow summary
+        if: always()
+        shell: pwsh
+        run: |
+          $releaseUrl = "https://github.com/${{ github.repository }}/releases/tag/$env:RELEASE_TAG"
+          $artifactNames = if (Test-Path artifact-names.txt) {
+            (Get-Content artifact-names.txt) | ForEach-Object { "- $_" }
+          } else {
+            @("- No artifacts collected")
+          }
+
+          @"
+          # Barrel Monitor Windows Release
+
+          - App: Barrel Monitor
+          - Version: $env:RELEASE_VERSION
+          - Tag: $env:RELEASE_TAG
+          - Release name: $env:RELEASE_NAME
+          - Draft: $env:INPUT_DRAFT
+          - Prerelease: $env:INPUT_PRERELEASE
+          - Commit: $env:GITHUB_SHA
+          - Branch: $env:GITHUB_REF_NAME
+          - Release: $releaseUrl
+
+          ## Uploaded files
+
+          $($artifactNames -join "`n")
+          "@ >> $env:GITHUB_STEP_SUMMARY
