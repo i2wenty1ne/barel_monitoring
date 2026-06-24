@@ -121,48 +121,74 @@ jobs:
           "Resolved tag: $tag"
           "Resolved release name: $releaseName"
 
-      - name: Check existing release and tag
+            - name: Check existing release and tag
         shell: pwsh
         run: |
-          $previousNativePreference = $PSNativeCommandUseErrorActionPreference
-          $PSNativeCommandUseErrorActionPreference = $false
+          $ErrorActionPreference = "Stop"
 
+          Write-Host "Checking release/tag: $env:RELEASE_TAG"
+
+          # Check existing GitHub Release without using a failing command for "not found"
           $releaseExists = $false
-          gh release view $env:RELEASE_TAG *> $null
-          if ($LASTEXITCODE -eq 0) {
+          $releasesJson = gh release list --limit 1000 --json tagName
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "Failed to list GitHub releases."
+          }
+
+          $releases = $releasesJson | ConvertFrom-Json
+          $matchedRelease = @($releases | Where-Object { $_.tagName -eq $env:RELEASE_TAG })
+
+          if ($matchedRelease.Count -gt 0) {
             $releaseExists = $true
           }
 
-          $tagExists = $false
-          git ls-remote --exit-code --tags origin "refs/tags/$env:RELEASE_TAG" *> $null
-          if ($LASTEXITCODE -eq 0) {
-            $tagExists = $true
+          # Check remote tag without --exit-code, because missing tag should not fail the step
+          $tagOutput = git ls-remote --tags origin "refs/tags/$env:RELEASE_TAG"
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "Failed to check remote git tags."
           }
+
+          $tagExists = -not [string]::IsNullOrWhiteSpace(($tagOutput | Out-String).Trim())
+
+          Write-Host "Release exists: $releaseExists"
+          Write-Host "Tag exists: $tagExists"
 
           if (($releaseExists -or $tagExists) -and $env:INPUT_OVERWRITE_EXISTING -ne "true") {
             throw "Release or tag '$env:RELEASE_TAG' already exists. Re-run with overwrite_existing=true to replace it."
           }
 
-          $PSNativeCommandUseErrorActionPreference = $previousNativePreference
-
           if ($env:INPUT_OVERWRITE_EXISTING -eq "true") {
             if ($releaseExists) {
+              Write-Host "Deleting existing GitHub release: $env:RELEASE_TAG"
               gh release delete $env:RELEASE_TAG --yes --cleanup-tag
+
+              if ($LASTEXITCODE -ne 0) {
+                throw "Failed to delete existing GitHub release '$env:RELEASE_TAG'."
+              }
             }
 
-            $PSNativeCommandUseErrorActionPreference = $false
-            $tagStillExists = $false
-            git ls-remote --exit-code --tags origin "refs/tags/$env:RELEASE_TAG" *> $null
-            if ($LASTEXITCODE -eq 0) {
-              $tagStillExists = $true
+            # Re-check tag after release deletion, because --cleanup-tag may already delete it
+            $tagOutputAfterReleaseDelete = git ls-remote --tags origin "refs/tags/$env:RELEASE_TAG"
+
+            if ($LASTEXITCODE -ne 0) {
+              throw "Failed to re-check remote git tag after release delete."
             }
-            $PSNativeCommandUseErrorActionPreference = $previousNativePreference
+
+            $tagStillExists = -not [string]::IsNullOrWhiteSpace(($tagOutputAfterReleaseDelete | Out-String).Trim())
 
             if ($tagStillExists) {
+              Write-Host "Deleting existing remote tag: $env:RELEASE_TAG"
               git push origin ":refs/tags/$env:RELEASE_TAG"
+
+              if ($LASTEXITCODE -ne 0) {
+                throw "Failed to delete existing remote tag '$env:RELEASE_TAG'."
+              }
             }
           }
 
+          Write-Host "Release/tag check completed successfully."
       - name: Typecheck
         run: npm run typecheck
 
