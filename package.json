@@ -14,7 +14,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "rebuild:native": "electron-builder install-app-deps",
     "dist": "npm run build && electron-builder",
-    "build:win": "npm run build && electron-builder --win",
+    "build:win": "npm run build && electron-builder --win --publish never",
     "dist:win": "npm run build:win"
   },
   "productName": "Barrel Monitor",
@@ -59,7 +59,7 @@
     "@types/react": "19.2.7",
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "5.1.2",
-    "electron": "42.2.0",
+    "electron": "41.5.0",
     "electron-builder": "^26.15.3",
     "electron-vite": "5.0.0",
     "typescript": "5.9.3",
