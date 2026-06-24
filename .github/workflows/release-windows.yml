@@ -124,6 +124,9 @@ jobs:
       - name: Check existing release and tag
         shell: pwsh
         run: |
+          $previousNativePreference = $PSNativeCommandUseErrorActionPreference
+          $PSNativeCommandUseErrorActionPreference = $false
+
           $releaseExists = $false
           gh release view $env:RELEASE_TAG *> $null
           if ($LASTEXITCODE -eq 0) {
@@ -140,16 +143,20 @@ jobs:
             throw "Release or tag '$env:RELEASE_TAG' already exists. Re-run with overwrite_existing=true to replace it."
           }
 
+          $PSNativeCommandUseErrorActionPreference = $previousNativePreference
+
           if ($env:INPUT_OVERWRITE_EXISTING -eq "true") {
             if ($releaseExists) {
               gh release delete $env:RELEASE_TAG --yes --cleanup-tag
             }
 
+            $PSNativeCommandUseErrorActionPreference = $false
             $tagStillExists = $false
             git ls-remote --exit-code --tags origin "refs/tags/$env:RELEASE_TAG" *> $null
             if ($LASTEXITCODE -eq 0) {
               $tagStillExists = $true
             }
+            $PSNativeCommandUseErrorActionPreference = $previousNativePreference
 
             if ($tagStillExists) {
               git push origin ":refs/tags/$env:RELEASE_TAG"
