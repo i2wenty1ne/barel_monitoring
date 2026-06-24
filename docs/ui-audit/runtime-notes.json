@@ -1,0 +1,151 @@
+{
+  "console": [
+    {
+      "type": "debug",
+      "args": [
+        "[vite] connecting..."
+      ]
+    },
+    {
+      "type": "debug",
+      "args": [
+        "[vite] connected."
+      ]
+    },
+    {
+      "type": "info",
+      "args": [
+        "%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools",
+        "font-weight:bold"
+      ]
+    },
+    {
+      "type": "warning",
+      "args": [
+        "%cElectron Security Warning (Insecure Content-Security-Policy)",
+        "font-weight: bold;",
+        "This renderer process has either no Content Security\n  Policy set or a policy with \"unsafe-eval\" enabled. This exposes users of\n  this app to unnecessary security risks.\n\nFor more information and help, consult\nhttps://electronjs.org/docs/tutorial/security.\nThis warning will not show up\nonce the app is packaged."
+      ]
+    }
+  ],
+  "exceptions": [],
+  "log": [],
+  "captures": [
+    {
+      "fileName": "01-monitoring.png",
+      "hash": "#/monitoring",
+      "title": "Barrel Monitor",
+      "bodyText": "Barrel Monitor\nFoundation stage\nМониторинг\nНастройки\nДиагностика\nЖурнал\nО приложении\nОператорская панель\nРежим: mock\nOK\nСвязь OK\nОбновлено: 24.06.2026, 04:24:01\nLast OK: 24.06.2026, 04:24:01\nWarnings: 0\nAlarms: 0\nОбновить\n\nBARREL MONITOR\n\nМониторинг бочек\n\nТекущие значения из mock-сервиса обновляются через безопасный IPC канал.\n\nОбновить\nОБЩИЙ СТАТУС\nOK\nРЕЖИМ ДАННЫХ\nmock\nПОСЛЕДНЕЕ ОБНОВЛЕНИЕ\n24.06.2026, 04:24:01\nПРЕДУПРЕЖДЕНИЯ\n0\nАВАРИИ\n0\nБочка 1\n\nbarrel-1\n\nOK\n63 %\nЗаполненность\n63 %\nТемпература\n21.1 °C\nОбновлено\n24.06.2026, 04:24:01\nСтатус\nOK"
+    },
+    {
+      "fileName": "02-barrel-details.png",
+      "hash": "#/barrels/barrel-1",
+      "title": "Barrel Monitor",
+      "bodyText": "Barrel Monitor\nFoundation stage\nМониторинг\nНастройки\nДиагностика\nЖурнал\nО приложении\nОператорская панель\nРежим: mock\nOK\nСвязь OK\nОбновлено: 24.06.2026, 04:24:03\nLast OK: 24.06.2026, 04:24:03\nWarnings: 0\nAlarms: 0\nОбновить\n\nДЕТАЛИ БОЧКИ\n\nБочка 1\n\nТекущие значения, каналы и техническая привязка из config.json\n\nНазад\n35 %\nOK\nОбновлено: 24.06.2026, 04:24:03\nТекущие значения\nТЕМПЕРАТУРА\n20.5 °C\nЗАПОЛНЕННОСТЬ\n35 %\nRAW LEVEL\n9.68 mA\nСТАТУС\nOK\nИсточники данных\nКанал температуры\ndevice\nМВ110 №1\nchannelId\ntemperature-barrel-1\nmoduleInputNumber\n1\nregisterAddress\n4\nmodbusFunction\n4\ndataType\nfloat32\nrawUnit\n°C\ndisplayUnit\n°C\nscaling\nnone\nКанал уровня\ndevice\nМВ110 №1\nchannelId\nlevel-barrel-1\nmoduleInputNumber\n2\nregisterAddress\n10\nmodbusFunction\n4\ndataType\nfloat32\nrawUnit\nmA\ndisplayUnit\n%\nscaling\nlinear: 4-20 -> 0-100\nТехнический блок\nbarrelId\nbarrel-1\ntemperatureChannelId\ntemperature-barrel-1\nlevelChannelId\nlevel-barrel-1\nmode\nmock"
+    },
+    {
+      "fileName": "03-settings-connection.png",
+      "hash": "#/settings",
+      "title": "Barrel Monitor",
+      "bodyText": "Barrel Monitor\nFoundation stage\nМониторинг\nНастройки\nДиагностика\nЖурнал\nО приложении\nОператорская панель\nРежим: mock\nOK\nСвязь OK\nОбновлено: 24.06.2026, 04:24:05\nLast OK: 24.06.2026, 04:24:05\nWarnings: 0\nAlarms: 0\nОбновить\n\nBARREL MONITOR\n\nНастройки\n\nРедактирование локального config.json. Изменения применяются только после сохранения.\n\nИзменений нет\nСохранение валидирует config и перезапускает DataService.\nСохранить\nСбросить изменения\nПеречитать config\nПодключение\nУстройство\nКаналы\nБочки\nПороги\nИнтерфейс\nСервис\nПодключение\nТип подключения\nModbus RTU\nCOM-порт\nДоступные COM-порты\nНет портов\nОбновить список портов\nСкорость\nData bits\n7\n8\nStop bits\n1\n2\nParity\nnone\neven\nodd\nTimeout, ms\nИнтервал опроса, ms\nРекомендуется не меньше 250 мс\nПовторы при ошибке\nПроверить подключение"
+    },
+    {
+      "action": "click tab Устройство",
+      "ok": true
+    },
+    {
+      "fileName": "04-settings-device.png",
+      "hash": "#/settings",
+      "title": "Barrel Monitor",
+      "bodyText": "Barrel Monitor\nFoundation stage\nМониторинг\nНастройки\nДиагностика\nЖурнал\nО приложении\nОператорская панель\nРежим: mock\nOK\nСвязь OK\nОбновлено: 24.06.2026, 04:24:06\nLast OK: 24.06.2026, 04:24:06\nWarnings: 0\nAlarms: 0\nОбновить\n\nBARREL MONITOR\n\nНастройки\n\nРедактирование локального config.json. Изменения применяются только после сохранения.\n\nИзменений нет\nСохранение валидирует config и перезапускает DataService.\nСохранить\nСбросить изменения\nПеречитать config\nПодключение\nУстройство\nКаналы\nБочки\nПороги\nИнтерфейс\nСервис\nУстройство\nID устройства\nНазвание устройства\nМодель\nПротокол\nmodbus-rtu\nModbus-адрес\nАктивно"
+    },
+    {
+      "action": "click tab Каналы",
+      "ok": true
+    },
+    {
+      "fileName": "05-settings-channels.png",
+      "hash": "#/settings",
+      "title": "Barrel Monitor",
+      "bodyText": "Barrel Monitor\nFoundation stage\nМониторинг\nНастройки\nДиагностика\nЖурнал\nО приложении\nОператорская панель\nРежим: mock\nOK\nСвязь OK\nОбновлено: 24.06.2026, 04:24:08\nLast OK: 24.06.2026, 04:24:08\nWarnings: 0\nAlarms: 0\nОбновить\n\nBARREL MONITOR\n\nНастройки\n\nРедактирование локального config.json. Изменения применяются только после сохранения.\n\nИзменений нет\nСохранение валидирует config и перезапускает DataService.\nСохранить\nСбросить изменения\nПеречитать config\nПодключение\nУстройство\nКаналы\nБочки\nПороги\nИнтерфейс\nСервис\nКаналы\nДобавить температуру\nДобавить уровень\nДобавить custom\nКанал 1: Температура бочки 1\ntemperature-barrel-1\nУдалить\nid\nname\ntype\ntemperature\nlevel\ncustom\ndeviceId\nmoduleInputNumber\nregisterAddress\nmodbusFunction\n3\n4\ndataType\nint16\nuint16\nint32\nuint32\nfloat32\nregisterCount\nbyteOrder\nABCD\nCDAB\nBADC\nDCBA\nrawUnit\ndisplayUnit\ndecimals\nscaling.type\nnone\nlinear\nКанал 2: Уровень бочки 1\nlevel-barrel-1\nУдалить\nid\nname\ntype\ntemperature\nlevel\ncustom\ndeviceId\nmoduleInputNumber\nregisterAddress\nmodbusFunction\n3\n4\ndataType\nint16\nuint16\nint32\nuint32\nfloat32\nregisterCount\nbyteOrder\nABCD\nCDAB\nBADC\nDCBA\nrawUnit\ndisplayUnit\ndecimals\nscaling.type\nnone\nlinear\nrawMin\nrawMax\ndisplayMin\ndisplayMax"
+    },
+    {
+      "action": "click tab Бочки",
+      "ok": true
+    },
+    {
+      "fileName": "06-settings-barrels.png",
+      "hash": "#/settings",
+      "title": "Barrel Monitor",
+      "bodyText": "Barrel Monitor\nFoundation stage\nМониторинг\nНастройки\nДиагностика\nЖурнал\nО приложении\nОператорская панель\nРежим: mock\nOK\nСвязь OK\nОбновлено: 24.06.2026, 04:24:10\nLast OK: 24.06.2026, 04:24:10\nWarnings: 0\nAlarms: 0\nОбновить\n\nBARREL MONITOR\n\nНастройки\n\nРедактирование локального config.json. Изменения применяются только после сохранения.\n\nИзменений нет\nСохранение валидирует config и перезапускает DataService.\nСохранить\nСбросить изменения\nПеречитать config\nПодключение\nУстройство\nКаналы\nБочки\nПороги\nИнтерфейс\nСервис\nБочки\nДобавить бочку\nБочка 1: Бочка 1\nbarrel-1\nУдалить\nid\nname\ntemperatureChannelId\n—\nТемпература бочки 1\nlevelChannelId\n—\nУровень бочки 1\ndisplayOrder\ncardSize\nsmall\nmedium\nlarge\nactive\nvisible"
+    },
+    {
+      "action": "click tab Пороги",
+      "ok": true
+    },
+    {
+      "fileName": "07-settings-thresholds.png",
+      "hash": "#/settings",
+      "title": "Barrel Monitor",
+      "bodyText": "Barrel Monitor\nFoundation stage\nМониторинг\nНастройки\nДиагностика\nЖурнал\nО приложении\nОператорская панель\nРежим: mock\nOK\nСвязь OK\nОбновлено: 24.06.2026, 04:24:12\nLast OK: 24.06.2026, 04:24:12\nWarnings: 0\nAlarms: 0\nОбновить\n\nBARREL MONITOR\n\nНастройки\n\nРедактирование локального config.json. Изменения применяются только после сохранения.\n\nИзменений нет\nСохранение валидирует config и перезапускает DataService.\nСохранить\nСбросить изменения\nПеречитать config\nПодключение\nУстройство\nКаналы\nБочки\nПороги\nИнтерфейс\nСервис\nЕсли значение достигает warning-порога — показывается предупреждение. Если достигает alarm-порога — показывается авария.\nТемпература, °C\nalarmLow\nwarningLow\nwarningHigh\nalarmHigh\nУровень, %\nalarmLow\nwarningLow\nwarningHigh\nalarmHigh"
+    },
+    {
+      "action": "click tab Интерфейс",
+      "ok": true
+    },
+    {
+      "fileName": "08-settings-interface.png",
+      "hash": "#/settings",
+      "title": "Barrel Monitor",
+      "bodyText": "Barrel Monitor\nFoundation stage\nМониторинг\nНастройки\nДиагностика\nЖурнал\nО приложении\nОператорская панель\nРежим: mock\nOK\nСвязь OK\nОбновлено: 24.06.2026, 04:24:14\nLast OK: 24.06.2026, 04:24:14\nWarnings: 0\nAlarms: 0\nОбновить\n\nBARREL MONITOR\n\nНастройки\n\nРедактирование локального config.json. Изменения применяются только после сохранения.\n\nИзменений нет\nСохранение валидирует config и перезапускает DataService.\nСохранить\nСбросить изменения\nПеречитать config\nПодключение\nУстройство\nКаналы\nБочки\nПороги\nИнтерфейс\nСервис\nИнтерфейс\nТема\ndark\nlight\nsystem\nРазмер карточек\nsmall\nmedium\nlarge\nКоличество колонок\nauto\n1\n2\n3\n4\nПоказывать время обновления\nПоказывать сырые значения в деталях\nЗапускать в полноэкранном режиме\nTODO: применение полноэкранного режима будет доработано отдельно."
+    },
+    {
+      "action": "click tab Сервис",
+      "ok": true
+    },
+    {
+      "fileName": "09-settings-service.png",
+      "hash": "#/settings",
+      "title": "Barrel Monitor",
+      "bodyText": "Barrel Monitor\nFoundation stage\nМониторинг\nНастройки\nДиагностика\nЖурнал\nО приложении\nОператорская панель\nРежим: mock\nOK\nСвязь OK\nОбновлено: 24.06.2026, 04:24:16\nLast OK: 24.06.2026, 04:24:16\nWarnings: 0\nAlarms: 0\nОбновить\n\nBARREL MONITOR\n\nНастройки\n\nРедактирование локального config.json. Изменения применяются только после сохранения.\n\nИзменений нет\nСохранение валидирует config и перезапускает DataService.\nСохранить\nСбросить изменения\nПеречитать config\nПодключение\nУстройство\nКаналы\nБочки\nПороги\nИнтерфейс\nСервис\nСервисные параметры\nРежим данных\nmock\nreal\nПри выборе `real` будет использоваться read-only Modbus RTU сервис.\nФайлы и действия\nВерсия\n0.1.0\nПлатформа\ndarwin\nConfig\n/Users/i2wenty1ne/Library/Application Support/Barrel Monitor/config.json\nEvents log\n/Users/i2wenty1ne/Library/Application Support/Barrel Monitor/logs/events.jsonl\nТекущий mode\nmock\nОткрыть папку конфигурации\nОткрыть папку логов\nПеречитать config.json\nСбросить настройки"
+    },
+    {
+      "action": "open reset confirm",
+      "ok": true
+    },
+    {
+      "fileName": "09b-settings-reset-confirm.png",
+      "hash": "#/settings",
+      "title": "Barrel Monitor",
+      "bodyText": "Barrel Monitor\nFoundation stage\nМониторинг\nНастройки\nДиагностика\nЖурнал\nО приложении\nОператорская панель\nРежим: mock\nПредупреждение\nОшибка связи\nОбновлено: 24.06.2026, 04:24:18\nLast OK: 24.06.2026, 04:24:18\nWarnings: 1\nAlarms: 0\nОбновить\n\nBARREL MONITOR\n\nНастройки\n\nРедактирование локального config.json. Изменения применяются только после сохранения.\n\nИзменений нет\nСохранение валидирует config и перезапускает DataService.\nСохранить\nСбросить изменения\nПеречитать config\nПодключение\nУстройство\nКаналы\nБочки\nПороги\nИнтерфейс\nСервис\nСервисные параметры\nРежим данных\nmock\nreal\nПри выборе `real` будет использоваться read-only Modbus RTU сервис.\nФайлы и действия\nВерсия\n0.1.0\nПлатформа\ndarwin\nConfig\n/Users/i2wenty1ne/Library/Application Support/Barrel Monitor/config.json\nEvents log\n/Users/i2wenty1ne/Library/Application Support/Barrel Monitor/logs/events.jsonl\nТекущий mode\nmock\nОткрыть папку конфигурации\nОткрыть папку логов\nПеречитать config.json\nСбросить настройки\nСбросить настройки?\n\nConfig.json будет перезаписан дефолтными настройками. Это действие нельзя отменить через UI.\n\nОтмена\nСбросить"
+    },
+    {
+      "fileName": "10-diagnostics.png",
+      "hash": "#/diagnostics",
+      "title": "Barrel Monitor",
+      "bodyText": "Barrel Monitor\nFoundation stage\nМониторинг\nНастройки\nДиагностика\nЖурнал\nО приложении\nОператорская панель\nРежим: mock\nOK\nСвязь OK\nОбновлено: 24.06.2026, 04:24:21\nLast OK: 24.06.2026, 04:24:21\nWarnings: 0\nAlarms: 0\nОбновить\n\nENGINEERING\n\nДиагностика\n\nRead-only состояние приложения, config, DataService и последних mock-значений.\n\nРЕЖИМ ДАННЫХ\nmock\nОБЩИЙ СТАТУС\nOK\nПОСЛЕДНЕЕ ОБНОВЛЕНИЕ\n24.06.2026, 04:24:21\nWARNING\n0\nALARM\n0\nПриложение работает в mock-режиме. Реальное оборудование не опрашивается.\nДействия\nПроверить подключение\nПрочитать все каналы\nОбновить диагностику\nСкопировать диагностику\nПодключение\nТип\nmodbus-rtu\nCOM-порт\n/dev/tty.wlan-debug\nBaud rate\n115200\nData bits\n8\nStop bits\n1\nParity\nnone\nTimeout\n1000 ms\nRetries\n3\nPolling\n1000 ms\nDataService\nOK\nLast successful read\n24.06.2026, 04:24:19\nLast error\n—\nУстройство\nID\nmv110-1\nНазвание\nМВ110 №1\nМодель\nМВ110-224.8А\nПротокол\nmodbus-rtu\nModbus address\n16\nАктивно\nДа\nManual read registers\nDevice address\nFunction\n3 Holding\n4 Input\nRegister address\nRegister count\nData type\nint16\nuint16\nint32\nuint32\nfloat32\nByte order\nABCD\nCDAB\nBADC\nDCBA\nПрочитать\nКаналы\nNAME\tTYPE\tINPUT\tREGISTER\tFN\tDATA TYPE\tCOUNT\tORDER\tSCALING\tRAW\tDISPLAY\tSTATUS\tUPDATED\tERR"
+    },
+    {
+      "fileName": "11-events-log.png",
+      "hash": "#/events",
+      "title": "Barrel Monitor",
+      "bodyText": "Barrel Monitor\nFoundation stage\nМониторинг\nНастройки\nДиагностика\nЖурнал\nО приложении\nОператорская панель\nРежим: mock\nOK\nСвязь OK\nОбновлено: 24.06.2026, 04:24:23\nLast OK: 24.06.2026, 04:24:23\nWarnings: 0\nAlarms: 0\nОбновить\n\nENGINEERING\n\nЖурнал событий\n\nJSONL-события приложения с фильтрами, поиском и live-обновлением.\n\nОбновить\nОчистить журнал\nФильтры\nLevel\nall\ninfo\nwarning\nerror\nSource\nall\napplication\nconfig\ndata-service\ndiagnostics\nsettings\nSearch\nLimit\n50\n100\n500\nall\nСобытия (30)\nTIMESTAMP\tLEVEL\tSOURCE\tENTITY\tMESSAGE\tDETAILS\n24.06.2026, 04:22:36\tИнформация\tapplication\t—\tApplication started\t—\n24.06.2026, 04:21:17\tИнформация\tapplication\t—\tApplication started\t—\n24.06.2026, 04:20:58\tИнформация\tapplication\t—\tApplication started\t—\n24.06.2026, 04:19:07\tИнформация\tapplication\t—\tApplication started\t—\n24.06.2026, 04:13:21\tИнформация\tapplication\t—\tApplication started\t—\n23.06.2026, 23:33:02\tИнформация\tsettings\t—\tTest connection from settings\tПодробнее\n23.06.2026, 23:32:59\tИнформация\tdiagnostics\t—\tRead all channels clicked\tПодробнее\n23.06.2026, 23:32:59\tИнформация\tconfig\t—\tConfig saved\t—\n23.06.2026, 23:32:59\tИнформация\tdata-service\t—\tData service restarted after config change\t—\n23.06.2026, 23:"
+    },
+    {
+      "action": "open event details",
+      "ok": true
+    },
+    {
+      "fileName": "11b-event-details-dialog.png",
+      "hash": "#/events",
+      "title": "Barrel Monitor",
+      "bodyText": "Barrel Monitor\nFoundation stage\nМониторинг\nНастройки\nДиагностика\nЖурнал\nО приложении\nОператорская панель\nРежим: mock\nOK\nСвязь OK\nОбновлено: 24.06.2026, 04:24:25\nLast OK: 24.06.2026, 04:24:25\nWarnings: 0\nAlarms: 0\nОбновить\n\nENGINEERING\n\nЖурнал событий\n\nJSONL-события приложения с фильтрами, поиском и live-обновлением.\n\nОбновить\nОчистить журнал\nФильтры\nLevel\nall\ninfo\nwarning\nerror\nSource\nall\napplication\nconfig\ndata-service\ndiagnostics\nsettings\nSearch\nLimit\n50\n100\n500\nall\nСобытия (30)\nTIMESTAMP\tLEVEL\tSOURCE\tENTITY\tMESSAGE\tDETAILS\n24.06.2026, 04:22:36\tИнформация\tapplication\t—\tApplication started\t—\n24.06.2026, 04:21:17\tИнформация\tapplication\t—\tApplication started\t—\n24.06.2026, 04:20:58\tИнформация\tapplication\t—\tApplication started\t—\n24.06.2026, 04:19:07\tИнформация\tapplication\t—\tApplication started\t—\n24.06.2026, 04:13:21\tИнформация\tapplication\t—\tApplication started\t—\n23.06.2026, 23:33:02\tИнформация\tsettings\t—\tTest connection from settings\tПодробнее\n23.06.2026, 23:32:59\tИнформация\tdiagnostics\t—\tRead all channels clicked\tПодробнее\n23.06.2026, 23:32:59\tИнформация\tconfig\t—\tConfig saved\t—\n23.06.2026, 23:32:59\tИнформация\tdata-service\t—\tData service restarted after config change\t—\n23.06.2026, 23:"
+    },
+    {
+      "fileName": "12-about.png",
+      "hash": "#/about",
+      "title": "Barrel Monitor",
+      "bodyText": "Barrel Monitor\nFoundation stage\nМониторинг\nНастройки\nДиагностика\nЖурнал\nО приложении\nОператорская панель\nРежим: mock\nOK\nСвязь OK\nОбновлено: 24.06.2026, 04:24:28\nLast OK: 24.06.2026, 04:24:28\nWarnings: 0\nAlarms: 0\nОбновить\n\nBARREL MONITOR\n\nО приложении\n\nВерсия, runtime и рабочие пути локального приложения.\n\nСкопировать системную информацию\nПриложение\nНазвание\nBarrel Monitor\nВерсия\n0.1.0\nРежим\nmock\nУстройство\nМВ110 №1\nМодель\nМВ110-224.8А\nModbus address\n16\nRuntime\nElectron\n42.2.0\nNode\n24.15.0\nChrome\n148.0.7778.97\nPlatform\ndarwin\nArch\narm64\nПодключение\nPort\n/dev/tty.wlan-debug\nBaud rate\n115200\nParity\nnone\nStop bits\n1\nData bits\n8\nПути\nconfig.json\n/Users/i2wenty1ne/Library/Application Support/Barrel Monitor/config.json\nevents.jsonl\n/Users/i2wenty1ne/Library/Application Support/Barrel Monitor/logs/events.jsonl\nОткрыть папку конфигурации\nОткрыть папку логов"
+    }
+  ]
+}
