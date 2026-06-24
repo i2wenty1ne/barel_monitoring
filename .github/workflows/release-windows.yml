@@ -51,6 +51,7 @@ jobs:
   build-windows-release:
     name: Build and publish Windows release
     runs-on: windows-latest
+
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       INPUT_VERSION: ${{ inputs.version }}
@@ -80,15 +81,19 @@ jobs:
       - name: Resolve release metadata
         shell: pwsh
         run: |
+          $ErrorActionPreference = "Stop"
+
           if (-not (Test-Path package.json)) {
             throw "package.json not found"
           }
 
           $package = Get-Content package.json -Raw | ConvertFrom-Json
-          $version = $env:INPUT_VERSION.Trim()
+
+          $inputVersion = [string]$env:INPUT_VERSION
+          $version = $inputVersion.Trim()
 
           if ([string]::IsNullOrWhiteSpace($version)) {
-            $version = $package.version
+            $version = [string]$package.version
           }
 
           if ($version.StartsWith("v")) {
@@ -99,36 +104,46 @@ jobs:
             throw "Release version is empty"
           }
 
-          if (-not [string]::IsNullOrWhiteSpace($env:INPUT_VERSION)) {
+          if (-not [string]::IsNullOrWhiteSpace($inputVersion)) {
             npm version $version --no-git-tag-version
+
+            if ($LASTEXITCODE -ne 0) {
+              throw "Failed to update package.json version to $version"
+            }
           }
 
-          $tag = $env:INPUT_TAG.Trim()
+          $inputTag = [string]$env:INPUT_TAG
+          $tag = $inputTag.Trim()
+
           if ([string]::IsNullOrWhiteSpace($tag)) {
             $tag = "v$version"
           }
 
-          $releaseName = $env:INPUT_RELEASE_NAME.Trim()
+          $inputReleaseName = [string]$env:INPUT_RELEASE_NAME
+          $releaseName = $inputReleaseName.Trim()
+
           if ([string]::IsNullOrWhiteSpace($releaseName)) {
             $releaseName = "Barrel Monitor v$version"
           }
 
+          $safeTag = $tag -replace '[\\/:*?"<>|]', '-'
+
           "RELEASE_VERSION=$version" >> $env:GITHUB_ENV
           "RELEASE_TAG=$tag" >> $env:GITHUB_ENV
+          "SAFE_RELEASE_TAG=$safeTag" >> $env:GITHUB_ENV
           "RELEASE_NAME=$releaseName" >> $env:GITHUB_ENV
 
-          "Resolved version: $version"
-          "Resolved tag: $tag"
-          "Resolved release name: $releaseName"
+          Write-Host "Resolved version: $version"
+          Write-Host "Resolved tag: $tag"
+          Write-Host "Resolved release name: $releaseName"
 
-            - name: Check existing release and tag
+      - name: Check existing release and tag
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
 
           Write-Host "Checking release/tag: $env:RELEASE_TAG"
 
-          # Check existing GitHub Release without using a failing command for "not found"
           $releaseExists = $false
           $releasesJson = gh release list --limit 1000 --json tagName
 
@@ -143,7 +158,6 @@ jobs:
             $releaseExists = $true
           }
 
-          # Check remote tag without --exit-code, because missing tag should not fail the step
           $tagOutput = git ls-remote --tags origin "refs/tags/$env:RELEASE_TAG"
 
           if ($LASTEXITCODE -ne 0) {
@@ -169,7 +183,6 @@ jobs:
               }
             }
 
-            # Re-check tag after release deletion, because --cleanup-tag may already delete it
             $tagOutputAfterReleaseDelete = git ls-remote --tags origin "refs/tags/$env:RELEASE_TAG"
 
             if ($LASTEXITCODE -ne 0) {
@@ -189,70 +202,140 @@ jobs:
           }
 
           Write-Host "Release/tag check completed successfully."
+
       - name: Typecheck
         run: npm run typecheck
 
       - name: Lint if configured
         shell: pwsh
         run: |
+          $ErrorActionPreference = "Stop"
+
           $scripts = (Get-Content package.json -Raw | ConvertFrom-Json).scripts
+
           if ($scripts.PSObject.Properties.Name -contains "lint") {
             npm run lint
+
+            if ($LASTEXITCODE -ne 0) {
+              throw "Lint failed."
+            }
           } else {
-            "No lint script configured; skipping."
+            Write-Host "No lint script configured; skipping."
           }
 
       - name: Test if configured
         shell: pwsh
         run: |
+          $ErrorActionPreference = "Stop"
+
           $scripts = (Get-Content package.json -Raw | ConvertFrom-Json).scripts
+
           if ($env:INPUT_RUN_TESTS -eq "true" -and $scripts.PSObject.Properties.Name -contains "test") {
             npm run test
+
+            if ($LASTEXITCODE -ne 0) {
+              throw "Tests failed."
+            }
           } else {
-            "No test script configured or run_tests=false; skipping."
+            Write-Host "No test script configured or run_tests=false; skipping."
           }
 
       - name: Build
         run: npm run build
 
       - name: Build Windows package
-        run: npm run dist:win
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          $scripts = (Get-Content package.json -Raw | ConvertFrom-Json).scripts
+          $scriptNames = $scripts.PSObject.Properties.Name
+
+          if ($scriptNames -contains "dist:win") {
+            $distScript = "dist:win"
+          } elseif ($scriptNames -contains "build:win") {
+            $distScript = "build:win"
+          } elseif ($scriptNames -contains "dist") {
+            $distScript = "dist"
+          } else {
+            throw "No Windows packaging script found. Expected one of: dist:win, build:win, dist."
+          }
+
+          Write-Host "Running npm script: $distScript"
+          npm run $distScript
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "Windows packaging failed."
+          }
 
       - name: Collect Windows artifacts
         shell: pwsh
         run: |
-          $patterns = @(
-            "release/*.exe",
-            "release/*.msi",
-            "release/*.zip",
-            "release/*.7z",
-            "release/*.blockmap",
-            "release/*.yml",
-            "release/*.yaml"
-          )
+          $ErrorActionPreference = "Stop"
+
+          $artifactDir = "ci-artifacts"
+
+          if (Test-Path $artifactDir) {
+            Remove-Item $artifactDir -Recurse -Force
+          }
+
+          New-Item -ItemType Directory -Path $artifactDir | Out-Null
+
+          $roots = @("release", "dist", "out")
+          $allowedExtensions = @(".exe", ".msi", ".zip", ".7z", ".blockmap", ".yml", ".yaml")
 
           $files = @()
-          foreach ($pattern in $patterns) {
-            $files += Get-ChildItem -Path $pattern -File -ErrorAction SilentlyContinue
+
+          foreach ($root in $roots) {
+            if (Test-Path $root) {
+              $files += Get-ChildItem -Path $root -Recurse -File |
+                Where-Object {
+                  $allowedExtensions -contains $_.Extension.ToLowerInvariant()
+                }
+            }
           }
 
           $files = $files | Sort-Object FullName -Unique
 
           if ($files.Count -eq 0) {
-            throw "No release artifacts found in release/"
+            throw "No Windows release artifacts found in release/, dist/, or out/."
           }
 
-          $files.FullName | Set-Content -Path artifacts.txt
-          $files.Name | Set-Content -Path artifact-names.txt
+          $copiedFiles = @()
 
-          "ARTIFACT_COUNT=$($files.Count)" >> $env:GITHUB_ENV
-          "Artifacts:"
-          $files | ForEach-Object { " - $($_.FullName)" }
+          foreach ($file in $files) {
+            $targetName = $file.Name
+            $targetPath = Join-Path $artifactDir $targetName
+            $index = 2
+
+            while (Test-Path $targetPath) {
+              $baseName = [System.IO.Path]::GetFileNameWithoutExtension($file.Name)
+              $extension = [System.IO.Path]::GetExtension($file.Name)
+              $targetName = "$baseName-$index$extension"
+              $targetPath = Join-Path $artifactDir $targetName
+              $index++
+            }
+
+            Copy-Item $file.FullName $targetPath
+            $copiedFiles += Get-Item $targetPath
+          }
+
+          $copiedFiles.FullName | Set-Content -Path artifacts.txt
+          $copiedFiles.Name | Set-Content -Path artifact-names.txt
+
+          "ARTIFACT_COUNT=$($copiedFiles.Count)" >> $env:GITHUB_ENV
+
+          Write-Host "Artifacts:"
+          $copiedFiles | ForEach-Object { Write-Host " - $($_.FullName)" }
 
       - name: Create release notes
         shell: pwsh
         run: |
-          $notes = $env:INPUT_RELEASE_NOTES.Trim()
+          $ErrorActionPreference = "Stop"
+
+          $inputNotes = [string]$env:INPUT_RELEASE_NOTES
+          $notes = $inputNotes.Trim()
+
           $artifactList = (Get-Content artifact-names.txt) | ForEach-Object { "- $_" }
           $commitList = git log -20 --pretty=format:"- %h %s"
           $buildDate = (Get-Date).ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ss 'UTC'")
@@ -281,26 +364,21 @@ jobs:
           "@
           }
 
-          $notes | Set-Content -Path release-notes.md
+          $notes | Set-Content -Path release-notes.md -Encoding UTF8
 
       - name: Upload Actions artifact
         uses: actions/upload-artifact@v4
         with:
-          name: barrel-monitor-windows-${{ env.RELEASE_TAG }}
-          path: |
-            release/*.exe
-            release/*.msi
-            release/*.zip
-            release/*.7z
-            release/*.blockmap
-            release/*.yml
-            release/*.yaml
+          name: barrel-monitor-windows-${{ env.SAFE_RELEASE_TAG }}
+          path: ci-artifacts/*
           if-no-files-found: error
           retention-days: 30
 
       - name: Create GitHub Release
         shell: pwsh
         run: |
+          $ErrorActionPreference = "Stop"
+
           $args = @(
             "release",
             "create",
@@ -322,15 +400,22 @@ jobs:
           }
 
           $args += Get-Content artifacts.txt
+
           gh @args
 
-          "RELEASE_URL=https://github.com/${{ github.repository }}/releases/tag/$env:RELEASE_TAG" >> $env:GITHUB_ENV
+          if ($LASTEXITCODE -ne 0) {
+            throw "Failed to create GitHub Release."
+          }
+
+          $releaseUrl = "https://github.com/$env:GITHUB_REPOSITORY/releases/tag/$env:RELEASE_TAG"
+          "RELEASE_URL=$releaseUrl" >> $env:GITHUB_ENV
 
       - name: Write workflow summary
         if: always()
         shell: pwsh
         run: |
-          $releaseUrl = "https://github.com/${{ github.repository }}/releases/tag/$env:RELEASE_TAG"
+          $releaseUrl = "https://github.com/$env:GITHUB_REPOSITORY/releases/tag/$env:RELEASE_TAG"
+
           $artifactNames = if (Test-Path artifact-names.txt) {
             (Get-Content artifact-names.txt) | ForEach-Object { "- $_" }
           } else {
