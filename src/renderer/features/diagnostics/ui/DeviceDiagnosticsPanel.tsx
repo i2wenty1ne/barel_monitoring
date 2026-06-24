@@ -3,25 +3,36 @@ import { Alert } from '../../../shared/ui/Alert';
 import { Panel } from '../../../shared/ui/Panel';
 
 type DeviceDiagnosticsPanelProps = {
-  device: DeviceConfig;
+  devices: DeviceConfig[];
 };
 
-export function DeviceDiagnosticsPanel({ device }: DeviceDiagnosticsPanelProps): React.JSX.Element {
+export function DeviceDiagnosticsPanel({ devices }: DeviceDiagnosticsPanelProps): React.JSX.Element {
   return (
-    <Panel className="p-5" title="Устройство">
-      {!device.active ? (
-        <div className="mb-4">
-          <Alert type="warning">Устройство неактивно.</Alert>
+    <Panel className="p-5" title="Устройства">
+      {devices.length === 0 ? (
+        <Alert type="warning">Устройства не настроены.</Alert>
+      ) : (
+        <div className="grid gap-4">
+          {devices.map((device) => (
+            <div className="rounded-md border border-white/10 bg-slate-950/35 p-4" key={device.id}>
+              {!device.active ? (
+                <div className="mb-3">
+                  <Alert type="warning">Устройство {device.name} неактивно.</Alert>
+                </div>
+              ) : null}
+              <dl className="grid gap-3 text-sm md:grid-cols-2">
+                <InfoRow label="ID" value={device.id} />
+                <InfoRow label="Название" value={device.name} />
+                <InfoRow label="Модель" value={device.model} />
+                <InfoRow label="Modbus address" value={String(device.modbusAddress)} />
+                <InfoRow label="COM-порт" value={device.connection.port} />
+                <InfoRow label="Скорость" value={String(device.connection.baudRate)} />
+                <InfoRow label="Активно" value={device.active ? 'Да' : 'Нет'} />
+              </dl>
+            </div>
+          ))}
         </div>
-      ) : null}
-      <dl className="grid gap-3 text-sm md:grid-cols-2">
-        <InfoRow label="ID" value={device.id} />
-        <InfoRow label="Название" value={device.name} />
-        <InfoRow label="Модель" value={device.model} />
-        <InfoRow label="Протокол" value={device.protocol} />
-        <InfoRow label="Modbus address" value={String(device.modbusAddress)} />
-        <InfoRow label="Активно" value={device.active ? 'Да' : 'Нет'} />
-      </dl>
+      )}
     </Panel>
   );
 }

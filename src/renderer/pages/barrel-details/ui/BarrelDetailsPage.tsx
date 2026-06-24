@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import type { ChannelConfig, ScalingConfig } from '../../../../shared/types/config.types';
+import type { ChannelConfig, DeviceConfig, ScalingConfig } from '../../../../shared/types/config.types';
 import {
   formatDateTime,
   formatPercent,
@@ -93,7 +93,6 @@ export function BarrelDetailsPage(): React.JSX.Element {
     );
   }
 
-  const device = configState.config.device;
   const hasIncompleteConfig = !channels.temperatureChannel || !channels.levelChannel;
 
   return (
@@ -141,8 +140,16 @@ export function BarrelDetailsPage(): React.JSX.Element {
           <Panel className="p-5">
             <h2 className="text-lg font-medium text-white">Источники данных</h2>
             <div className="mt-4 grid gap-4 lg:grid-cols-2">
-              <ChannelPanel title="Канал температуры" channel={channels.temperatureChannel} deviceName={device.name} />
-              <ChannelPanel title="Канал уровня" channel={channels.levelChannel} deviceName={device.name} />
+              <ChannelPanel
+                title="Канал температуры"
+                channel={channels.temperatureChannel}
+                devices={configState.config.devices}
+              />
+              <ChannelPanel
+                title="Канал уровня"
+                channel={channels.levelChannel}
+                devices={configState.config.devices}
+              />
             </div>
           </Panel>
 
@@ -196,10 +203,10 @@ function ValueTile({ label, value }: ValueTileProps): React.JSX.Element {
 type ChannelPanelProps = {
   title: string;
   channel: ChannelConfig | null;
-  deviceName: string;
+  devices: DeviceConfig[];
 };
 
-function ChannelPanel({ title, channel, deviceName }: ChannelPanelProps): React.JSX.Element {
+function ChannelPanel({ title, channel, devices }: ChannelPanelProps): React.JSX.Element {
   if (!channel) {
     return (
       <div className="rounded-md border border-amber-300/20 bg-amber-400/10 p-4 text-sm text-amber-100">
@@ -207,12 +214,13 @@ function ChannelPanel({ title, channel, deviceName }: ChannelPanelProps): React.
       </div>
     );
   }
+  const device = devices.find((item) => item.id === channel.deviceId);
 
   return (
     <div className="rounded-md border border-white/10 bg-slate-950/45 p-4">
       <h3 className="font-medium text-slate-100">{title}</h3>
       <dl className="mt-3 grid gap-2 text-sm">
-        <TechRow label="Устройство" value={deviceName} />
+        <TechRow label="Устройство" value={device ? `${device.name} (${device.id})` : channel.deviceId} />
         <TechRow label="ID канала" monospace value={channel.id} />
         <TechRow label="Номер входа" value={String(channel.moduleInputNumber)} />
         <TechRow label="Адрес регистра" value={String(channel.registerAddress)} />

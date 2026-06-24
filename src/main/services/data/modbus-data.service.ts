@@ -1,5 +1,5 @@
 import ModbusRTU from 'modbus-serial';
-import type { AppConfig, ChannelConfig } from '../../../shared/types/config.types';
+import type { AppConfig, ChannelConfig, DeviceConfig } from '../../../shared/types/config.types';
 import {
   BarrelReading,
   ChannelReading,
@@ -27,10 +27,10 @@ export class ModbusDataService implements DataService {
   private readonly eventLogService?: EventLogService;
   private readonly listeners = new Set<MonitoringSnapshotListener>();
   private readonly lastLoggedAtByKey = new Map<string, number>();
-  private client: ModbusRTU | null = null;
+  private readonly clients = new Map<string, ModbusRTU>();
+  private readonly connectionStates = new Map<string, ConnectionState>();
   private intervalId: ReturnType<typeof setInterval> | null = null;
   private isReading = false;
-  private connectionState: ConnectionState = 'closed';
   private lastSuccessfulReadAt: string | null = null;
   private lastError?: string;
   private lastSnapshot: MonitoringSnapshot | null = null;
@@ -45,12 +45,22 @@ export class ModbusDataService implements DataService {
       return;
     }
 
-    await this.logEvent('info', 'real data service started', { port: this.config.connection.port });
+    await this.logEvent('info', 'real data service started', {
+      devices: this.config.devices.map((device) => ({
+        id: device.id,
+        port: device.connection.port,
+        baudRate: device.connection.baudRate
+      }))
+    });
 
     try {
-      await this.ensureConnected();
+      const device = this.getDefaultDevice();
+      if (device) {
+        await this.ensureConnected(device);
+      }
     } catch (error) {
-      this.lastError = mapModbusError(error, this.config.connection.port);
+      const device = this.getDefaultDevice();
+      this.lastError = mapModbusError(error, device?.connection.port ?? '');
       await this.logEvent('error', 'serial port open failed', {
         error: this.lastError,
         technicalError: getTechnicalErrorMessage(error)
@@ -79,6 +89,7 @@ export class ModbusDataService implements DataService {
     this.lastSuccessfulReadAt = null;
     this.lastError = undefined;
     this.lastSnapshot = null;
+    this.connectionStates.clear();
     await this.start();
   }
 
@@ -90,11 +101,16 @@ export class ModbusDataService implements DataService {
     this.isReading = true;
 
     try {
-      await this.ensureConnected();
       const updatedAt = new Date().toISOString();
-      const channels = await Promise.all(
-        this.config.channels.map((channel) => this.readChannel(channel, updatedAt))
-      );
+      const readingsByChannelId = new Map<string, ChannelReading>();
+      for (const channelGroup of this.groupChannelsByDevice()) {
+        for (const channel of channelGroup) {
+          readingsByChannelId.set(channel.id, await this.readChannel(channel, updatedAt));
+        }
+      }
+      const channels = this.config.channels
+        .map((channel) => readingsByChannelId.get(channel.id))
+        .filter((channel): channel is ChannelReading => Boolean(channel));
       const snapshot = this.createSnapshot(channels, updatedAt);
       const hasConnectionErrors = channels.some((channel) => channel.status === 'connection-error');
 
@@ -109,7 +125,7 @@ export class ModbusDataService implements DataService {
       this.lastSnapshot = snapshot;
       return snapshot;
     } catch (error) {
-      const message = mapModbusError(error, this.config.connection.port);
+      const message = mapModbusError(error, this.getDefaultDevice()?.connection.port ?? '');
       this.lastError = message;
       await this.logEventThrottled('connection-error', 'error', 'connection lost', {
         error: message,
@@ -125,8 +141,10 @@ export class ModbusDataService implements DataService {
 
   public async readRegisters(request: ManualReadRequest): Promise<ManualReadResult> {
     try {
-      await this.ensureConnected(request.deviceAddress);
+      const device = this.getDeviceById(request.deviceId);
+      const client = await this.ensureConnected(device);
       const registers = await this.readRegisterValues(
+        client,
         request.modbusFunction,
         request.registerAddress,
         request.registerCount
@@ -145,7 +163,8 @@ export class ModbusDataService implements DataService {
         message: 'Manual register read completed'
       };
     } catch (error) {
-      const message = mapModbusError(error, this.config.connection.port);
+      const device = this.getDeviceByIdOrNull(request.deviceId);
+      const message = mapModbusError(error, device?.connection.port ?? '');
       await this.logEvent('error', 'manual register read failed', {
         request,
         error: message,
@@ -158,7 +177,7 @@ export class ModbusDataService implements DataService {
         error: getTechnicalErrorMessage(error)
       };
     } finally {
-      this.client?.setID(this.config.device.modbusAddress);
+      // Keep persistent clients open for polling.
     }
   }
 
@@ -168,7 +187,8 @@ export class ModbusDataService implements DataService {
     const rows: RegisterScanRow[] = [];
 
     try {
-      await this.ensureConnected(normalizedRequest.deviceAddress);
+      const device = this.getDeviceById(normalizedRequest.deviceId);
+      const client = await this.ensureConnected(device);
 
       for (const modbusFunction of normalizedRequest.modbusFunctions) {
         for (
@@ -178,6 +198,7 @@ export class ModbusDataService implements DataService {
         ) {
           try {
             const registers = await this.readRegisterValues(
+              client,
               modbusFunction,
               registerAddress,
               normalizedRequest.registerCount
@@ -199,7 +220,7 @@ export class ModbusDataService implements DataService {
               modbusFunction,
               registerAddress,
               success: false,
-              message: mapModbusError(error, this.config.connection.port),
+              message: mapModbusError(error, device.connection.port),
               error: getTechnicalErrorMessage(error)
             });
           }
@@ -216,16 +237,16 @@ export class ModbusDataService implements DataService {
         modbusFunction: normalizedRequest.modbusFunctions[0] ?? 3,
         registerAddress: normalizedRequest.startAddress,
         success: false,
-        message: mapModbusError(error, this.config.connection.port),
+        message: mapModbusError(error, this.getDeviceByIdOrNull(normalizedRequest.deviceId)?.connection.port ?? ''),
         error: getTechnicalErrorMessage(error)
       });
       await this.logEvent('error', 'register scan failed', {
         request: normalizedRequest,
-        error: mapModbusError(error, this.config.connection.port),
+        error: mapModbusError(error, this.getDeviceByIdOrNull(normalizedRequest.deviceId)?.connection.port ?? ''),
         technicalError: getTechnicalErrorMessage(error)
       });
     } finally {
-      this.client?.setID(this.config.device.modbusAddress);
+      // Keep persistent clients open for polling.
     }
 
     const finishedAt = new Date().toISOString();
@@ -243,18 +264,22 @@ export class ModbusDataService implements DataService {
   }
 
   public async testConnection(): Promise<TestConnectionResult> {
-    const firstChannel = this.config.channels[0];
+    const device = this.getDefaultDevice();
+    const firstChannel = device
+      ? this.config.channels.find((channel) => channel.deviceId === device.id)
+      : null;
 
-    if (!firstChannel) {
+    if (!device || !firstChannel) {
       return {
         success: false,
-        message: 'No channels configured for test read'
+        message: 'No active device with configured channels for test read'
       };
     }
 
     try {
-      await this.ensureConnected();
+      const client = await this.ensureConnected(device);
       const registers = await this.readRegisterValues(
+        client,
         firstChannel.modbusFunction,
         firstChannel.registerAddress,
         firstChannel.registerCount
@@ -268,15 +293,16 @@ export class ModbusDataService implements DataService {
         success: true,
         message: 'Connection successful',
         details: {
-          port: this.config.connection.port,
-          baudRate: this.config.connection.baudRate,
-          modbusAddress: this.config.device.modbusAddress,
+          port: device.connection.port,
+          baudRate: device.connection.baudRate,
+          modbusAddress: device.modbusAddress,
+          deviceId: device.id,
           channelId: firstChannel.id,
           registers
         }
       };
     } catch (error) {
-      const message = mapModbusError(error, this.config.connection.port);
+      const message = mapModbusError(error, device.connection.port);
       await this.logEvent('error', 'test connection failed', {
         error: message,
         technicalError: getTechnicalErrorMessage(error)
@@ -286,20 +312,22 @@ export class ModbusDataService implements DataService {
         success: false,
         message,
         details: {
-          port: this.config.connection.port,
-          baudRate: this.config.connection.baudRate,
-          modbusAddress: this.config.device.modbusAddress
+          port: device.connection.port,
+          baudRate: device.connection.baudRate,
+          modbusAddress: device.modbusAddress,
+          deviceId: device.id
         }
       };
     }
   }
 
   public getStatus(): DataServiceStatus {
+    const hasError = [...this.connectionStates.values()].some((state) => state === 'error');
     return {
       mode: this.config.app.mode,
-      connectionStatus: this.connectionState === 'open' && !this.lastError ? 'ok' : 'connection-error',
+      connectionStatus: !hasError && !this.lastError ? 'ok' : 'connection-error',
       lastSuccessfulReadAt: this.lastSuccessfulReadAt,
-      lastError: this.lastError ?? `serial connection: ${this.connectionState}`
+      lastError: this.lastError
     };
   }
 
@@ -315,50 +343,55 @@ export class ModbusDataService implements DataService {
     };
   }
 
-  private async ensureConnected(deviceAddress = this.config.device.modbusAddress): Promise<void> {
-    if (this.client?.isOpen) {
-      this.client.setID(deviceAddress);
-      return;
+  private async ensureConnected(device: DeviceConfig): Promise<ModbusRTU> {
+    const existingClient = this.clients.get(device.id);
+    if (existingClient?.isOpen) {
+      existingClient.setID(device.modbusAddress);
+      return existingClient;
     }
 
-    if (this.connectionState === 'opening') {
-      return;
+    if (this.connectionStates.get(device.id) === 'opening') {
+      throw new Error(`Serial connection is opening for ${device.id}`);
     }
 
-    this.connectionState = 'opening';
+    this.connectionStates.set(device.id, 'opening');
+    await this.closeClientsSharingPort(device);
     const client = new ModbusRTU();
-    client.setTimeout(this.config.connection.timeoutMs);
+    client.setTimeout(device.connection.timeoutMs);
 
     try {
-      await client.connectRTUBuffered(this.config.connection.port, {
-        baudRate: this.config.connection.baudRate,
-        dataBits: this.config.connection.dataBits,
-        stopBits: this.config.connection.stopBits,
-        parity: this.config.connection.parity
+      await client.connectRTUBuffered(device.connection.port, {
+        baudRate: device.connection.baudRate,
+        dataBits: device.connection.dataBits,
+        stopBits: device.connection.stopBits,
+        parity: device.connection.parity
       });
-      client.setID(deviceAddress);
-      client.setTimeout(this.config.connection.timeoutMs);
+      client.setID(device.modbusAddress);
+      client.setTimeout(device.connection.timeoutMs);
       client.on('error', (error) => {
-        this.lastError = mapModbusError(error, this.config.connection.port);
-        this.connectionState = 'error';
-        void this.logEventThrottled('client-error', 'error', 'serial client error', {
+        this.lastError = mapModbusError(error, device.connection.port);
+        this.connectionStates.set(device.id, 'error');
+        void this.logEventThrottled(`client-error-${device.id}`, 'error', 'serial client error', {
+          deviceId: device.id,
           error: this.lastError,
           technicalError: getTechnicalErrorMessage(error)
         });
       });
       client.on('close', () => {
-        this.connectionState = 'closed';
-        void this.logEvent('warning', 'serial port closed');
+        this.connectionStates.set(device.id, 'closed');
+        void this.logEvent('warning', 'serial port closed', { deviceId: device.id });
       });
-      this.client = client;
-      this.connectionState = 'open';
+      this.clients.set(device.id, client);
+      this.connectionStates.set(device.id, 'open');
       await this.logEvent('info', 'serial port opened', {
-        port: this.config.connection.port,
-        baudRate: this.config.connection.baudRate
+        deviceId: device.id,
+        port: device.connection.port,
+        baudRate: device.connection.baudRate
       });
+      return client;
     } catch (error) {
-      this.connectionState = 'error';
-      this.client = null;
+      this.connectionStates.set(device.id, 'error');
+      this.clients.delete(device.id);
       throw error;
     }
   }
@@ -381,28 +414,55 @@ export class ModbusDataService implements DataService {
   }
 
   private async closeClient(): Promise<void> {
-    const client = this.client;
-    this.client = null;
-
-    if (!client) {
-      this.connectionState = 'closed';
-      return;
+    for (const [deviceId, client] of this.clients) {
+      if (client.isOpen) {
+        await new Promise<void>((resolve) => {
+          client.close(() => resolve());
+        });
+      }
+      this.connectionStates.set(deviceId, 'closed');
     }
+    this.clients.clear();
+    await this.logEvent('info', 'serial ports closed');
+  }
 
-    if (!client.isOpen) {
-      this.connectionState = 'closed';
-      return;
+  private async closeClientsSharingPort(device: DeviceConfig): Promise<void> {
+    for (const [deviceId, client] of this.clients) {
+      if (deviceId === device.id) {
+        continue;
+      }
+
+      const otherDevice = this.getDeviceByIdOrNull(deviceId);
+      if (otherDevice?.connection.port !== device.connection.port) {
+        continue;
+      }
+
+      if (client.isOpen) {
+        await new Promise<void>((resolve) => {
+          client.close(() => resolve());
+        });
+      }
+      this.clients.delete(deviceId);
+      this.connectionStates.set(deviceId, 'closed');
+      await this.logEvent('info', 'serial port released before device switch', {
+        previousDeviceId: deviceId,
+        nextDeviceId: device.id,
+        port: device.connection.port
+      });
     }
-
-    await new Promise<void>((resolve) => {
-      client.close(() => resolve());
-    });
-    this.connectionState = 'closed';
-    await this.logEvent('info', 'serial port closed', { port: this.config.connection.port });
   }
 
   private async readChannel(channel: ChannelConfig, updatedAt: string): Promise<ChannelReading> {
-    const attempts = this.config.connection.retries + 1;
+    const device = this.getDeviceByIdOrNull(channel.deviceId);
+    if (!device) {
+      return this.createChannelErrorReading(channel, updatedAt, `Устройство ${channel.deviceId} не найдено`);
+    }
+
+    if (!device.active) {
+      return this.createChannelErrorReading(channel, updatedAt, `Устройство ${device.name} неактивно`);
+    }
+
+    const attempts = device.connection.retries + 1;
     let lastError: unknown = null;
 
     if (channel.dataType === 'float32' && channel.registerCount !== 2) {
@@ -415,7 +475,9 @@ export class ModbusDataService implements DataService {
 
     for (let attempt = 1; attempt <= attempts; attempt += 1) {
       try {
+        const client = await this.ensureConnected(device);
         const registers = await this.readRegisterValues(
+          client,
           channel.modbusFunction,
           channel.registerAddress,
           channel.registerCount
@@ -437,7 +499,7 @@ export class ModbusDataService implements DataService {
       }
     }
 
-    const message = mapModbusError(lastError, this.config.connection.port);
+    const message = mapModbusError(lastError, device.connection.port);
     await this.logEventThrottled(`channel-${channel.id}-${message}`, 'error', 'channel read error', {
       channelId: channel.id,
       error: message,
@@ -447,18 +509,19 @@ export class ModbusDataService implements DataService {
   }
 
   private async readRegisterValues(
+    client: ModbusRTU,
     modbusFunction: 3 | 4,
     registerAddress: number,
     registerCount: number
   ): Promise<number[]> {
-    if (!this.client?.isOpen) {
+    if (!client.isOpen) {
       throw new Error('Serial connection is not open');
     }
 
     const result =
       modbusFunction === 3
-        ? await this.client.readHoldingRegisters(registerAddress, registerCount)
-        : await this.client.readInputRegisters(registerAddress, registerCount);
+        ? await client.readHoldingRegisters(registerAddress, registerCount)
+        : await client.readInputRegisters(registerAddress, registerCount);
 
     return result.data;
   }
@@ -534,6 +597,41 @@ export class ModbusDataService implements DataService {
     }
 
     return 'ok';
+  }
+
+  private getDefaultDevice(): DeviceConfig | null {
+    return this.config.devices.find((device) => device.active) ?? this.config.devices[0] ?? null;
+  }
+
+  private getDeviceById(deviceId: string): DeviceConfig {
+    const device = this.getDeviceByIdOrNull(deviceId);
+
+    if (!device) {
+      throw new Error(`Device '${deviceId}' not found`);
+    }
+
+    return device;
+  }
+
+  private getDeviceByIdOrNull(deviceId: string): DeviceConfig | null {
+    return this.config.devices.find((device) => device.id === deviceId) ?? null;
+  }
+
+  private groupChannelsByDevice(): ChannelConfig[][] {
+    const groups = new Map<string, ChannelConfig[]>();
+
+    this.config.channels.forEach((channel) => {
+      const group = groups.get(channel.deviceId) ?? [];
+      group.push(channel);
+      groups.set(channel.deviceId, group);
+    });
+
+    return [
+      ...this.config.devices
+        .map((device) => groups.get(device.id))
+        .filter((group): group is ChannelConfig[] => Boolean(group)),
+      ...[...groups].filter(([deviceId]) => !this.getDeviceByIdOrNull(deviceId)).map(([, channels]) => channels)
+    ];
   }
 
   private async publishSnapshot(): Promise<void> {

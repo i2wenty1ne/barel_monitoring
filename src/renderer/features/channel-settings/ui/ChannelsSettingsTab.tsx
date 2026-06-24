@@ -42,7 +42,7 @@ export function ChannelsSettingsTab({
       type,
       createUniqueId(idBase, config.channels.map((item) => item.id)),
       name,
-      config.device.id
+      config.devices[0]?.id ?? 'device-1'
     );
     onChange({ ...config, channels: [...config.channels, channel] });
   }
@@ -91,7 +91,7 @@ export function ChannelsSettingsTab({
             {config.channels.map((channel, index) => (
               <ChannelForm
                 channel={channel}
-                deviceId={config.device.id}
+                devices={config.devices}
                 index={index}
                 key={`${channel.id}-${index}`}
                 onChange={(nextChannel) => updateChannel(index, nextChannel)}
@@ -125,7 +125,7 @@ export function ChannelsSettingsTab({
 
 type ChannelFormProps = {
   channel: ChannelConfig;
-  deviceId: string;
+  devices: AppConfig['devices'];
   index: number;
   usedByBarrels: string[];
   onChange: (channel: ChannelConfig) => void;
@@ -134,7 +134,7 @@ type ChannelFormProps = {
 
 function ChannelForm({
   channel,
-  deviceId,
+  devices,
   index,
   usedByBarrels,
   onChange,
@@ -154,6 +154,13 @@ function ChannelForm({
   }
 
   const isUsed = usedByBarrels.length > 0;
+  const selectedDevice = devices.find((device) => device.id === channel.deviceId) ?? null;
+  const deviceOptions = selectedDevice
+    ? devices.map((device) => ({ label: `${device.name} (${device.id})`, value: device.id }))
+    : [
+        { label: `Не найдено (${channel.deviceId})`, value: channel.deviceId },
+        ...devices.map((device) => ({ label: `${device.name} (${device.id})`, value: device.id }))
+      ];
 
   return (
     <CollapsibleSection
@@ -163,13 +170,20 @@ function ChannelForm({
         </Button>
       }
       defaultOpen={index === 0}
-      summary={<ChannelSummary channel={channel} usedByBarrels={usedByBarrels} />}
+      summary={<ChannelSummary channel={channel} device={selectedDevice} usedByBarrels={usedByBarrels} />}
       title={`Канал ${index + 1}: ${channel.name || channel.id}`}
     >
       {isUsed ? (
         <div className="mb-4">
           <Alert type="warning">
             Канал используется: {usedByBarrels.join(', ')}. Перед удалением измените привязку бочек.
+          </Alert>
+        </div>
+      ) : null}
+      {!selectedDevice ? (
+        <div className="mb-4">
+          <Alert type="error">
+            Устройство {channel.deviceId} не найдено. Выберите существующее устройство перед сохранением.
           </Alert>
         </div>
       ) : null}
@@ -198,11 +212,12 @@ function ChannelForm({
           ]}
           value={channel.type}
         />
-        <TextInput
-          hint="Должен совпадать с ID устройства."
-          label="ID устройства"
-          onChange={(nextDeviceId) => onChange({ ...channel, deviceId: nextDeviceId })}
-          value={channel.deviceId || deviceId}
+        <Select
+          hint="Канал будет читаться через параметры подключения выбранного устройства."
+          label="Устройство"
+          onChange={(deviceId) => onChange({ ...channel, deviceId })}
+          options={deviceOptions}
+          value={channel.deviceId}
         />
         </FieldGroup>
 
@@ -360,13 +375,20 @@ function FieldGroup({ title, children }: FieldGroupProps): React.JSX.Element {
 
 type ChannelSummaryProps = {
   channel: ChannelConfig;
+  device: AppConfig['devices'][number] | null;
   usedByBarrels: string[];
 };
 
-function ChannelSummary({ channel, usedByBarrels }: ChannelSummaryProps): React.JSX.Element {
+function ChannelSummary({ channel, device, usedByBarrels }: ChannelSummaryProps): React.JSX.Element {
   return (
     <div className="flex flex-wrap gap-2 text-xs">
       <SummaryPill label="ID" value={channel.id} monospace />
+      <SummaryPill
+        label="Устройство"
+        tone={device ? 'default' : 'error'}
+        value={device ? `${device.name} (${device.id})` : channel.deviceId}
+        monospace={!device}
+      />
       <SummaryPill label="Тип" value={channel.type} />
       <SummaryPill label="Регистр" value={`${channel.modbusFunction}:${channel.registerAddress}`} />
       <SummaryPill label="Формат" value={`${channel.dataType} x${channel.registerCount}`} />
@@ -385,7 +407,7 @@ type SummaryPillProps = {
   label: string;
   value: string;
   monospace?: boolean;
-  tone?: 'default' | 'ok' | 'muted';
+  tone?: 'default' | 'ok' | 'muted' | 'error';
 };
 
 function SummaryPill({
@@ -399,7 +421,9 @@ function SummaryPill({
       ? 'border-teal-300/20 bg-teal-400/10 text-teal-100'
       : tone === 'muted'
         ? 'border-white/10 bg-white/[0.03] text-slate-500'
-        : 'border-white/10 bg-white/[0.04] text-slate-300';
+        : tone === 'error'
+          ? 'border-rose-300/25 bg-rose-400/10 text-rose-100'
+          : 'border-white/10 bg-white/[0.04] text-slate-300';
 
   return (
     <span className={`rounded-md border px-2 py-1 ${toneClassName}`}>

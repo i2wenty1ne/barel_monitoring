@@ -13,9 +13,11 @@ export function SystemInfoPanel({ info }: SystemInfoPanelProps): React.JSX.Eleme
         <InfoRow label="Версия" value={info.appVersion} />
         <InfoRow label="Режим сборки" value={info.buildMode === 'production' ? 'production' : 'development'} />
         <InfoRow label="Режим" value={info.appMode ?? '—'} />
-        <InfoRow label="Устройство" value={info.currentDeviceName ?? '—'} />
-        <InfoRow label="Модель" value={info.currentDeviceModel ?? '—'} />
-        <InfoRow label="Адрес Modbus" value={info.currentDeviceAddress ?? '—'} />
+        <InfoRow label="Устройств" value={String(info.devices.length)} />
+        <InfoRow
+          label="Активные"
+          value={String(info.devices.filter((device) => device.active).length)}
+        />
       </dl>
     </Panel>
   );

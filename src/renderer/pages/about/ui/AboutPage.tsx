@@ -60,14 +60,19 @@ export function AboutPage(): React.JSX.Element {
           <SystemInfoPanel info={systemInfo.data} />
           <RuntimeInfoPanel info={systemInfo.data} />
         </div>
-        <Panel className="p-5" title="Подключение">
-          <dl className="grid gap-3 text-sm md:grid-cols-2">
-            <InfoRow label="Порт" value={systemInfo.data.currentConnectionPort ?? '—'} />
-            <InfoRow label="Скорость" value={systemInfo.data.currentConnectionBaudRate ?? '—'} />
-            <InfoRow label="Parity" value={systemInfo.data.currentConnectionParity ?? '—'} />
-            <InfoRow label="Stop bits" value={systemInfo.data.currentConnectionStopBits ?? '—'} />
-            <InfoRow label="Data bits" value={systemInfo.data.currentConnectionDataBits ?? '—'} />
-          </dl>
+        <Panel className="p-5" title="Устройства и подключения">
+          <div className="grid gap-4">
+            {systemInfo.data.devices.map((device) => (
+              <dl className="grid gap-3 rounded-md border border-white/10 bg-slate-950/35 p-4 text-sm md:grid-cols-2" key={device.id}>
+                <InfoRow label="Устройство" value={`${device.name} (${device.id})`} />
+                <InfoRow label="Модель" value={device.model} />
+                <InfoRow label="Адрес Modbus" value={device.modbusAddress} />
+                <InfoRow label="Порт" value={device.connection.port} />
+                <InfoRow label="Скорость" value={device.connection.baudRate} />
+                <InfoRow label="Parity" value={device.connection.parity} />
+              </dl>
+            ))}
+          </div>
         </Panel>
         <PathsPanel
           info={systemInfo.data}

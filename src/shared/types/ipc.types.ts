@@ -1,4 +1,5 @@
 import type { AppConfig } from './config.types';
+import type { DeviceConfig } from './config.types';
 import type { EventLogEntry, EventLogFilter } from './event.types';
 import type {
   DataServiceStatus,
@@ -31,14 +32,7 @@ export type SystemInfo = {
   appMode?: string;
   configPath: string;
   logsPath: string;
-  currentDeviceName?: string;
-  currentDeviceModel?: string;
-  currentDeviceAddress?: number;
-  currentConnectionPort?: string;
-  currentConnectionBaudRate?: number;
-  currentConnectionParity?: string;
-  currentConnectionStopBits?: number;
-  currentConnectionDataBits?: number;
+  devices: DeviceConfig[];
 };
 
 export type IpcActionResult = {

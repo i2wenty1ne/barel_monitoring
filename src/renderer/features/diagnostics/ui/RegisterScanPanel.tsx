@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
-import type { AppConfig } from '../../../../shared/types/config.types';
+import type { AppConfig, ChannelConfig } from '../../../../shared/types/config.types';
 import type {
   RegisterScanRequest,
   RegisterScanResult,
   RegisterScanRow
 } from '../../../../shared/types/monitoring.types';
 import { formatDateTime } from '../../../../shared/lib/format';
+import { createUniqueId } from '../../config-editor/model/config-editor.utils';
 import { Alert } from '../../../shared/ui/Alert';
 import { Button } from '../../../shared/ui/Button';
 import { Checkbox } from '../../../shared/ui/Checkbox';
@@ -20,7 +21,7 @@ type RegisterScanPanelProps = {
 
 export function RegisterScanPanel({ config }: RegisterScanPanelProps): React.JSX.Element {
   const [request, setRequest] = useState<RegisterScanRequest>({
-    deviceAddress: config.device.modbusAddress,
+    deviceId: config.devices[0]?.id ?? '',
     startAddress: 0,
     endAddress: 255,
     registerCount: config.channels[0]?.registerCount ?? 1,
@@ -29,6 +30,7 @@ export function RegisterScanPanel({ config }: RegisterScanPanelProps): React.JSX
     byteOrder: config.channels[0]?.byteOrder ?? 'ABCD'
   });
   const [result, setResult] = useState<RegisterScanResult | null>(null);
+  const [importMessage, setImportMessage] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const validationError = getValidationError(request);
 
@@ -61,6 +63,10 @@ export function RegisterScanPanel({ config }: RegisterScanPanelProps): React.JSX
     try {
       const nextResult = await window.barrelMonitor.monitoring.scanRegisters(request);
       setResult(nextResult);
+      const importResult = await importFoundChannels(config, request, nextResult);
+      setImportMessage(
+        `Найдено успешно: ${nextResult.successCount}. Создано каналов: ${importResult.created}. Дубликатов пропущено: ${importResult.skipped}.`
+      );
     } finally {
       setIsScanning(false);
     }
@@ -84,12 +90,11 @@ export function RegisterScanPanel({ config }: RegisterScanPanelProps): React.JSX
       </div>
 
       <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
-        <NumberInput
-          label="Адрес устройства"
-          max={247}
-          min={1}
-          onChange={(deviceAddress) => setRequest({ ...request, deviceAddress })}
-          value={request.deviceAddress ?? config.device.modbusAddress}
+        <Select
+          label="Устройство"
+          onChange={(deviceId) => setRequest({ ...request, deviceId })}
+          options={config.devices.map((device) => ({ label: `${device.name} (${device.id})`, value: device.id }))}
+          value={request.deviceId}
         />
         <NumberInput
           label="Начальный регистр"
@@ -158,13 +163,21 @@ export function RegisterScanPanel({ config }: RegisterScanPanelProps): React.JSX
         <Button disabled={isScanning || Boolean(validationError)} onClick={() => void handleScan()} variant="secondary">
           {isScanning ? 'Поиск...' : 'Начать поиск'}
         </Button>
-        <Button disabled={isScanning || !result} onClick={() => setResult(null)} variant="ghost">
+        <Button
+          disabled={isScanning || !result}
+          onClick={() => {
+            setResult(null);
+            setImportMessage(null);
+          }}
+          variant="ghost"
+        >
           Очистить результат
         </Button>
       </div>
 
       {result ? (
         <div className="mt-5 space-y-4">
+          {importMessage ? <Alert type="success">{importMessage}</Alert> : null}
           <ScanSummary result={result} />
           <DataTable
             compact
@@ -232,6 +245,10 @@ function getValidationError(request: RegisterScanRequest): string | null {
     return 'Выберите хотя бы одну Modbus-функцию.';
   }
 
+  if (!request.deviceId) {
+    return 'Выберите устройство.';
+  }
+
   return null;
 }
 
@@ -241,4 +258,64 @@ function formatDecodedValue(value: number | undefined): string {
   }
 
   return String(Number(value.toFixed(6)));
+}
+
+async function importFoundChannels(
+  config: AppConfig,
+  request: RegisterScanRequest,
+  result: RegisterScanResult
+): Promise<{ created: number; skipped: number }> {
+  const successRows = result.rows.filter((row) => row.success);
+  const existingChannelIds = config.channels.map((channel) => channel.id);
+  const nextChannels: ChannelConfig[] = [...config.channels];
+  let created = 0;
+  let skipped = 0;
+
+  successRows.forEach((row) => {
+    const isDuplicate = nextChannels.some(
+      (channel) =>
+        channel.deviceId === request.deviceId &&
+        channel.modbusFunction === row.modbusFunction &&
+        channel.registerAddress === row.registerAddress &&
+        channel.registerCount === request.registerCount &&
+        channel.dataType === request.dataType &&
+        channel.byteOrder === request.byteOrder
+    );
+
+    if (isDuplicate) {
+      skipped += 1;
+      return;
+    }
+
+    const id = createUniqueId(
+      `${request.deviceId}-fn${row.modbusFunction}-reg${row.registerAddress}`,
+      [...existingChannelIds, ...nextChannels.map((channel) => channel.id)]
+    );
+    nextChannels.push({
+      id,
+      name: `Найденный регистр ${row.registerAddress} (${row.modbusFunction === 3 ? '3 Holding' : '4 Input'})`,
+      type: 'custom',
+      deviceId: request.deviceId,
+      moduleInputNumber: created + 1,
+      registerAddress: row.registerAddress,
+      modbusFunction: row.modbusFunction,
+      dataType: request.dataType,
+      registerCount: request.registerCount,
+      byteOrder: request.byteOrder,
+      rawUnit: 'raw',
+      displayUnit: 'raw',
+      decimals: 2,
+      scaling: { type: 'none' }
+    });
+    created += 1;
+  });
+
+  if (created > 0) {
+    const saveResult = await window.barrelMonitor.config.save({ ...config, channels: nextChannels });
+    if (!saveResult.success) {
+      throw new Error(saveResult.message ?? 'Не удалось сохранить найденные каналы');
+    }
+  }
+
+  return { created, skipped };
 }

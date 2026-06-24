@@ -1,12 +1,10 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import type { TestConnectionResult } from '../../../../shared/types/monitoring.types';
 import { BarrelsSettingsTab } from '../../../features/barrel-settings/ui/BarrelsSettingsTab';
 import { ChannelsSettingsTab } from '../../../features/channel-settings/ui/ChannelsSettingsTab';
 import { ConfigValidationSummary } from '../../../features/config-editor/ui/ConfigValidationSummary';
 import { SaveConfigPanel } from '../../../features/config-editor/ui/SaveConfigPanel';
 import { useConfigEditor } from '../../../features/config-editor/model/useConfigEditor';
-import { ConnectionSettingsTab } from '../../../features/connection-settings/ui/ConnectionSettingsTab';
 import { DeviceSettingsTab } from '../../../features/device-settings/ui/DeviceSettingsTab';
 import { InterfaceSettingsTab } from '../../../features/interface-settings/ui/InterfaceSettingsTab';
 import { ServiceSettingsTab } from '../../../features/service-settings/ui/ServiceSettingsTab';
@@ -22,22 +20,10 @@ export function SettingsPage(): React.JSX.Element {
   const editor = useConfigEditor();
   const [searchParams, setSearchParams] = useSearchParams();
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
-  const [testResult, setTestResult] = useState<TestConnectionResult | null>(null);
-  const [isTesting, setIsTesting] = useState(false);
   const activeTab = getSettingsTab(searchParams.get('tab'));
 
   function handleTabChange(tab: SettingsTabId): void {
-    setSearchParams(tab === 'connection' ? {} : { tab });
-  }
-
-  async function handleTestConnection(): Promise<void> {
-    setIsTesting(true);
-    try {
-      const result = await window.barrelMonitor.monitoring.testConnection();
-      setTestResult(result);
-    } finally {
-      setIsTesting(false);
-    }
+    setSearchParams(tab === 'device' ? {} : { tab });
   }
 
   if (editor.isLoading && !editor.config) {
@@ -92,16 +78,6 @@ export function SettingsPage(): React.JSX.Element {
 
         <SettingsTabs activeTab={activeTab} onChange={handleTabChange} />
 
-        {activeTab === 'connection' ? (
-          <ConnectionSettingsTab
-            config={config}
-            isTesting={isTesting}
-            onChange={(nextConfig) => editor.updateConfig(() => nextConfig)}
-            onTestConnection={() => void handleTestConnection()}
-            testResult={testResult}
-            validationErrors={editor.validationErrors}
-          />
-        ) : null}
         {activeTab === 'device' ? (
           <DeviceSettingsTab
             config={config}
@@ -165,7 +141,6 @@ export function SettingsPage(): React.JSX.Element {
 
 function getSettingsTab(value: string | null): SettingsTabId {
   const tabs: SettingsTabId[] = [
-    'connection',
     'device',
     'channels',
     'barrels',
@@ -174,5 +149,5 @@ function getSettingsTab(value: string | null): SettingsTabId {
     'service'
   ];
 
-  return value && tabs.includes(value as SettingsTabId) ? (value as SettingsTabId) : 'connection';
+  return value && tabs.includes(value as SettingsTabId) ? (value as SettingsTabId) : 'device';
 }

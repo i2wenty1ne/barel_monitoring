@@ -5,24 +5,26 @@ export const defaultConfig: AppConfig = {
     mode: 'mock',
     pollingIntervalMs: 1000
   },
-  connection: {
-    type: 'modbus-rtu',
-    port: 'COM3',
-    baudRate: 115200,
-    dataBits: 8,
-    stopBits: 1,
-    parity: 'none',
-    timeoutMs: 1000,
-    retries: 3
-  },
-  device: {
-    id: 'mv110-1',
-    name: 'МВ110 №1',
-    model: 'МВ110-224.8А',
-    protocol: 'modbus-rtu',
-    modbusAddress: 16,
-    active: true
-  },
+  devices: [
+    {
+      id: 'mv110-1',
+      name: 'МВ110 №1',
+      model: 'МВ110-224.8А',
+      protocol: 'modbus-rtu',
+      modbusAddress: 16,
+      active: true,
+      connection: {
+        type: 'modbus-rtu',
+        port: 'COM3',
+        baudRate: 115200,
+        dataBits: 8,
+        stopBits: 1,
+        parity: 'none',
+        timeoutMs: 1000,
+        retries: 3
+      }
+    }
+  ],
   channels: [
     {
       id: 'temperature-barrel-1',

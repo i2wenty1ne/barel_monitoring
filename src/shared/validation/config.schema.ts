@@ -100,30 +100,34 @@ const barrelSchema = z.object({
   cardSize: z.enum(['small', 'medium', 'large'])
 });
 
+const connectionSchema = z.object({
+  type: z.literal('modbus-rtu'),
+  port: z.string().min(1, 'port не может быть пустым'),
+  baudRate: z.number().int().positive(),
+  dataBits: z.union([z.literal(7), z.literal(8)]),
+  stopBits: z.union([z.literal(1), z.literal(2)]),
+  parity: z.enum(['none', 'even', 'odd']),
+  timeoutMs: z.number().int().positive(),
+  retries: z.number().int().min(0)
+});
+
+const deviceSchema = z.object({
+  id: z.string().min(1, 'id устройства не может быть пустым'),
+  name: z.string().min(1, 'name устройства не может быть пустым'),
+  model: z.string().min(1, 'model устройства не может быть пустым'),
+  protocol: z.literal('modbus-rtu'),
+  modbusAddress: z.number().int().min(1).max(247),
+  active: z.boolean(),
+  connection: connectionSchema
+});
+
 export const appConfigSchema = z
   .object({
     app: z.object({
       mode: z.enum(['mock', 'real']),
       pollingIntervalMs: z.number().int().min(250, 'pollingIntervalMs должен быть не меньше 250')
     }),
-    connection: z.object({
-      type: z.literal('modbus-rtu'),
-      port: z.string().min(1, 'port не может быть пустым'),
-      baudRate: z.number().int().positive(),
-      dataBits: z.union([z.literal(7), z.literal(8)]),
-      stopBits: z.union([z.literal(1), z.literal(2)]),
-      parity: z.enum(['none', 'even', 'odd']),
-      timeoutMs: z.number().int().positive(),
-      retries: z.number().int().min(0)
-    }),
-    device: z.object({
-      id: z.string().min(1, 'id устройства не может быть пустым'),
-      name: z.string().min(1, 'name устройства не может быть пустым'),
-      model: z.string().min(1, 'model устройства не может быть пустым'),
-      protocol: z.literal('modbus-rtu'),
-      modbusAddress: z.number().int().min(1).max(247),
-      active: z.boolean()
-    }),
+    devices: z.array(deviceSchema).min(1, 'Нужно настроить хотя бы одно устройство'),
     channels: z.array(channelSchema),
     barrels: z.array(barrelSchema),
     thresholds: z.object({
@@ -140,11 +144,20 @@ export const appConfigSchema = z
     })
   })
   .superRefine((config, context) => {
-    const deviceIds = new Set([config.device.id]);
+    const deviceIds = config.devices.map((device) => device.id);
+    const uniqueDeviceIds = new Set(deviceIds);
     const channelIds = config.channels.map((channel) => channel.id);
     const uniqueChannelIds = new Set(channelIds);
     const barrelIds = config.barrels.map((barrel) => barrel.id);
     const uniqueBarrelIds = new Set(barrelIds);
+
+    if (deviceIds.length !== uniqueDeviceIds.size) {
+      context.addIssue({
+        code: 'custom',
+        path: ['devices'],
+        message: 'device.id должен быть уникальным'
+      });
+    }
 
     if (channelIds.length !== uniqueChannelIds.size) {
       context.addIssue({
@@ -163,7 +176,7 @@ export const appConfigSchema = z
     }
 
     config.channels.forEach((channel, index) => {
-      if (!deviceIds.has(channel.deviceId)) {
+      if (!uniqueDeviceIds.has(channel.deviceId)) {
         context.addIssue({
           code: 'custom',
           path: ['channels', index, 'deviceId'],

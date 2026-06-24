@@ -14,21 +14,29 @@ export function ConnectionDiagnosticsPanel({
   serviceStatus
 }: ConnectionDiagnosticsPanelProps): React.JSX.Element {
   return (
-    <Panel className="p-5" title="Подключение">
-      <dl className="grid gap-3 text-sm md:grid-cols-2">
-        <InfoRow label="Тип" value={config.connection.type} />
-        <InfoRow label="COM-порт" value={config.connection.port} />
-        <InfoRow label="Скорость" value={String(config.connection.baudRate)} />
-        <InfoRow label="Data bits" value={String(config.connection.dataBits)} />
-        <InfoRow label="Stop bits" value={String(config.connection.stopBits)} />
-        <InfoRow label="Parity" value={config.connection.parity} />
-        <InfoRow label="Timeout" value={`${config.connection.timeoutMs} ms`} />
-        <InfoRow label="Повторы" value={String(config.connection.retries)} />
-        <InfoRow label="Опрос" value={`${config.app.pollingIntervalMs} ms`} />
+    <Panel className="p-5" title="Подключения">
+      <div className="mb-4 grid gap-3 text-sm md:grid-cols-2">
         <InfoRow label="DataService" value={<StatusBadge status={serviceStatus.connectionStatus} />} />
         <InfoRow label="Последний успешный опрос" value={formatDateTime(serviceStatus.lastSuccessfulReadAt)} />
         <InfoRow label="Последняя ошибка" value={serviceStatus.lastError ?? '—'} />
-      </dl>
+      </div>
+      <div className="grid gap-3">
+        {config.devices.map((device) => (
+          <div className="rounded-md border border-white/10 bg-slate-950/35 p-3" key={device.id}>
+            <div className="font-medium text-slate-100">{device.name}</div>
+            <dl className="mt-3 grid gap-2 text-sm md:grid-cols-2">
+              <InfoRow label="COM-порт" value={device.connection.port} />
+              <InfoRow label="Скорость" value={String(device.connection.baudRate)} />
+              <InfoRow label="Data bits" value={String(device.connection.dataBits)} />
+              <InfoRow label="Stop bits" value={String(device.connection.stopBits)} />
+              <InfoRow label="Parity" value={device.connection.parity} />
+              <InfoRow label="Timeout" value={`${device.connection.timeoutMs} ms`} />
+              <InfoRow label="Повторы" value={String(device.connection.retries)} />
+              <InfoRow label="Опрос" value={`${config.app.pollingIntervalMs} ms`} />
+            </dl>
+          </div>
+        ))}
+      </div>
     </Panel>
   );
 }

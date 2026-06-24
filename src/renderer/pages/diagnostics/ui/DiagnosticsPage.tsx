@@ -80,7 +80,7 @@ export function DiagnosticsPage(): React.JSX.Element {
               onRefresh={() => void diagnostics.refresh()}
               onTestConnection={() => void diagnostics.testConnection()}
             />
-            <DeviceDiagnosticsPanel device={config.device} />
+            <DeviceDiagnosticsPanel devices={config.devices} />
           </div>
         </div>
 

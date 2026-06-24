@@ -15,7 +15,7 @@ type ManualReadPanelProps = {
 
 export function ManualReadPanel({ config }: ManualReadPanelProps): React.JSX.Element {
   const [request, setRequest] = useState<ManualReadRequest>({
-    deviceAddress: config.device.modbusAddress,
+    deviceId: config.devices[0]?.id ?? '',
     modbusFunction: 4,
     registerAddress: config.channels[0]?.registerAddress ?? 0,
     registerCount: config.channels[0]?.registerCount ?? 2,
@@ -38,12 +38,11 @@ export function ManualReadPanel({ config }: ManualReadPanelProps): React.JSX.Ele
   return (
     <Panel className="p-5" title="Ручное чтение регистров">
       <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
-        <NumberInput
-          label="Адрес устройства"
-          max={247}
-          min={1}
-          onChange={(deviceAddress) => setRequest({ ...request, deviceAddress })}
-          value={request.deviceAddress ?? config.device.modbusAddress}
+        <Select
+          label="Устройство"
+          onChange={(deviceId) => setRequest({ ...request, deviceId })}
+          options={config.devices.map((device) => ({ label: `${device.name} (${device.id})`, value: device.id }))}
+          value={request.deviceId}
         />
         <Select
           label="Функция"

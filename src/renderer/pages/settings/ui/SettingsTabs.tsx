@@ -1,7 +1,6 @@
 import { Tabs, type TabItem } from '../../../shared/ui/Tabs';
 
 export type SettingsTabId =
-  | 'connection'
   | 'device'
   | 'channels'
   | 'barrels'
@@ -10,8 +9,7 @@ export type SettingsTabId =
   | 'service';
 
 export const settingsTabs: TabItem<SettingsTabId>[] = [
-  { id: 'connection', label: 'Подключение' },
-  { id: 'device', label: 'Устройство' },
+  { id: 'device', label: 'Устройства' },
   { id: 'channels', label: 'Каналы' },
   { id: 'barrels', label: 'Бочки' },
   { id: 'thresholds', label: 'Пороги' },

@@ -18,6 +18,7 @@ export type DeviceConfig = {
   protocol: 'modbus-rtu';
   modbusAddress: number;
   active: boolean;
+  connection: ConnectionConfig;
 };
 
 export type ChannelType = 'temperature' | 'level' | 'custom';
@@ -93,8 +94,7 @@ export type AppConfig = {
     mode: AppMode;
     pollingIntervalMs: number;
   };
-  connection: ConnectionConfig;
-  device: DeviceConfig;
+  devices: DeviceConfig[];
   channels: ChannelConfig[];
   barrels: BarrelConfig[];
   thresholds: ThresholdConfig;

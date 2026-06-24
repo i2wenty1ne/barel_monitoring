@@ -46,7 +46,7 @@ export type TestConnectionResult = {
 };
 
 export type ManualReadRequest = {
-  deviceAddress?: number;
+  deviceId: string;
   modbusFunction: 3 | 4;
   registerAddress: number;
   registerCount: number;
@@ -63,7 +63,7 @@ export type ManualReadResult = {
 };
 
 export type RegisterScanRequest = {
-  deviceAddress?: number;
+  deviceId: string;
   startAddress: number;
   endAddress: number;
   registerCount: number;

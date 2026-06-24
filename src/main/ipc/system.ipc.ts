@@ -25,14 +25,7 @@ export function registerSystemIpc(
       appMode: config.app.mode,
       configPath: configService.getConfigPath(),
       logsPath: eventLogService.getEventsLogPath(),
-      currentDeviceName: config.device.name,
-      currentDeviceModel: config.device.model,
-      currentDeviceAddress: config.device.modbusAddress,
-      currentConnectionPort: config.connection.port,
-      currentConnectionBaudRate: config.connection.baudRate,
-      currentConnectionParity: config.connection.parity,
-      currentConnectionStopBits: config.connection.stopBits,
-      currentConnectionDataBits: config.connection.dataBits
+      devices: config.devices
     };
   });
 

@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
-import type { AppConfig } from '../../../shared/types/config.types';
+import type { AppConfig, ConnectionConfig, DeviceConfig } from '../../../shared/types/config.types';
 import { defaultConfig } from '../../../shared/config/default-config';
 import { appConfigSchema } from '../../../shared/validation/config.schema';
 import { getConfigPath } from '../../utils/paths';
@@ -46,7 +46,8 @@ export class ConfigService {
         return { config: this.currentConfig, validationError: this.lastValidationError };
       }
 
-      const parsedConfig = appConfigSchema.safeParse(parsedJson.data);
+      const normalizedConfig = normalizeLegacyConfig(parsedJson.data);
+      const parsedConfig = appConfigSchema.safeParse(normalizedConfig);
 
       if (!parsedConfig.success) {
         this.currentConfig = defaultConfig;
@@ -110,4 +111,38 @@ function isFileNotFoundError(error: unknown): boolean {
     typeof error.code === 'string' &&
     error.code === 'ENOENT'
   );
+}
+
+function normalizeLegacyConfig(value: unknown): unknown {
+  if (!value || typeof value !== 'object') {
+    return value;
+  }
+
+  const config = value as Record<string, unknown>;
+
+  if (Array.isArray(config.devices)) {
+    return value;
+  }
+
+  if (!isRecord(config.device) || !isRecord(config.connection)) {
+    return value;
+  }
+
+  const legacyDevice = config.device as Partial<DeviceConfig>;
+  const legacyConnection = config.connection as ConnectionConfig;
+  const { device: _device, connection: _connection, ...restConfig } = config;
+
+  return {
+    ...restConfig,
+    devices: [
+      {
+        ...legacyDevice,
+        connection: legacyConnection
+      }
+    ]
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
