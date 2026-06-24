@@ -12,8 +12,8 @@ export function RuntimeInfoPanel({ info }: RuntimeInfoPanelProps): React.JSX.Ele
         <InfoRow label="Electron" value={info.electronVersion ?? '—'} />
         <InfoRow label="Node" value={info.nodeVersion ?? '—'} />
         <InfoRow label="Chrome" value={info.chromeVersion ?? '—'} />
-        <InfoRow label="Platform" value={info.platform} />
-        <InfoRow label="Arch" value={info.arch} />
+        <InfoRow label="Платформа" value={info.platform} />
+        <InfoRow label="Архитектура" value={info.arch} />
       </dl>
     </Panel>
   );

@@ -62,8 +62,8 @@ export function AboutPage(): React.JSX.Element {
         </div>
         <Panel className="p-5" title="Подключение">
           <dl className="grid gap-3 text-sm md:grid-cols-2">
-            <InfoRow label="Port" value={systemInfo.data.currentConnectionPort ?? '—'} />
-            <InfoRow label="Baud rate" value={systemInfo.data.currentConnectionBaudRate ?? '—'} />
+            <InfoRow label="Порт" value={systemInfo.data.currentConnectionPort ?? '—'} />
+            <InfoRow label="Скорость" value={systemInfo.data.currentConnectionBaudRate ?? '—'} />
             <InfoRow label="Parity" value={systemInfo.data.currentConnectionParity ?? '—'} />
             <InfoRow label="Stop bits" value={systemInfo.data.currentConnectionStopBits ?? '—'} />
             <InfoRow label="Data bits" value={systemInfo.data.currentConnectionDataBits ?? '—'} />

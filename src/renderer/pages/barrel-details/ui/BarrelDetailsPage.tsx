@@ -14,6 +14,7 @@ import { useMonitoringSnapshot } from '../../../entities/monitoring/model/useMon
 import { EmptyState } from '../../../shared/ui/EmptyState';
 import { ErrorState } from '../../../shared/ui/ErrorState';
 import { LoadingState } from '../../../shared/ui/LoadingState';
+import { CollapsibleSection } from '../../../shared/ui/CollapsibleSection';
 import { PageHeader } from '../../../shared/ui/PageHeader';
 import { Panel } from '../../../shared/ui/Panel';
 import { StatusBadge } from '../../../shared/ui/StatusBadge';
@@ -100,7 +101,7 @@ export function BarrelDetailsPage(): React.JSX.Element {
       <PageHeader
         eyebrow="Детали бочки"
         title={viewModel.barrel.name}
-        description="Текущие значения, каналы и техническая привязка из config.json"
+        description="Live-обновление текущих значений, каналов и состояния бочки."
         actions={<BackButton onClick={() => navigate('/monitoring')} />}
       />
 
@@ -129,7 +130,7 @@ export function BarrelDetailsPage(): React.JSX.Element {
               <ValueTile label="Заполненность" value={formatPercent(viewModel.level?.displayValue)} />
               {configState.config.interface.showRawValuesInDetails ? (
                 <ValueTile
-                  label="Raw level"
+                  label="Raw уровень"
                   value={formatRawValue(viewModel.level?.rawValue, viewModel.level?.rawUnit)}
                 />
               ) : null}
@@ -145,15 +146,17 @@ export function BarrelDetailsPage(): React.JSX.Element {
             </div>
           </Panel>
 
-          <Panel className="p-5">
-            <h2 className="text-lg font-medium text-white">Технический блок</h2>
-            <dl className="mt-4 grid gap-3 sm:grid-cols-2">
-              <TechRow label="barrelId" value={viewModel.barrel.id} />
-              <TechRow label="temperatureChannelId" value={viewModel.barrel.temperatureChannelId} />
-              <TechRow label="levelChannelId" value={viewModel.barrel.levelChannelId} />
-              <TechRow label="mode" value={snapshotState.data?.mode ?? configState.config.app.mode} />
+          <CollapsibleSection
+            summary={<span className="text-sm text-slate-500">ID бочки, привязки каналов и режим данных</span>}
+            title="Технические параметры"
+          >
+            <dl className="grid gap-3 sm:grid-cols-2">
+              <TechRow label="ID бочки" monospace value={viewModel.barrel.id} />
+              <TechRow label="Канал температуры" monospace value={viewModel.barrel.temperatureChannelId} />
+              <TechRow label="Канал уровня" monospace value={viewModel.barrel.levelChannelId} />
+              <TechRow label="Режим данных" value={snapshotState.data?.mode ?? configState.config.app.mode} />
             </dl>
-          </Panel>
+          </CollapsibleSection>
         </div>
       </div>
     </section>
@@ -209,15 +212,15 @@ function ChannelPanel({ title, channel, deviceName }: ChannelPanelProps): React.
     <div className="rounded-md border border-white/10 bg-slate-950/45 p-4">
       <h3 className="font-medium text-slate-100">{title}</h3>
       <dl className="mt-3 grid gap-2 text-sm">
-        <TechRow label="device" value={deviceName} />
-        <TechRow label="channelId" value={channel.id} />
-        <TechRow label="moduleInputNumber" value={String(channel.moduleInputNumber)} />
-        <TechRow label="registerAddress" value={String(channel.registerAddress)} />
-        <TechRow label="modbusFunction" value={String(channel.modbusFunction)} />
-        <TechRow label="dataType" value={channel.dataType} />
-        <TechRow label="rawUnit" value={channel.rawUnit} />
-        <TechRow label="displayUnit" value={channel.displayUnit} />
-        <TechRow label="scaling" value={formatScaling(channel.scaling)} />
+        <TechRow label="Устройство" value={deviceName} />
+        <TechRow label="ID канала" monospace value={channel.id} />
+        <TechRow label="Номер входа" value={String(channel.moduleInputNumber)} />
+        <TechRow label="Адрес регистра" value={String(channel.registerAddress)} />
+        <TechRow label="Функция Modbus" value={String(channel.modbusFunction)} />
+        <TechRow label="Тип данных" value={channel.dataType} />
+        <TechRow label="Raw единица" value={channel.rawUnit} />
+        <TechRow label="Единица отображения" value={channel.displayUnit} />
+        <TechRow label="Масштабирование" value={formatScaling(channel.scaling)} />
       </dl>
     </div>
   );
@@ -226,13 +229,14 @@ function ChannelPanel({ title, channel, deviceName }: ChannelPanelProps): React.
 type TechRowProps = {
   label: string;
   value: React.ReactNode;
+  monospace?: boolean;
 };
 
-function TechRow({ label, value }: TechRowProps): React.JSX.Element {
+function TechRow({ label, value, monospace }: TechRowProps): React.JSX.Element {
   return (
     <div className="grid grid-cols-[160px_1fr] gap-3">
       <dt className="text-slate-500">{label}</dt>
-      <dd className="min-w-0 break-words text-slate-200">{value}</dd>
+      <dd className={`min-w-0 break-words text-slate-200 ${monospace ? 'font-mono text-xs' : ''}`}>{value}</dd>
     </div>
   );
 }

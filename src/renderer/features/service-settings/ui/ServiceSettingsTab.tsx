@@ -2,6 +2,7 @@ import type { AppConfig } from '../../../../shared/types/config.types';
 import type { SystemInfo } from '../../../../shared/types/ipc.types';
 import { Alert } from '../../../shared/ui/Alert';
 import { Button } from '../../../shared/ui/Button';
+import { DangerZone } from '../../../shared/ui/DangerZone';
 import { Panel } from '../../../shared/ui/Panel';
 import { Select } from '../../../shared/ui/Select';
 
@@ -66,9 +67,16 @@ export function ServiceSettingsTab({
           <Button onClick={onReloadConfig} variant="ghost">
             Перечитать config.json
           </Button>
-          <Button onClick={onRequestResetToDefault} variant="danger">
-            Сбросить настройки
-          </Button>
+        </div>
+        <div className="mt-5">
+          <DangerZone
+            description="Config.json будет перезаписан дефолтной конфигурацией после подтверждения."
+            title="Сброс конфигурации"
+          >
+            <Button onClick={onRequestResetToDefault} variant="danger">
+              Сбросить настройки
+            </Button>
+          </DangerZone>
         </div>
       </Panel>
     </div>

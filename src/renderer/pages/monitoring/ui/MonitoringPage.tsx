@@ -9,7 +9,6 @@ import { EmptyState } from '../../../shared/ui/EmptyState';
 import { ErrorState } from '../../../shared/ui/ErrorState';
 import { LoadingState } from '../../../shared/ui/LoadingState';
 import { PageHeader } from '../../../shared/ui/PageHeader';
-import { Panel } from '../../../shared/ui/Panel';
 import { StatusBadge } from '../../../shared/ui/StatusBadge';
 
 export function MonitoringPage(): React.JSX.Element {
@@ -58,16 +57,7 @@ export function MonitoringPage(): React.JSX.Element {
       <PageHeader
         eyebrow="Barrel Monitor"
         title="Мониторинг бочек"
-        description="Текущие значения из mock-сервиса обновляются через безопасный IPC канал."
-        actions={
-          <button
-            className="rounded-md bg-teal-500 px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-300/50"
-            onClick={() => void snapshotState.refresh()}
-            type="button"
-          >
-            Обновить
-          </button>
-        }
+        description="Текущий уровень, температура и состояние бочек."
       />
 
       {configState.validationError ? (
@@ -76,7 +66,7 @@ export function MonitoringPage(): React.JSX.Element {
         </div>
       ) : null}
 
-      <div className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+      <div className="mb-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
         <SummaryPanel
           label="Общий статус"
           value={<StatusBadge status={snapshotState.data?.status ?? 'no-data'} />}
@@ -154,9 +144,9 @@ function SummaryPanel({ label, value, tone = 'default' }: SummaryPanelProps): Re
     tone === 'warning' ? 'text-amber-100' : tone === 'alarm' ? 'text-rose-100' : 'text-slate-100';
 
   return (
-    <Panel className="p-4">
-      <div className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">{label}</div>
-      <div className={`mt-3 text-xl font-semibold ${valueClassName}`}>{value}</div>
-    </Panel>
+    <div className="rounded-md border border-white/10 bg-white/[0.035] px-3 py-2">
+      <div className="text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500">{label}</div>
+      <div className={`mt-1 text-base font-semibold ${valueClassName}`}>{value}</div>
+    </div>
   );
 }

@@ -16,39 +16,39 @@ export function EventLogFilters({
   return (
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
       <Select
-        label="Level"
+        label="Уровень"
         onChange={(level) => onChange({ ...filters, level })}
         options={[
-          { label: 'all', value: 'all' },
-          { label: 'info', value: 'info' },
-          { label: 'warning', value: 'warning' },
-          { label: 'error', value: 'error' }
+          { label: 'Все', value: 'all' },
+          { label: 'Информация', value: 'info' },
+          { label: 'Предупреждение', value: 'warning' },
+          { label: 'Ошибка', value: 'error' }
         ]}
         value={filters.level}
       />
       <Select
-        label="Source"
+        label="Источник"
         onChange={(source) => onChange({ ...filters, source })}
         options={[
-          { label: 'all', value: 'all' },
+          { label: 'Все', value: 'all' },
           ...sources.map((source) => ({ label: source, value: source }))
         ]}
         value={filters.source}
       />
       <TextInput
-        label="Search"
+        label="Поиск"
         onChange={(search) => onChange({ ...filters, search })}
         placeholder="message, entityId, details"
         value={filters.search}
       />
       <Select
-        label="Limit"
+        label="Лимит"
         onChange={(limit) => onChange({ ...filters, limit })}
         options={[
           { label: '50', value: 50 },
           { label: '100', value: 100 },
           { label: '500', value: 500 },
-          { label: 'all', value: 'all' }
+          { label: 'Все', value: 'all' }
         ]}
         value={filters.limit}
       />

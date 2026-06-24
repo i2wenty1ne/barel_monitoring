@@ -65,7 +65,7 @@ export function InterfaceSettingsTab({
         />
         <Checkbox
           checked={config.interface.fullscreenOnStart}
-          hint="TODO: применение полноэкранного режима будет доработано отдельно."
+          hint="Применится после перезапуска приложения."
           label="Запускать в полноэкранном режиме"
           onChange={(fullscreenOnStart) =>
             onChange({ ...config, interface: { ...config.interface, fullscreenOnStart } })

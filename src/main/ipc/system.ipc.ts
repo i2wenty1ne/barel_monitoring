@@ -16,6 +16,7 @@ export function registerSystemIpc(
     return {
       appName: app.getName(),
       appVersion: app.getVersion(),
+      buildMode: app.isPackaged ? 'production' : 'development',
       electronVersion: process.versions.electron,
       nodeVersion: process.versions.node,
       chromeVersion: process.versions.chrome,

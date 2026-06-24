@@ -11,7 +11,6 @@ import { Alert } from '../../../shared/ui/Alert';
 import { ErrorState } from '../../../shared/ui/ErrorState';
 import { LoadingState } from '../../../shared/ui/LoadingState';
 import { PageHeader } from '../../../shared/ui/PageHeader';
-import { Panel } from '../../../shared/ui/Panel';
 import { StatusBadge } from '../../../shared/ui/StatusBadge';
 
 export function DiagnosticsPage(): React.JSX.Element {
@@ -51,36 +50,37 @@ export function DiagnosticsPage(): React.JSX.Element {
       <PageHeader
         eyebrow="Engineering"
         title="Диагностика"
-        description="Read-only состояние приложения, config, DataService и последних mock-значений."
+        description="Состояние подключения, каналов, бочек и ручная проверка регистров."
       />
 
       <div className="space-y-5">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
           <SummaryPanel label="Режим данных" value={snapshot.mode} />
           <SummaryPanel label="Общий статус" value={<StatusBadge status={snapshot.status} />} />
           <SummaryPanel label="Последнее обновление" value={formatDateTime(snapshot.updatedAt)} />
-          <SummaryPanel label="Warning" value={String(snapshot.activeWarningsCount)} />
-          <SummaryPanel label="Alarm" value={String(snapshot.activeAlarmsCount)} />
+          <SummaryPanel label="Предупреждения" value={String(snapshot.activeWarningsCount)} />
+          <SummaryPanel label="Аварии" value={String(snapshot.activeAlarmsCount)} />
         </div>
 
         {config.app.mode === 'mock' ? (
           <Alert type="info">Приложение работает в mock-режиме. Реальное оборудование не опрашивается.</Alert>
         ) : (
-          <Alert type="warning">Real Modbus service пока не реализован. Подключение будет добавлено на этапе 5.</Alert>
+          <Alert type="warning">Приложение работает в real-режиме. Проверьте порт, адрес устройства и параметры Modbus перед ручным чтением.</Alert>
         )}
-
-        <DiagnosticActionsPanel
-          actionMessage={diagnostics.actionResult}
-          data={diagnostics.data}
-          lastTestResult={diagnostics.testConnectionResult}
-          onReadAll={() => void diagnostics.readAllNow()}
-          onRefresh={() => void diagnostics.refresh()}
-          onTestConnection={() => void diagnostics.testConnection()}
-        />
 
         <div className="grid gap-5 xl:grid-cols-2">
           <ConnectionDiagnosticsPanel config={config} serviceStatus={serviceStatus} />
-          <DeviceDiagnosticsPanel device={config.device} />
+          <div className="space-y-5">
+            <DiagnosticActionsPanel
+              actionMessage={diagnostics.actionResult}
+              data={diagnostics.data}
+              lastTestResult={diagnostics.testConnectionResult}
+              onReadAll={() => void diagnostics.readAllNow()}
+              onRefresh={() => void diagnostics.refresh()}
+              onTestConnection={() => void diagnostics.testConnection()}
+            />
+            <DeviceDiagnosticsPanel device={config.device} />
+          </div>
         </div>
 
         <ManualReadPanel config={config} />
@@ -99,9 +99,9 @@ type SummaryPanelProps = {
 
 function SummaryPanel({ label, value }: SummaryPanelProps): React.JSX.Element {
   return (
-    <Panel className="p-4">
-      <div className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">{label}</div>
-      <div className="mt-3 text-lg font-semibold text-slate-100">{value}</div>
-    </Panel>
+    <div className="rounded-md border border-white/10 bg-white/[0.035] px-3 py-2">
+      <div className="text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500">{label}</div>
+      <div className="mt-1 text-base font-semibold text-slate-100">{value}</div>
+    </div>
   );
 }

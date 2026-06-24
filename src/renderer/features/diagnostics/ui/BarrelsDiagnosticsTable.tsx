@@ -40,16 +40,16 @@ export function BarrelsDiagnosticsTable({
   });
 
   const columns: DataTableColumn<BarrelRow>[] = [
-    { key: 'name', title: 'Name', render: (row) => row.name },
+    { key: 'name', title: 'Название', render: (row) => row.name },
     { key: 'id', title: 'ID', render: (row) => row.id },
-    { key: 'active', title: 'Active', render: (row) => (row.active ? 'Да' : 'Нет') },
-    { key: 'visible', title: 'Visible', render: (row) => (row.visible ? 'Да' : 'Нет') },
-    { key: 'temperatureChannelId', title: 'Temp channel', render: (row) => row.temperatureChannelId },
-    { key: 'levelChannelId', title: 'Level channel', render: (row) => row.levelChannelId },
-    { key: 'temperature', title: 'Temp', render: (row) => row.temperatureValue },
-    { key: 'level', title: 'Level', render: (row) => row.levelValue },
-    { key: 'status', title: 'Status', render: (row) => row.readingStatus },
-    { key: 'updated', title: 'Updated', render: (row) => row.updatedAt }
+    { key: 'active', title: 'Активна', render: (row) => (row.active ? 'Да' : 'Нет') },
+    { key: 'visible', title: 'Видима', render: (row) => (row.visible ? 'Да' : 'Нет') },
+    { key: 'temperatureChannelId', title: 'Канал температуры', render: (row) => row.temperatureChannelId },
+    { key: 'levelChannelId', title: 'Канал уровня', render: (row) => row.levelChannelId },
+    { key: 'temperature', title: 'Температура', render: (row) => row.temperatureValue },
+    { key: 'level', title: 'Уровень', render: (row) => row.levelValue },
+    { key: 'status', title: 'Статус', render: (row) => row.readingStatus },
+    { key: 'updated', title: 'Обновлено', render: (row) => row.updatedAt }
   ];
 
   return (
@@ -61,7 +61,7 @@ export function BarrelsDiagnosticsTable({
           </Alert>
         </div>
       ) : null}
-      <DataTable columns={columns} getRowKey={(row) => row.id} rows={rows} />
+      <DataTable compact columns={columns} getRowKey={(row) => row.id} maxHeight="360px" rows={rows} />
     </Panel>
   );
 }

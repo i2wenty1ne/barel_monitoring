@@ -23,6 +23,7 @@ export function DeviceSettingsTab({
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <TextInput
           disabled
+          hint="Стабильный внутренний идентификатор устройства; используется каналами."
           label="ID устройства"
           onChange={() => undefined}
           value={config.device.id}
@@ -48,6 +49,7 @@ export function DeviceSettingsTab({
         />
         <NumberInput
           error={getValidationError(validationErrors, 'device.modbusAddress')}
+          hint="Адрес slave-устройства Modbus: от 1 до 247."
           label="Modbus-адрес"
           max={247}
           min={1}

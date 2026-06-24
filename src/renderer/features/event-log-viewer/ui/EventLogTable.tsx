@@ -11,18 +11,18 @@ type EventLogTableProps = {
 
 export function EventLogTable({ events, onOpenDetails }: EventLogTableProps): React.JSX.Element {
   const columns: DataTableColumn<EventLogEntry>[] = [
-    { key: 'timestamp', title: 'Timestamp', render: (event) => formatDateTime(event.timestamp) },
+    { key: 'timestamp', title: 'Время', render: (event) => formatDateTime(event.timestamp) },
     {
       key: 'level',
-      title: 'Level',
+      title: 'Уровень',
       render: (event) => <Badge tone={getLevelTone(event.level)}>{formatEventLevel(event.level)}</Badge>
     },
-    { key: 'source', title: 'Source', render: (event) => <Badge>{event.source}</Badge> },
-    { key: 'entityId', title: 'Entity', render: (event) => event.entityId ?? '—' },
-    { key: 'message', title: 'Message', render: (event) => event.message },
+    { key: 'source', title: 'Источник', render: (event) => <Badge>{event.source}</Badge> },
+    { key: 'entityId', title: 'Объект', render: (event) => event.entityId ?? '—' },
+    { key: 'message', title: 'Сообщение', render: (event) => event.message },
     {
       key: 'details',
-      title: 'Details',
+      title: 'Детали',
       render: (event) =>
         event.details ? (
           <Button onClick={() => onOpenDetails(event)} variant="ghost">
@@ -36,9 +36,11 @@ export function EventLogTable({ events, onOpenDetails }: EventLogTableProps): Re
 
   return (
     <DataTable
+      compact
       columns={columns}
       emptyText="Событий пока нет"
       getRowKey={(event) => event.id}
+      maxHeight="520px"
       rows={events}
     />
   );

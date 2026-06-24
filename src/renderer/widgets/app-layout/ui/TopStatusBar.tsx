@@ -30,9 +30,11 @@ export function TopStatusBar(): React.JSX.Element {
   }, [data?.updatedAt]);
 
   const connectionText = getConnectionText(serviceStatus);
+  const warningsCount = data?.activeWarningsCount ?? 0;
+  const alarmsCount = data?.activeAlarmsCount ?? 0;
 
   return (
-    <header className="flex min-h-14 flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-slate-950/70 px-8 py-3">
+    <header className="flex min-h-14 flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-slate-950/70 px-6 py-2.5">
       <div className="flex flex-wrap items-center gap-4 text-sm">
         <span className="text-slate-300">Операторская панель</span>
         <span className="text-slate-500">Режим: {data?.mode ?? 'mock'}</span>
@@ -47,11 +49,15 @@ export function TopStatusBar(): React.JSX.Element {
         </span>
         {serviceStatus?.lastSuccessfulReadAt ? (
           <span className="text-slate-500">
-            Last OK: {formatDateTime(serviceStatus.lastSuccessfulReadAt)}
+            Последний OK: {formatDateTime(serviceStatus.lastSuccessfulReadAt)}
           </span>
         ) : null}
-        <span className="text-amber-200">Warnings: {data?.activeWarningsCount ?? 0}</span>
-        <span className="text-rose-200">Alarms: {data?.activeAlarmsCount ?? 0}</span>
+        <span className={warningsCount > 0 ? 'text-amber-200' : 'text-slate-500'}>
+          Предупреждения: {warningsCount}
+        </span>
+        <span className={alarmsCount > 0 ? 'text-rose-200' : 'text-slate-500'}>
+          Аварии: {alarmsCount}
+        </span>
         <button
           className="rounded-md border border-white/10 bg-white/5 px-3 py-1.5 text-slate-100 transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-teal-300/40"
           onClick={() => void refresh()}

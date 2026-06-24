@@ -13,7 +13,7 @@ export function Sidebar(): React.JSX.Element {
     <aside className="border-b border-white/10 bg-slate-950/85 px-4 py-5 lg:border-b-0 lg:border-r">
       <div className="mb-4 lg:mb-8">
         <div className="text-lg font-semibold tracking-normal text-white">Barrel Monitor</div>
-        <div className="mt-1 text-xs text-slate-400">Foundation stage</div>
+        <div className="mt-1 text-xs text-slate-400">Промышленный мониторинг</div>
       </div>
 
       <nav className="flex flex-wrap gap-1 lg:block lg:space-y-1" aria-label="Главная навигация">

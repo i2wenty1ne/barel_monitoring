@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type {
   AppConfig,
   ChannelConfig,
@@ -8,6 +9,8 @@ import type {
 import { createUniqueId } from '../../config-editor/model/config-editor.utils';
 import { Alert } from '../../../shared/ui/Alert';
 import { Button } from '../../../shared/ui/Button';
+import { CollapsibleSection } from '../../../shared/ui/CollapsibleSection';
+import { ConfirmDialog } from '../../../shared/ui/ConfirmDialog';
 import { NumberInput } from '../../../shared/ui/NumberInput';
 import { Panel } from '../../../shared/ui/Panel';
 import { Select } from '../../../shared/ui/Select';
@@ -22,6 +25,8 @@ export function ChannelsSettingsTab({
   config,
   onChange
 }: ChannelsSettingsTabProps): React.JSX.Element {
+  const [pendingDelete, setPendingDelete] = useState<ChannelConfig | null>(null);
+
   function updateChannel(index: number, channel: ChannelConfig): void {
     onChange({
       ...config,
@@ -42,6 +47,15 @@ export function ChannelsSettingsTab({
     onChange({ ...config, channels: [...config.channels, channel] });
   }
 
+  function getChannelUsage(channel: ChannelConfig): string[] {
+    return config.barrels
+      .filter(
+        (barrel) =>
+          barrel.temperatureChannelId === channel.id || barrel.levelChannelId === channel.id
+      )
+      .map((barrel) => barrel.name);
+  }
+
   function deleteChannel(channel: ChannelConfig): void {
     const usedByBarrel = config.barrels.find(
       (barrel) =>
@@ -49,11 +63,11 @@ export function ChannelsSettingsTab({
     );
 
     if (usedByBarrel) {
-      window.alert(`Канал используется бочкой ${usedByBarrel.name}. Сначала измените привязку бочки.`);
       return;
     }
 
     onChange({ ...config, channels: config.channels.filter((item) => item.id !== channel.id) });
+    setPendingDelete(null);
   }
 
   return (
@@ -73,7 +87,7 @@ export function ChannelsSettingsTab({
         {config.channels.length === 0 ? (
           <Alert type="warning">Каналы не настроены. Добавьте хотя бы один канал.</Alert>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {config.channels.map((channel, index) => (
               <ChannelForm
                 channel={channel}
@@ -81,12 +95,30 @@ export function ChannelsSettingsTab({
                 index={index}
                 key={`${channel.id}-${index}`}
                 onChange={(nextChannel) => updateChannel(index, nextChannel)}
-                onDelete={() => deleteChannel(channel)}
+                onRequestDelete={() => setPendingDelete(channel)}
+                usedByBarrels={getChannelUsage(channel)}
               />
             ))}
           </div>
         )}
       </Panel>
+
+      {pendingDelete ? (
+        <ConfirmDialog
+          cancelText="Отмена"
+          confirmText="Удалить"
+          details={
+            <div className="rounded-md border border-white/10 bg-slate-950/45 p-3 text-sm text-slate-300">
+              <div className="font-medium text-slate-100">{pendingDelete.name}</div>
+              <div className="mt-1 font-mono text-xs text-slate-500">{pendingDelete.id}</div>
+            </div>
+          }
+          message="Канал будет удалён из config.json после сохранения настроек."
+          onCancel={() => setPendingDelete(null)}
+          onConfirm={() => deleteChannel(pendingDelete)}
+          title="Удалить канал?"
+        />
+      ) : null}
     </div>
   );
 }
@@ -95,16 +127,18 @@ type ChannelFormProps = {
   channel: ChannelConfig;
   deviceId: string;
   index: number;
+  usedByBarrels: string[];
   onChange: (channel: ChannelConfig) => void;
-  onDelete: () => void;
+  onRequestDelete: () => void;
 };
 
 function ChannelForm({
   channel,
   deviceId,
   index,
+  usedByBarrels,
   onChange,
-  onDelete
+  onRequestDelete
 }: ChannelFormProps): React.JSX.Element {
   function updateScaling(scaling: ScalingConfig): void {
     onChange({ ...channel, scaling });
@@ -119,28 +153,43 @@ function ChannelForm({
     }
   }
 
+  const isUsed = usedByBarrels.length > 0;
+
   return (
-    <div className="rounded-lg border border-white/10 bg-slate-950/35 p-4">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <div className="font-medium text-white">
-            Канал {index + 1}: {channel.name || channel.id}
-          </div>
-          <div className="mt-1 text-xs text-slate-500">{channel.id}</div>
-        </div>
-        <Button onClick={onDelete} variant="danger">
+    <CollapsibleSection
+      actions={
+        <Button disabled={isUsed} onClick={onRequestDelete} variant="danger">
           Удалить
         </Button>
-      </div>
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <TextInput label="id" onChange={(id) => onChange({ ...channel, id })} value={channel.id} />
+      }
+      defaultOpen={index === 0}
+      summary={<ChannelSummary channel={channel} usedByBarrels={usedByBarrels} />}
+      title={`Канал ${index + 1}: ${channel.name || channel.id}`}
+    >
+      {isUsed ? (
+        <div className="mb-4">
+          <Alert type="warning">
+            Канал используется: {usedByBarrels.join(', ')}. Перед удалением измените привязку бочек.
+          </Alert>
+        </div>
+      ) : null}
+
+      <div className="grid gap-4 xl:grid-cols-2">
+        <FieldGroup title="Основное">
+          <TextInput
+            hint="Уникальный id канала. Используется в привязках бочек."
+            label="ID канала"
+            onChange={(id) => onChange({ ...channel, id })}
+            value={channel.id}
+          />
         <TextInput
-          label="name"
+          label="Название"
           onChange={(name) => onChange({ ...channel, name })}
           value={channel.name}
         />
         <Select
-          label="type"
+          hint="Тип влияет на дефолтные единицы и масштабирование."
+          label="Тип канала"
           onChange={(type) => onChange(applyTypeDefaults({ ...channel, type }))}
           options={[
             { label: 'temperature', value: 'temperature' },
@@ -150,33 +199,44 @@ function ChannelForm({
           value={channel.type}
         />
         <TextInput
-          label="deviceId"
+          hint="Должен совпадать с ID устройства."
+          label="ID устройства"
           onChange={(nextDeviceId) => onChange({ ...channel, deviceId: nextDeviceId })}
           value={channel.deviceId || deviceId}
         />
+        </FieldGroup>
+
+        <FieldGroup title="Modbus">
         <NumberInput
-          label="moduleInputNumber"
+          hint="Физический номер входа на модуле."
+          label="Номер входа"
           min={1}
           onChange={(moduleInputNumber) => onChange({ ...channel, moduleInputNumber })}
           value={channel.moduleInputNumber}
         />
         <NumberInput
-          label="registerAddress"
+          hint="Адрес регистра Modbus. Для МВ110 обычно берётся из карты регистров."
+          label="Адрес регистра"
           min={0}
           onChange={(registerAddress) => onChange({ ...channel, registerAddress })}
           value={channel.registerAddress}
         />
         <Select
-          label="modbusFunction"
+          hint="3 - Holding Registers, 4 - Input Registers."
+          label="Функция чтения"
           onChange={(modbusFunction) => onChange({ ...channel, modbusFunction })}
           options={[
-            { label: '3', value: 3 },
-            { label: '4', value: 4 }
+            { label: '3 Holding', value: 3 },
+            { label: '4 Input', value: 4 }
           ]}
           value={channel.modbusFunction}
         />
+        </FieldGroup>
+
+        <FieldGroup title="Формат данных">
         <Select
-          label="dataType"
+          hint="Тип определяет, как декодировать один или несколько регистров."
+          label="Тип данных"
           onChange={(dataType) =>
             onChange({
               ...channel,
@@ -194,13 +254,15 @@ function ChannelForm({
           value={channel.dataType}
         />
         <NumberInput
-          label="registerCount"
+          hint="Для 32-bit и float32 требуется 2 регистра."
+          label="Количество регистров"
           min={1}
           onChange={(registerCount) => onChange({ ...channel, registerCount })}
           value={channel.registerCount}
         />
         <Select
-          label="byteOrder"
+          hint="Порядок байтов/слов для 32-bit значений."
+          label="Порядок байтов"
           onChange={(byteOrder) => onChange({ ...channel, byteOrder })}
           options={[
             { label: 'ABCD', value: 'ABCD' },
@@ -211,23 +273,27 @@ function ChannelForm({
           value={channel.byteOrder}
         />
         <TextInput
-          label="rawUnit"
+          label="Единица raw"
           onChange={(rawUnit) => onChange({ ...channel, rawUnit })}
           value={channel.rawUnit}
         />
         <TextInput
-          label="displayUnit"
+          label="Единица отображения"
           onChange={(displayUnit) => onChange({ ...channel, displayUnit })}
           value={channel.displayUnit}
         />
         <NumberInput
-          label="decimals"
+          label="Знаков после запятой"
           min={0}
           onChange={(decimals) => onChange({ ...channel, decimals })}
           value={channel.decimals}
         />
+        </FieldGroup>
+
+        <FieldGroup title="Масштабирование">
         <Select
-          label="scaling.type"
+          hint="Linear переводит raw диапазон в инженерные единицы."
+          label="Тип масштабирования"
           onChange={(type) =>
             updateScaling(
               type === 'none'
@@ -243,37 +309,131 @@ function ChannelForm({
           ]}
           value={channel.scaling.type}
         />
-      </div>
       {channel.scaling.type === 'linear' ? (
-        <div className="mt-4 grid gap-4 md:grid-cols-4">
+        <>
           <NumberInput
-            label="rawMin"
+            label="Raw min"
             onChange={(rawMin) => updateLinearScaling('rawMin', rawMin)}
             step={0.01}
             value={channel.scaling.rawMin}
           />
           <NumberInput
-            label="rawMax"
+            label="Raw max"
             onChange={(rawMax) => updateLinearScaling('rawMax', rawMax)}
             step={0.01}
             value={channel.scaling.rawMax}
           />
           <NumberInput
-            label="displayMin"
+            label="Display min"
             onChange={(displayMin) => updateLinearScaling('displayMin', displayMin)}
             step={0.01}
             value={channel.scaling.displayMin}
           />
           <NumberInput
-            label="displayMax"
+            label="Display max"
             onChange={(displayMax) => updateLinearScaling('displayMax', displayMax)}
             step={0.01}
             value={channel.scaling.displayMax}
           />
-        </div>
+          <ScalingPreview scaling={channel.scaling} unit={channel.displayUnit} />
+        </>
       ) : null}
+        </FieldGroup>
+      </div>
+    </CollapsibleSection>
+  );
+}
+
+type FieldGroupProps = {
+  title: string;
+  children: React.ReactNode;
+};
+
+function FieldGroup({ title, children }: FieldGroupProps): React.JSX.Element {
+  return (
+    <section className="rounded-md border border-white/10 bg-slate-950/35 p-4">
+      <h3 className="mb-4 text-sm font-medium text-slate-100">{title}</h3>
+      <div className="grid gap-4 md:grid-cols-2">{children}</div>
+    </section>
+  );
+}
+
+type ChannelSummaryProps = {
+  channel: ChannelConfig;
+  usedByBarrels: string[];
+};
+
+function ChannelSummary({ channel, usedByBarrels }: ChannelSummaryProps): React.JSX.Element {
+  return (
+    <div className="flex flex-wrap gap-2 text-xs">
+      <SummaryPill label="ID" value={channel.id} monospace />
+      <SummaryPill label="Тип" value={channel.type} />
+      <SummaryPill label="Регистр" value={`${channel.modbusFunction}:${channel.registerAddress}`} />
+      <SummaryPill label="Формат" value={`${channel.dataType} x${channel.registerCount}`} />
+      <SummaryPill label="Порядок" value={channel.byteOrder} />
+      <SummaryPill label="Масштаб" value={formatScaling(channel.scaling)} />
+      <SummaryPill
+        label="Используется"
+        tone={usedByBarrels.length > 0 ? 'ok' : 'muted'}
+        value={usedByBarrels.length > 0 ? usedByBarrels.join(', ') : 'нет'}
+      />
     </div>
   );
+}
+
+type SummaryPillProps = {
+  label: string;
+  value: string;
+  monospace?: boolean;
+  tone?: 'default' | 'ok' | 'muted';
+};
+
+function SummaryPill({
+  label,
+  value,
+  monospace,
+  tone = 'default'
+}: SummaryPillProps): React.JSX.Element {
+  const toneClassName =
+    tone === 'ok'
+      ? 'border-teal-300/20 bg-teal-400/10 text-teal-100'
+      : tone === 'muted'
+        ? 'border-white/10 bg-white/[0.03] text-slate-500'
+        : 'border-white/10 bg-white/[0.04] text-slate-300';
+
+  return (
+    <span className={`rounded-md border px-2 py-1 ${toneClassName}`}>
+      <span className="text-slate-500">{label}: </span>
+      <span className={monospace ? 'font-mono' : ''}>{value}</span>
+    </span>
+  );
+}
+
+type ScalingPreviewProps = {
+  scaling: Extract<ScalingConfig, { type: 'linear' }>;
+  unit: string;
+};
+
+function ScalingPreview({ scaling, unit }: ScalingPreviewProps): React.JSX.Element {
+  const rawMid = (scaling.rawMin + scaling.rawMax) / 2;
+  const displayMid = (scaling.displayMin + scaling.displayMax) / 2;
+
+  return (
+    <div className="md:col-span-2 rounded-md border border-teal-300/20 bg-teal-400/10 p-3 text-sm text-teal-50">
+      Preview: {scaling.rawMin} {'->'} {scaling.displayMin}
+      {unit}, {rawMid.toFixed(2)} {'->'} {displayMid.toFixed(2)}
+      {unit}, {scaling.rawMax} {'->'} {scaling.displayMax}
+      {unit}
+    </div>
+  );
+}
+
+function formatScaling(scaling: ScalingConfig): string {
+  if (scaling.type === 'none') {
+    return 'нет';
+  }
+
+  return `${scaling.rawMin}-${scaling.rawMax} -> ${scaling.displayMin}-${scaling.displayMax}`;
 }
 
 function createDefaultChannel(

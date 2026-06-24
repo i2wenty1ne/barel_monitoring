@@ -17,12 +17,12 @@ export function SaveConfigPanel({
   onReload
 }: SaveConfigPanelProps): React.JSX.Element {
   return (
-    <Panel className="flex flex-wrap items-center justify-between gap-3 p-4">
+    <Panel className="sticky top-3 z-20 flex flex-wrap items-center justify-between gap-3 p-3 shadow-lg shadow-slate-950/20">
       <div>
         <div className="text-sm font-medium text-slate-100">
           {hasUnsavedChanges ? 'Есть несохранённые изменения' : 'Изменений нет'}
         </div>
-        <div className="mt-1 text-xs text-slate-500">
+        <div className="mt-0.5 text-xs text-slate-500">
           Сохранение валидирует config и перезапускает DataService.
         </div>
       </div>

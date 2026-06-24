@@ -37,7 +37,11 @@ export function ConnectionSettingsTab({
     try {
       const ports = await window.barrelMonitor.system.listSerialPorts();
       setSerialPorts(ports);
-      setPortsMessage(ports.length === 0 ? 'COM-порты не найдены' : `Найдено портов: ${ports.length}`);
+      setPortsMessage(
+        ports.length === 0
+          ? 'Порты не найдены. Проверьте USB-RS485 адаптер, драйвер и разрешения ОС; порт можно ввести вручную.'
+          : `Найдено портов: ${ports.length}`
+      );
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Не удалось получить список COM-портов';
       setPortsMessage(message);
@@ -58,6 +62,7 @@ export function ConnectionSettingsTab({
         />
         <TextInput
           error={getValidationError(validationErrors, 'connection.port')}
+          hint="Можно выбрать из списка или ввести вручную, например COM3 или /dev/tty.usbserial."
           label="COM-порт"
           onChange={(port) => onChange({ ...config, connection: { ...config.connection, port } })}
           placeholder="COM3"
@@ -67,6 +72,7 @@ export function ConnectionSettingsTab({
           <Select
             disabled={serialPorts.length === 0}
             label="Доступные COM-порты"
+            hint="Если список пустой, используйте ручной ввод COM-порта."
             onChange={(port) => onChange({ ...config, connection: { ...config.connection, port } })}
             options={[
               { label: serialPorts.length === 0 ? 'Нет портов' : 'Выберите порт', value: '' },
@@ -87,6 +93,7 @@ export function ConnectionSettingsTab({
         <NumberInput
           error={getValidationError(validationErrors, 'connection.baudRate')}
           label="Скорость"
+          hint="Должна совпадать с настройкой МВ110."
           min={1}
           onChange={(baudRate) =>
             onChange({ ...config, connection: { ...config.connection, baudRate } })
@@ -130,6 +137,7 @@ export function ConnectionSettingsTab({
         <NumberInput
           error={getValidationError(validationErrors, 'connection.timeoutMs')}
           label="Timeout, ms"
+          hint="Время ожидания ответа устройства."
           min={1}
           onChange={(timeoutMs) =>
             onChange({ ...config, connection: { ...config.connection, timeoutMs } })
@@ -149,6 +157,7 @@ export function ConnectionSettingsTab({
         <NumberInput
           error={getValidationError(validationErrors, 'connection.retries')}
           label="Повторы при ошибке"
+          hint="Количество повторов чтения перед фиксацией ошибки связи."
           min={0}
           onChange={(retries) =>
             onChange({ ...config, connection: { ...config.connection, retries } })

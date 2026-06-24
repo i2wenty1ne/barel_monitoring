@@ -1,8 +1,11 @@
+import { useState } from 'react';
 import type { AppConfig, BarrelConfig } from '../../../../shared/types/config.types';
 import { createUniqueId } from '../../config-editor/model/config-editor.utils';
 import { Alert } from '../../../shared/ui/Alert';
 import { Button } from '../../../shared/ui/Button';
 import { Checkbox } from '../../../shared/ui/Checkbox';
+import { ConfirmDialog } from '../../../shared/ui/ConfirmDialog';
+import { DangerZone } from '../../../shared/ui/DangerZone';
 import { NumberInput } from '../../../shared/ui/NumberInput';
 import { Panel } from '../../../shared/ui/Panel';
 import { Select } from '../../../shared/ui/Select';
@@ -14,6 +17,7 @@ type BarrelsSettingsTabProps = {
 };
 
 export function BarrelsSettingsTab({ config, onChange }: BarrelsSettingsTabProps): React.JSX.Element {
+  const [pendingDelete, setPendingDelete] = useState<BarrelConfig | null>(null);
   const temperatureChannels = config.channels.filter(
     (channel) => channel.type === 'temperature' || channel.type === 'custom'
   );
@@ -44,38 +48,55 @@ export function BarrelsSettingsTab({ config, onChange }: BarrelsSettingsTabProps
   }
 
   function deleteBarrel(barrel: BarrelConfig): void {
-    if (config.barrels.length === 1) {
-      window.alert('Удаляется последняя бочка. Мониторинг покажет состояние “Бочки не настроены”.');
-    }
-
     onChange({ ...config, barrels: config.barrels.filter((item) => item.id !== barrel.id) });
+    setPendingDelete(null);
   }
 
   return (
-    <Panel className="p-5" title="Бочки">
-      <div className="mb-4">
-        <Button onClick={addBarrel} variant="secondary">
-          Добавить бочку
-        </Button>
-      </div>
-      {config.barrels.length === 0 ? (
-        <Alert type="warning">Бочки не настроены. Мониторинг покажет EmptyState.</Alert>
-      ) : (
-        <div className="space-y-4">
-          {config.barrels.map((barrel, index) => (
-            <BarrelForm
-              barrel={barrel}
-              index={index}
-              key={`${barrel.id}-${index}`}
-              levelChannels={levelChannels}
-              onChange={(nextBarrel) => updateBarrel(index, nextBarrel)}
-              onDelete={() => deleteBarrel(barrel)}
-              temperatureChannels={temperatureChannels}
-            />
-          ))}
+    <>
+      <Panel className="p-5" title="Бочки">
+        <div className="mb-4">
+          <Button onClick={addBarrel} variant="secondary">
+            Добавить бочку
+          </Button>
         </div>
-      )}
-    </Panel>
+        {config.barrels.length === 0 ? (
+          <Alert type="warning">
+            Бочки не настроены. Добавьте бочку и привяжите каналы температуры и уровня.
+          </Alert>
+        ) : (
+          <div className="space-y-4">
+            {config.barrels.map((barrel, index) => (
+              <BarrelForm
+                barrel={barrel}
+                index={index}
+                key={`${barrel.id}-${index}`}
+                levelChannels={levelChannels}
+                onChange={(nextBarrel) => updateBarrel(index, nextBarrel)}
+                onRequestDelete={() => setPendingDelete(barrel)}
+                temperatureChannels={temperatureChannels}
+              />
+            ))}
+          </div>
+        )}
+      </Panel>
+
+      {pendingDelete ? (
+        <ConfirmDialog
+          cancelText="Отмена"
+          confirmText="Удалить"
+          details={
+            config.barrels.length === 1 ? (
+              <Alert type="warning">Это последняя бочка. После сохранения мониторинг покажет пустое состояние.</Alert>
+            ) : null
+          }
+          message="Бочка будет удалена из config.json после сохранения настроек."
+          onCancel={() => setPendingDelete(null)}
+          onConfirm={() => deleteBarrel(pendingDelete)}
+          title="Удалить бочку?"
+        />
+      ) : null}
+    </>
   );
 }
 
@@ -85,7 +106,7 @@ type BarrelFormProps = {
   temperatureChannels: AppConfig['channels'];
   levelChannels: AppConfig['channels'];
   onChange: (barrel: BarrelConfig) => void;
-  onDelete: () => void;
+  onRequestDelete: () => void;
 };
 
 function BarrelForm({
@@ -94,8 +115,14 @@ function BarrelForm({
   temperatureChannels,
   levelChannels,
   onChange,
-  onDelete
+  onRequestDelete
 }: BarrelFormProps): React.JSX.Element {
+  const hasMissingTemperatureChannel =
+    !barrel.temperatureChannelId ||
+    !temperatureChannels.some((channel) => channel.id === barrel.temperatureChannelId);
+  const hasMissingLevelChannel =
+    !barrel.levelChannelId || !levelChannels.some((channel) => channel.id === barrel.levelChannelId);
+
   return (
     <div className="rounded-lg border border-white/10 bg-slate-950/35 p-4">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -105,10 +132,14 @@ function BarrelForm({
           </div>
           <div className="mt-1 text-xs text-slate-500">{barrel.id}</div>
         </div>
-        <Button onClick={onDelete} variant="danger">
-          Удалить
-        </Button>
       </div>
+      {hasMissingTemperatureChannel || hasMissingLevelChannel ? (
+        <div className="mb-4">
+          <Alert type="warning">
+            Заполните каналы температуры и уровня. Активная бочка без каналов не сможет отображать данные.
+          </Alert>
+        </div>
+      ) : null}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <TextInput label="id" onChange={(id) => onChange({ ...barrel, id })} value={barrel.id} />
         <TextInput
@@ -117,7 +148,8 @@ function BarrelForm({
           value={barrel.name}
         />
         <Select
-          label="temperatureChannelId"
+          error={hasMissingTemperatureChannel ? 'Выберите существующий канал температуры' : undefined}
+          label="Канал температуры"
           onChange={(temperatureChannelId) => onChange({ ...barrel, temperatureChannelId })}
           options={[
             { label: '—', value: '' },
@@ -126,7 +158,8 @@ function BarrelForm({
           value={barrel.temperatureChannelId}
         />
         <Select
-          label="levelChannelId"
+          error={hasMissingLevelChannel ? 'Выберите существующий канал уровня' : undefined}
+          label="Канал уровня"
           onChange={(levelChannelId) => onChange({ ...barrel, levelChannelId })}
           options={[
             { label: '—', value: '' },
@@ -135,13 +168,13 @@ function BarrelForm({
           value={barrel.levelChannelId}
         />
         <NumberInput
-          label="displayOrder"
+          label="Порядок"
           min={1}
           onChange={(displayOrder) => onChange({ ...barrel, displayOrder })}
           value={barrel.displayOrder}
         />
         <Select
-          label="cardSize"
+          label="Размер карточки"
           onChange={(cardSize) => onChange({ ...barrel, cardSize })}
           options={[
             { label: 'small', value: 'small' },
@@ -152,14 +185,24 @@ function BarrelForm({
         />
         <Checkbox
           checked={barrel.active}
-          label="active"
+          label="Активна"
           onChange={(active) => onChange({ ...barrel, active })}
         />
         <Checkbox
           checked={barrel.visible}
-          label="visible"
+          label="Видима"
           onChange={(visible) => onChange({ ...barrel, visible })}
         />
+      </div>
+      <div className="mt-4">
+        <DangerZone
+          description="Удаление применится только после сохранения настроек."
+          title="Опасное действие"
+        >
+          <Button onClick={onRequestDelete} variant="danger">
+            Удалить бочку
+          </Button>
+        </DangerZone>
       </div>
     </div>
   );

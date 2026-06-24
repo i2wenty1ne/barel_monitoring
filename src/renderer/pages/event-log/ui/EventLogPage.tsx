@@ -54,7 +54,7 @@ export function EventLogPage(): React.JSX.Element {
         }
         eyebrow="Engineering"
         title="Журнал событий"
-        description="JSONL-события приложения с фильтрами, поиском и live-обновлением."
+        description="События приложения с фильтрами, поиском и live-обновлением."
       />
 
       <div className="space-y-5">
@@ -73,6 +73,11 @@ export function EventLogPage(): React.JSX.Element {
 
         <Panel className="p-5" title={`События (${eventLog.filteredEvents.length})`}>
           <EventLogTable events={eventLog.filteredEvents} onOpenDetails={setSelectedEvent} />
+          {eventLog.filteredEvents.length === 0 ? (
+            <p className="mt-3 text-sm text-slate-500">
+              Измените фильтры или выполните действие в приложении, чтобы увидеть новые события.
+            </p>
+          ) : null}
         </Panel>
       </div>
 

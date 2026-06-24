@@ -4,11 +4,12 @@ import { registerIpcHandlers } from './ipc';
 import { ConfigService } from './services/config/config.service';
 import { DataServiceManager } from './services/data/data-service-manager';
 import { EventLogService } from './services/event-log/event-log.service';
+import type { AppConfig } from '../shared/types/config.types';
 
 let mainWindow: BrowserWindow | null = null;
 let dataServiceManager: DataServiceManager | null = null;
 
-async function createMainWindow(): Promise<BrowserWindow> {
+async function createMainWindow(config: AppConfig): Promise<BrowserWindow> {
   const window = new BrowserWindow({
     width: 1180,
     height: 760,
@@ -16,6 +17,7 @@ async function createMainWindow(): Promise<BrowserWindow> {
     minHeight: 640,
     title: 'Barrel Monitor',
     backgroundColor: '#0f172a',
+    fullscreen: config.interface.fullscreenOnStart,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
@@ -54,7 +56,7 @@ async function bootstrap(): Promise<void> {
   }
 
   dataServiceManager = new DataServiceManager(configResult.config, eventLogService);
-  mainWindow = await createMainWindow();
+  mainWindow = await createMainWindow(configResult.config);
 
   registerIpcHandlers({
     mainWindow,

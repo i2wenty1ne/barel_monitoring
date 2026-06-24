@@ -18,16 +18,16 @@ export function ConnectionDiagnosticsPanel({
       <dl className="grid gap-3 text-sm md:grid-cols-2">
         <InfoRow label="Тип" value={config.connection.type} />
         <InfoRow label="COM-порт" value={config.connection.port} />
-        <InfoRow label="Baud rate" value={String(config.connection.baudRate)} />
+        <InfoRow label="Скорость" value={String(config.connection.baudRate)} />
         <InfoRow label="Data bits" value={String(config.connection.dataBits)} />
         <InfoRow label="Stop bits" value={String(config.connection.stopBits)} />
         <InfoRow label="Parity" value={config.connection.parity} />
         <InfoRow label="Timeout" value={`${config.connection.timeoutMs} ms`} />
-        <InfoRow label="Retries" value={String(config.connection.retries)} />
-        <InfoRow label="Polling" value={`${config.app.pollingIntervalMs} ms`} />
+        <InfoRow label="Повторы" value={String(config.connection.retries)} />
+        <InfoRow label="Опрос" value={`${config.app.pollingIntervalMs} ms`} />
         <InfoRow label="DataService" value={<StatusBadge status={serviceStatus.connectionStatus} />} />
-        <InfoRow label="Last successful read" value={formatDateTime(serviceStatus.lastSuccessfulReadAt)} />
-        <InfoRow label="Last error" value={serviceStatus.lastError ?? '—'} />
+        <InfoRow label="Последний успешный опрос" value={formatDateTime(serviceStatus.lastSuccessfulReadAt)} />
+        <InfoRow label="Последняя ошибка" value={serviceStatus.lastError ?? '—'} />
       </dl>
     </Panel>
   );

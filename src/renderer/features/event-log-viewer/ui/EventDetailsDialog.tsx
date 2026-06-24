@@ -15,7 +15,7 @@ export function EventDetailsDialog({ event, onClose }: EventDetailsDialogProps):
       <div className="max-h-[86vh] w-full max-w-3xl overflow-auto rounded-lg border border-white/10 bg-slate-900 p-6 shadow-2xl shadow-black/30">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h2 className="text-lg font-semibold text-white">Details события</h2>
+            <h2 className="text-lg font-semibold text-white">Детали события</h2>
             <p className="mt-1 text-sm text-slate-400">{event.message}</p>
           </div>
           <Button onClick={onClose} variant="ghost">
@@ -24,10 +24,10 @@ export function EventDetailsDialog({ event, onClose }: EventDetailsDialogProps):
         </div>
         <dl className="mt-5 grid gap-2 text-sm md:grid-cols-2">
           <InfoRow label="id" value={event.id} />
-          <InfoRow label="timestamp" value={formatDateTime(event.timestamp)} />
-          <InfoRow label="level" value={event.level} />
-          <InfoRow label="source" value={event.source} />
-          <InfoRow label="entityId" value={event.entityId ?? '—'} />
+          <InfoRow label="Время" value={formatDateTime(event.timestamp)} />
+          <InfoRow label="Уровень" value={event.level} />
+          <InfoRow label="Источник" value={event.source} />
+          <InfoRow label="Объект" value={event.entityId ?? '—'} />
         </dl>
         <div className="mt-5 space-y-3">
           <CopyButton getText={() => stringifyPrettyJson(event)} label="Скопировать событие" />

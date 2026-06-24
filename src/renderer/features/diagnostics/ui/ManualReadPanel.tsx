@@ -36,17 +36,17 @@ export function ManualReadPanel({ config }: ManualReadPanelProps): React.JSX.Ele
   }
 
   return (
-    <Panel className="p-5" title="Manual read registers">
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+    <Panel className="p-5" title="Ручное чтение регистров">
+      <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
         <NumberInput
-          label="Device address"
+          label="Адрес устройства"
           max={247}
           min={1}
           onChange={(deviceAddress) => setRequest({ ...request, deviceAddress })}
           value={request.deviceAddress ?? config.device.modbusAddress}
         />
         <Select
-          label="Function"
+          label="Функция"
           onChange={(modbusFunction) => setRequest({ ...request, modbusFunction })}
           options={[
             { label: '3 Holding', value: 3 },
@@ -55,19 +55,19 @@ export function ManualReadPanel({ config }: ManualReadPanelProps): React.JSX.Ele
           value={request.modbusFunction}
         />
         <NumberInput
-          label="Register address"
+          label="Адрес регистра"
           min={0}
           onChange={(registerAddress) => setRequest({ ...request, registerAddress })}
           value={request.registerAddress}
         />
         <NumberInput
-          label="Register count"
+          label="Кол-во регистров"
           min={1}
           onChange={(registerCount) => setRequest({ ...request, registerCount })}
           value={request.registerCount}
         />
         <Select
-          label="Data type"
+          label="Тип данных"
           onChange={(dataType) => setRequest({ ...request, dataType })}
           options={[
             { label: 'int16', value: 'int16' },
@@ -79,7 +79,7 @@ export function ManualReadPanel({ config }: ManualReadPanelProps): React.JSX.Ele
           value={request.dataType}
         />
         <Select
-          label="Byte order"
+          label="Порядок байтов"
           onChange={(byteOrder) => setRequest({ ...request, byteOrder })}
           options={[
             { label: 'ABCD', value: 'ABCD' },

@@ -20,6 +20,7 @@ export type SerialPortInfo = {
 export type SystemInfo = {
   appName: string;
   appVersion: string;
+  buildMode: 'development' | 'production';
   electronVersion?: string;
   nodeVersion?: string;
   chromeVersion?: string;

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import type { TestConnectionResult } from '../../../../shared/types/monitoring.types';
 import { BarrelsSettingsTab } from '../../../features/barrel-settings/ui/BarrelsSettingsTab';
 import { ChannelsSettingsTab } from '../../../features/channel-settings/ui/ChannelsSettingsTab';
@@ -19,10 +20,15 @@ import { SettingsTabs, type SettingsTabId } from './SettingsTabs';
 
 export function SettingsPage(): React.JSX.Element {
   const editor = useConfigEditor();
-  const [activeTab, setActiveTab] = useState<SettingsTabId>('connection');
+  const [searchParams, setSearchParams] = useSearchParams();
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
   const [testResult, setTestResult] = useState<TestConnectionResult | null>(null);
   const [isTesting, setIsTesting] = useState(false);
+  const activeTab = getSettingsTab(searchParams.get('tab'));
+
+  function handleTabChange(tab: SettingsTabId): void {
+    setSearchParams(tab === 'connection' ? {} : { tab });
+  }
 
   async function handleTestConnection(): Promise<void> {
     setIsTesting(true);
@@ -84,7 +90,7 @@ export function SettingsPage(): React.JSX.Element {
         {editor.error ? <Alert type="error">{editor.error}</Alert> : null}
         <ConfigValidationSummary validationErrors={editor.validationErrors} />
 
-        <SettingsTabs activeTab={activeTab} onChange={setActiveTab} />
+        <SettingsTabs activeTab={activeTab} onChange={handleTabChange} />
 
         {activeTab === 'connection' ? (
           <ConnectionSettingsTab
@@ -155,4 +161,18 @@ export function SettingsPage(): React.JSX.Element {
       ) : null}
     </section>
   );
+}
+
+function getSettingsTab(value: string | null): SettingsTabId {
+  const tabs: SettingsTabId[] = [
+    'connection',
+    'device',
+    'channels',
+    'barrels',
+    'thresholds',
+    'interface',
+    'service'
+  ];
+
+  return value && tabs.includes(value as SettingsTabId) ? (value as SettingsTabId) : 'connection';
 }

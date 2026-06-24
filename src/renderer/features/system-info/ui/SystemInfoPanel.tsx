@@ -11,10 +11,11 @@ export function SystemInfoPanel({ info }: SystemInfoPanelProps): React.JSX.Eleme
       <dl className="grid gap-3 text-sm">
         <InfoRow label="Название" value={info.appName} />
         <InfoRow label="Версия" value={info.appVersion} />
+        <InfoRow label="Режим сборки" value={info.buildMode === 'production' ? 'production' : 'development'} />
         <InfoRow label="Режим" value={info.appMode ?? '—'} />
         <InfoRow label="Устройство" value={info.currentDeviceName ?? '—'} />
         <InfoRow label="Модель" value={info.currentDeviceModel ?? '—'} />
-        <InfoRow label="Modbus address" value={info.currentDeviceAddress ?? '—'} />
+        <InfoRow label="Адрес Modbus" value={info.currentDeviceAddress ?? '—'} />
       </dl>
     </Panel>
   );

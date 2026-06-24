@@ -10,22 +10,30 @@ type DataTableProps<TRow> = {
   rows: TRow[];
   getRowKey: (row: TRow) => string;
   emptyText?: string;
+  compact?: boolean;
+  maxHeight?: string;
+  stickyHeader?: boolean;
 };
 
 export function DataTable<TRow>({
   columns,
   rows,
   getRowKey,
-  emptyText = 'Нет данных'
+  emptyText = 'Нет данных',
+  compact = false,
+  maxHeight,
+  stickyHeader = true
 }: DataTableProps<TRow>): React.JSX.Element {
+  const cellPadding = compact ? 'px-3 py-2' : 'px-3 py-3';
+
   return (
-    <div className="overflow-auto rounded-lg border border-white/10">
+    <div className="overflow-auto rounded-lg border border-white/10" style={{ maxHeight }}>
       <table className="min-w-full divide-y divide-white/10 text-sm">
-        <thead className="sticky top-0 bg-slate-900">
+        <thead className={stickyHeader ? 'sticky top-0 z-10 bg-slate-900' : 'bg-slate-900'}>
           <tr>
             {columns.map((column) => (
               <th
-                className={`px-3 py-3 text-left text-xs font-medium uppercase tracking-[0.12em] text-slate-500 ${column.className ?? ''}`}
+                className={`${cellPadding} text-left text-xs font-medium uppercase tracking-[0.12em] text-slate-500 ${column.className ?? ''}`}
                 key={column.key}
               >
                 {column.title}
@@ -44,7 +52,7 @@ export function DataTable<TRow>({
             rows.map((row) => (
               <tr className="hover:bg-white/[0.03]" key={getRowKey(row)}>
                 {columns.map((column) => (
-                  <td className={`px-3 py-3 align-top text-slate-200 ${column.className ?? ''}`} key={column.key}>
+                  <td className={`${cellPadding} align-top text-slate-200 ${column.className ?? ''}`} key={column.key}>
                     {column.render(row)}
                   </td>
                 ))}
