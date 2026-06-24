@@ -7,6 +7,9 @@ import {
   ManualReadRequest,
   ManualReadResult,
   MonitoringSnapshot,
+  RegisterScanRequest,
+  RegisterScanResult,
+  RegisterScanRow,
   Status,
   TestConnectionResult
 } from '../../../shared/types/monitoring.types';
@@ -159,6 +162,86 @@ export class ModbusDataService implements DataService {
     }
   }
 
+  public async scanRegisters(request: RegisterScanRequest): Promise<RegisterScanResult> {
+    const normalizedRequest = this.normalizeRegisterScanRequest(request);
+    const startedAt = new Date().toISOString();
+    const rows: RegisterScanRow[] = [];
+
+    try {
+      await this.ensureConnected(normalizedRequest.deviceAddress);
+
+      for (const modbusFunction of normalizedRequest.modbusFunctions) {
+        for (
+          let registerAddress = normalizedRequest.startAddress;
+          registerAddress <= normalizedRequest.endAddress;
+          registerAddress += 1
+        ) {
+          try {
+            const registers = await this.readRegisterValues(
+              modbusFunction,
+              registerAddress,
+              normalizedRequest.registerCount
+            );
+            rows.push({
+              modbusFunction,
+              registerAddress,
+              success: true,
+              registers,
+              decodedValue: decodeRegisters(
+                registers,
+                normalizedRequest.dataType,
+                normalizedRequest.byteOrder
+              ),
+              message: 'Read successful'
+            });
+          } catch (error) {
+            rows.push({
+              modbusFunction,
+              registerAddress,
+              success: false,
+              message: mapModbusError(error, this.config.connection.port),
+              error: getTechnicalErrorMessage(error)
+            });
+          }
+        }
+      }
+
+      await this.logEvent('info', 'register scan completed', {
+        request: normalizedRequest,
+        total: rows.length,
+        successCount: rows.filter((row) => row.success).length
+      });
+    } catch (error) {
+      rows.push({
+        modbusFunction: normalizedRequest.modbusFunctions[0] ?? 3,
+        registerAddress: normalizedRequest.startAddress,
+        success: false,
+        message: mapModbusError(error, this.config.connection.port),
+        error: getTechnicalErrorMessage(error)
+      });
+      await this.logEvent('error', 'register scan failed', {
+        request: normalizedRequest,
+        error: mapModbusError(error, this.config.connection.port),
+        technicalError: getTechnicalErrorMessage(error)
+      });
+    } finally {
+      this.client?.setID(this.config.device.modbusAddress);
+    }
+
+    const finishedAt = new Date().toISOString();
+    const successCount = rows.filter((row) => row.success).length;
+
+    return {
+      success: successCount > 0,
+      startedAt,
+      finishedAt,
+      total: rows.length,
+      successCount,
+      errorCount: rows.length - successCount,
+      rows
+    };
+  }
+
   public async testConnection(): Promise<TestConnectionResult> {
     const firstChannel = this.config.channels[0];
 
@@ -278,6 +361,23 @@ export class ModbusDataService implements DataService {
       this.client = null;
       throw error;
     }
+  }
+
+  private normalizeRegisterScanRequest(request: RegisterScanRequest): RegisterScanRequest {
+    const startAddress = Math.max(0, Math.trunc(request.startAddress));
+    const requestedEndAddress = Math.max(startAddress, Math.trunc(request.endAddress));
+    const endAddress = Math.min(requestedEndAddress, startAddress + 255);
+    const registerCount = Math.min(8, Math.max(1, Math.trunc(request.registerCount)));
+    const modbusFunctions: Array<3 | 4> =
+      request.modbusFunctions.length > 0 ? request.modbusFunctions : [3, 4];
+
+    return {
+      ...request,
+      startAddress,
+      endAddress,
+      registerCount,
+      modbusFunctions
+    };
   }
 
   private async closeClient(): Promise<void> {

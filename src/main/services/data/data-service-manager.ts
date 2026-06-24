@@ -4,6 +4,8 @@ import type {
   ManualReadRequest,
   ManualReadResult,
   MonitoringSnapshot,
+  RegisterScanRequest,
+  RegisterScanResult,
   TestConnectionResult
 } from '../../../shared/types/monitoring.types';
 import type { EventLogService } from '../event-log/event-log.service';
@@ -46,6 +48,10 @@ export class DataServiceManager implements DataService {
 
   public async readRegisters(request: ManualReadRequest): Promise<ManualReadResult> {
     return this.service.readRegisters(request);
+  }
+
+  public async scanRegisters(request: RegisterScanRequest): Promise<RegisterScanResult> {
+    return this.service.scanRegisters(request);
   }
 
   public async testConnection(): Promise<TestConnectionResult> {

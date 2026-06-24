@@ -5,6 +5,8 @@ import type {
   ManualReadRequest,
   ManualReadResult,
   MonitoringSnapshot,
+  RegisterScanRequest,
+  RegisterScanResult,
   TestConnectionResult
 } from '../../shared/types/monitoring.types';
 import type { DataServiceManager } from '../services/data/data-service-manager';
@@ -54,6 +56,20 @@ export function registerMonitoringIpc(
         source: 'diagnostics',
         message: result.success ? 'Manual register read completed' : 'Manual register read failed',
         details: { request, result }
+      });
+      return result;
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.monitoring.scanRegisters,
+    async (_event, request: RegisterScanRequest): Promise<RegisterScanResult> => {
+      const result = await dataServiceManager.scanRegisters(request);
+      await eventLogService.addEvent({
+        level: result.success ? 'info' : 'warning',
+        source: 'diagnostics',
+        message: result.success ? 'Register scan completed' : 'Register scan completed with errors',
+        details: { request, total: result.total, successCount: result.successCount, errorCount: result.errorCount }
       });
       return result;
     }

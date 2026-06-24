@@ -5,6 +5,8 @@ import type {
   ManualReadRequest,
   ManualReadResult,
   MonitoringSnapshot,
+  RegisterScanRequest,
+  RegisterScanResult,
   TestConnectionResult
 } from './monitoring.types';
 
@@ -70,6 +72,7 @@ export type BarrelMonitorApi = {
     getSnapshot: () => Promise<MonitoringSnapshot>;
     readAllNow: () => Promise<MonitoringSnapshot>;
     readRegisters: (request: ManualReadRequest) => Promise<ManualReadResult>;
+    scanRegisters: (request: RegisterScanRequest) => Promise<RegisterScanResult>;
     testConnection: () => Promise<TestConnectionResult>;
     getStatus: () => Promise<DataServiceStatus>;
     subscribe: (callback: (snapshot: MonitoringSnapshot) => void) => () => void;

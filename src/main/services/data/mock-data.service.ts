@@ -6,6 +6,9 @@ import type {
   ManualReadRequest,
   ManualReadResult,
   MonitoringSnapshot,
+  RegisterScanRequest,
+  RegisterScanResult,
+  RegisterScanRow,
   Status,
   TestConnectionResult
 } from '../../../shared/types/monitoring.types';
@@ -94,6 +97,51 @@ export class MockDataService implements DataService {
     };
   }
 
+  public async scanRegisters(request: RegisterScanRequest): Promise<RegisterScanResult> {
+    const normalizedRequest = normalizeRegisterScanRequest(request);
+    const startedAt = new Date().toISOString();
+    const rows: RegisterScanRow[] = [];
+
+    normalizedRequest.modbusFunctions.forEach((modbusFunction) => {
+      for (
+        let registerAddress = normalizedRequest.startAddress;
+        registerAddress <= normalizedRequest.endAddress;
+        registerAddress += 1
+      ) {
+        const success = (registerAddress + modbusFunction) % 8 === 0;
+        const registers = success
+          ? Array.from(
+              { length: normalizedRequest.registerCount },
+              (_, index) => modbusFunction * 1000 + registerAddress + index
+            )
+          : undefined;
+
+        rows.push({
+          modbusFunction,
+          registerAddress,
+          success,
+          registers,
+          decodedValue: success ? registers?.[0] : undefined,
+          message: success ? 'Mock register found' : 'Mock timeout',
+          error: success ? undefined : 'Mock scan: no response'
+        });
+      }
+    });
+
+    const finishedAt = new Date().toISOString();
+    const successCount = rows.filter((row) => row.success).length;
+
+    return {
+      success: successCount > 0,
+      startedAt,
+      finishedAt,
+      total: rows.length,
+      successCount,
+      errorCount: rows.length - successCount,
+      rows
+    };
+  }
+
   public async testConnection(): Promise<TestConnectionResult> {
     return {
       success: true,
@@ -170,4 +218,21 @@ export class MockDataService implements DataService {
     const snapshot = await this.readAllChannels();
     this.listeners.forEach((listener) => listener(snapshot));
   }
+}
+
+function normalizeRegisterScanRequest(request: RegisterScanRequest): RegisterScanRequest {
+  const startAddress = Math.max(0, Math.trunc(request.startAddress));
+  const requestedEndAddress = Math.max(startAddress, Math.trunc(request.endAddress));
+  const endAddress = Math.min(requestedEndAddress, startAddress + 255);
+  const registerCount = Math.min(8, Math.max(1, Math.trunc(request.registerCount)));
+  const modbusFunctions: Array<3 | 4> =
+    request.modbusFunctions.length > 0 ? request.modbusFunctions : [3, 4];
+
+  return {
+    ...request,
+    startAddress,
+    endAddress,
+    registerCount,
+    modbusFunctions
+  };
 }

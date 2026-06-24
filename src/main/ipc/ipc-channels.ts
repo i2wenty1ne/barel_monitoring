@@ -9,6 +9,7 @@ export const IPC_CHANNELS = {
     getSnapshot: 'monitoring:get-snapshot',
     readAllNow: 'monitoring:read-all-now',
     readRegisters: 'monitoring:read-registers',
+    scanRegisters: 'monitoring:scan-registers',
     testConnection: 'monitoring:test-connection',
     getStatus: 'monitoring:get-status',
     snapshotUpdated: 'monitoring:snapshot-updated'

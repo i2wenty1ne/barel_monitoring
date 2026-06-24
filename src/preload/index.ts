@@ -14,6 +14,8 @@ import type {
   ManualReadRequest,
   ManualReadResult,
   MonitoringSnapshot,
+  RegisterScanRequest,
+  RegisterScanResult,
   TestConnectionResult
 } from '../shared/types/monitoring.types';
 import { IPC_CHANNELS } from '../main/ipc/ipc-channels';
@@ -33,6 +35,8 @@ const api: BarrelMonitorApi = {
       ipcRenderer.invoke(IPC_CHANNELS.monitoring.readAllNow) as Promise<MonitoringSnapshot>,
     readRegisters: (request: ManualReadRequest) =>
       ipcRenderer.invoke(IPC_CHANNELS.monitoring.readRegisters, request) as Promise<ManualReadResult>,
+    scanRegisters: (request: RegisterScanRequest) =>
+      ipcRenderer.invoke(IPC_CHANNELS.monitoring.scanRegisters, request) as Promise<RegisterScanResult>,
     testConnection: () =>
       ipcRenderer.invoke(IPC_CHANNELS.monitoring.testConnection) as Promise<TestConnectionResult>,
     getStatus: () =>

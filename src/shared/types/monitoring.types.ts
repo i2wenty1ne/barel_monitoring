@@ -61,3 +61,33 @@ export type ManualReadResult = {
   message: string;
   error?: string;
 };
+
+export type RegisterScanRequest = {
+  deviceAddress?: number;
+  startAddress: number;
+  endAddress: number;
+  registerCount: number;
+  modbusFunctions: Array<3 | 4>;
+  dataType: ChannelDataType;
+  byteOrder: ChannelConfig['byteOrder'];
+};
+
+export type RegisterScanRow = {
+  modbusFunction: 3 | 4;
+  registerAddress: number;
+  success: boolean;
+  registers?: number[];
+  decodedValue?: number;
+  message: string;
+  error?: string;
+};
+
+export type RegisterScanResult = {
+  success: boolean;
+  startedAt: string;
+  finishedAt: string;
+  total: number;
+  successCount: number;
+  errorCount: number;
+  rows: RegisterScanRow[];
+};

@@ -4,6 +4,8 @@ import type {
   ManualReadRequest,
   ManualReadResult,
   MonitoringSnapshot,
+  RegisterScanRequest,
+  RegisterScanResult,
   TestConnectionResult
 } from '../../../shared/types/monitoring.types';
 
@@ -15,6 +17,7 @@ export type DataService = {
   restart: (config: AppConfig) => Promise<void>;
   readAllChannels: () => Promise<MonitoringSnapshot>;
   readRegisters: (request: ManualReadRequest) => Promise<ManualReadResult>;
+  scanRegisters: (request: RegisterScanRequest) => Promise<RegisterScanResult>;
   testConnection: () => Promise<TestConnectionResult>;
   getStatus: () => DataServiceStatus;
   subscribe: (listener: MonitoringSnapshotListener) => () => void;

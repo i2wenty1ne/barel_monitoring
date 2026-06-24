@@ -5,6 +5,7 @@ import { ConnectionDiagnosticsPanel } from '../../../features/diagnostics/ui/Con
 import { DeviceDiagnosticsPanel } from '../../../features/diagnostics/ui/DeviceDiagnosticsPanel';
 import { DiagnosticActionsPanel } from '../../../features/diagnostics/ui/DiagnosticActionsPanel';
 import { ManualReadPanel } from '../../../features/diagnostics/ui/ManualReadPanel';
+import { RegisterScanPanel } from '../../../features/diagnostics/ui/RegisterScanPanel';
 import { RawSnapshotPanel } from '../../../features/diagnostics/ui/RawSnapshotPanel';
 import { useDiagnostics } from '../../../features/diagnostics/model/useDiagnostics';
 import { Alert } from '../../../shared/ui/Alert';
@@ -84,6 +85,7 @@ export function DiagnosticsPage(): React.JSX.Element {
         </div>
 
         <ManualReadPanel config={config} />
+        <RegisterScanPanel config={config} />
         <ChannelsDiagnosticsTable config={config} snapshot={snapshot} />
         <BarrelsDiagnosticsTable config={config} snapshot={snapshot} />
         <RawSnapshotPanel snapshot={snapshot} />
