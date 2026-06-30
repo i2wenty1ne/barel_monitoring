@@ -11,7 +11,7 @@ type AssetCardProps = {
 };
 
 export function AssetCard({ viewModel, showLastUpdate, onClick }: AssetCardProps): React.JSX.Element {
-  const { asset, readings, status, level, temperature, updatedAt } = viewModel;
+  const { asset, readings, status, level, temperature, volume, updatedAt } = viewModel;
   const isTankLike = asset.type === 'barrel' || asset.type === 'tank';
 
   return (
@@ -52,8 +52,9 @@ export function AssetCard({ viewModel, showLastUpdate, onClick }: AssetCardProps
 
       <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
         {isTankLike ? <Metric label="Заполненность" value={formatPercent(asNumber(level?.displayValue))} /> : null}
+        {isTankLike ? <Metric label="Объем" value={volume ? formatReadingValue(volume.displayValue, volume.displayUnit) : '—'} /> : null}
         {temperature ? <Metric label="Температура" value={formatTemperature(asNumber(temperature.displayValue))} /> : null}
-        <Metric label="Точек" value={String(readings.length)} />
+        {!isTankLike ? <Metric label="Точек" value={String(readings.length)} /> : null}
         {showLastUpdate ? <Metric label="Обновлено" value={formatDateTime(updatedAt)} /> : null}
       </dl>
     </button>

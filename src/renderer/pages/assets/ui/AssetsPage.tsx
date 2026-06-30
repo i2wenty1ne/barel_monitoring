@@ -114,23 +114,24 @@ export function AssetsPage(): React.JSX.Element {
     }
 
     const now = new Date().toISOString();
+    const normalizedDraft = normalizeAssetDraft(draft);
     await save(
       {
         ...currentConfig,
-        assets: currentConfig.assets.map((asset) => asset.id === draft.id ? { ...draft, updatedAt: now } : asset),
+        assets: currentConfig.assets.map((asset) => asset.id === normalizedDraft.id ? { ...normalizedDraft, updatedAt: now } : asset),
         points: currentConfig.points.map((point) => ({
           ...point,
-          assetId: draft.pointIds.includes(point.id)
-            ? draft.id
-            : point.assetId === draft.id
+          assetId: normalizedDraft.pointIds.includes(point.id)
+            ? normalizedDraft.id
+            : point.assetId === normalizedDraft.id
               ? undefined
               : point.assetId
         })),
         actuators: currentConfig.actuators.map((actuator) => ({
           ...actuator,
-          assetId: draft.actuatorIds.includes(actuator.id)
-            ? draft.id
-            : actuator.assetId === draft.id
+          assetId: normalizedDraft.actuatorIds.includes(actuator.id)
+            ? normalizedDraft.id
+            : actuator.assetId === normalizedDraft.id
               ? undefined
               : actuator.assetId
         }))
@@ -226,8 +227,21 @@ function AssetForm({
   actuators: Array<{ id: string; name: string }>;
   draft: Asset;
   onChange: (asset: Asset) => void;
-  points: Array<{ id: string; name: string }>;
+  points: Array<{ id: string; name: string; kind: string; assetId?: string }>;
 }): React.JSX.Element {
+  const isTankLike = draft.type === 'barrel' || draft.type === 'tank';
+  const levelPointId = getMetadataPointId(draft, 'levelPointId');
+  const temperaturePointId = getMetadataPointId(draft, 'temperaturePointId');
+  const volumePointId = getMetadataPointId(draft, 'volumePointId');
+  const linkedPointIds = new Set([
+    ...draft.pointIds,
+    ...points.filter((point) => point.assetId === draft.id).map((point) => point.id),
+    ...(levelPointId ? [levelPointId] : []),
+    ...(temperaturePointId ? [temperaturePointId] : []),
+    ...(volumePointId ? [volumePointId] : [])
+  ]);
+  const linkedTelemetryPoints = points.filter((point) => point.kind === 'telemetry' && linkedPointIds.has(point.id));
+
   return (
     <div className="space-y-5">
       <div className="grid gap-4 md:grid-cols-3">
@@ -264,11 +278,19 @@ function AssetForm({
         />
       </div>
 
+      {isTankLike ? (
+        <TankPointRoleEditor
+          draft={draft}
+          onChange={onChange}
+          points={linkedTelemetryPoints}
+        />
+      ) : null}
+
       <RelationEditor
         items={points}
         selectedIds={draft.pointIds}
         title="Точки данных"
-        onChange={(pointIds) => onChange({ ...draft, pointIds })}
+        onChange={(pointIds) => onChange(updateAssetPointIds(draft, pointIds))}
       />
       <RelationEditor
         items={actuators}
@@ -277,6 +299,53 @@ function AssetForm({
         onChange={(actuatorIds) => onChange({ ...draft, actuatorIds })}
       />
     </div>
+  );
+}
+
+function TankPointRoleEditor({
+  draft,
+  onChange,
+  points
+}: {
+  draft: Asset;
+  onChange: (asset: Asset) => void;
+  points: Array<{ id: string; name: string }>;
+}): React.JSX.Element {
+  const options = [
+    { label: 'Не выбрано', value: '' },
+    ...points.map((point) => ({ label: `${point.name} (${point.id})`, value: point.id }))
+  ];
+  const levelPointId = typeof draft.metadata?.levelPointId === 'string' ? draft.metadata.levelPointId : '';
+  const temperaturePointId = typeof draft.metadata?.temperaturePointId === 'string' ? draft.metadata.temperaturePointId : '';
+  const volumePointId = typeof draft.metadata?.volumePointId === 'string' ? draft.metadata.volumePointId : '';
+
+  return (
+    <section className="rounded-md border border-white/10 bg-slate-950/35 p-4">
+      <h3 className="mb-3 text-sm font-medium text-slate-100">Отображение бочки</h3>
+      <div className="grid gap-4 md:grid-cols-3">
+        <Select
+          label="Точка заполнения"
+          hint="Используется для уровня в виджете бочки"
+          onChange={(levelPointId) => onChange(updatePointRole(draft, 'levelPointId', levelPointId))}
+          options={options}
+          value={levelPointId}
+        />
+        <Select
+          label="Точка температуры"
+          hint="Используется для температуры в карточке"
+          onChange={(temperaturePointId) => onChange(updatePointRole(draft, 'temperaturePointId', temperaturePointId))}
+          options={options}
+          value={temperaturePointId}
+        />
+        <Select
+          label="Точка объема"
+          hint="Показывается под заполненностью"
+          onChange={(volumePointId) => onChange(updatePointRole(draft, 'volumePointId', volumePointId))}
+          options={options}
+          value={volumePointId}
+        />
+      </div>
+    </section>
   );
 }
 
@@ -331,6 +400,73 @@ function createDefaultAsset(id: string, type: AssetType, displayOrder: number, n
     createdAt: now,
     updatedAt: now
   };
+}
+
+function normalizeAssetDraft(asset: Asset): Asset {
+  const levelPointId = getMetadataPointId(asset, 'levelPointId');
+  const temperaturePointId = getMetadataPointId(asset, 'temperaturePointId');
+  const volumePointId = getMetadataPointId(asset, 'volumePointId');
+  const pointIds = new Set(asset.pointIds);
+  if (levelPointId) {
+    pointIds.add(levelPointId);
+  }
+  if (temperaturePointId) {
+    pointIds.add(temperaturePointId);
+  }
+  if (volumePointId) {
+    pointIds.add(volumePointId);
+  }
+
+  return {
+    ...asset,
+    pointIds: [...pointIds],
+    metadata: { ...asset.metadata }
+  };
+}
+
+function updateAssetPointIds(asset: Asset, pointIds: string[]): Asset {
+  const selectedIds = new Set(pointIds);
+  const metadata = { ...asset.metadata };
+  const levelPointId = getMetadataPointId(asset, 'levelPointId');
+  const temperaturePointId = getMetadataPointId(asset, 'temperaturePointId');
+  const volumePointId = getMetadataPointId(asset, 'volumePointId');
+
+  if (levelPointId && !selectedIds.has(levelPointId)) {
+    delete metadata.levelPointId;
+  }
+
+  if (temperaturePointId && !selectedIds.has(temperaturePointId)) {
+    delete metadata.temperaturePointId;
+  }
+
+  if (volumePointId && !selectedIds.has(volumePointId)) {
+    delete metadata.volumePointId;
+  }
+
+  return {
+    ...asset,
+    pointIds,
+    metadata
+  };
+}
+
+function updatePointRole(asset: Asset, key: 'levelPointId' | 'temperaturePointId' | 'volumePointId', pointId: string): Asset {
+  const metadata = { ...asset.metadata };
+  if (pointId) {
+    metadata[key] = pointId;
+  } else {
+    delete metadata[key];
+  }
+
+  return {
+    ...asset,
+    metadata
+  };
+}
+
+function getMetadataPointId(asset: Asset, key: 'levelPointId' | 'temperaturePointId' | 'volumePointId'): string | null {
+  const value = asset.metadata?.[key];
+  return typeof value === 'string' && value ? value : null;
 }
 
 function getDefaultAssetName(type: AssetType): string {

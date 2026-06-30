@@ -422,7 +422,9 @@ function legacyBarrelToAsset(barrel: LegacyBarrelConfig, now: string): Asset {
       active: barrel.active,
       visible: barrel.visible,
       displayOrder: barrel.displayOrder,
-      cardSize: barrel.cardSize
+      cardSize: barrel.cardSize,
+      temperaturePointId: barrel.temperatureChannelId,
+      levelPointId: barrel.levelChannelId
     },
     createdAt: now,
     updatedAt: now

@@ -8,6 +8,7 @@ export type AssetViewModel = {
   status: Status;
   level: Reading | null;
   temperature: Reading | null;
+  volume: Reading | null;
   updatedAt: string | null;
 };
 
@@ -20,8 +21,9 @@ export function selectAssetViewModels(
   return [...config.assets]
     .sort((left, right) => getDisplayOrder(left) - getDisplayOrder(right))
     .map((asset) => {
+      const configuredPointIds = getConfiguredPointIds(asset);
       const assetPoints = config.points.filter(
-        (point) => asset.pointIds.includes(point.id) || point.assetId === asset.id
+        (point) => asset.pointIds.includes(point.id) || point.assetId === asset.id || configuredPointIds.includes(point.id)
       );
       const readings = assetPoints
         .map((point) => readingsByPointId[point.id])
@@ -32,11 +34,34 @@ export function selectAssetViewModels(
         asset,
         readings,
         status,
-        level: findPointReading(readings, ['level', 'уров', 'volume', 'объем', 'объём']),
-        temperature: findPointReading(readings, ['temperature', 'темпера']),
+        level: findConfiguredReading(asset, readings, 'levelPointId')
+          ?? findPointReading(readings, ['level', 'уров', 'volume', 'объем', 'объём']),
+        temperature: findConfiguredReading(asset, readings, 'temperaturePointId')
+          ?? findPointReading(readings, ['temperature', 'темпера']),
+        volume: findConfiguredReading(asset, readings, 'volumePointId')
+          ?? findPointReading(readings, ['volume', 'объем', 'объём']),
         updatedAt: readings[0]?.timestamp ?? snapshot?.updatedAt ?? null
       };
     });
+}
+
+function getConfiguredPointIds(asset: Asset): string[] {
+  return ['levelPointId', 'temperaturePointId', 'volumePointId']
+    .map((key) => asset.metadata?.[key])
+    .filter((value): value is string => typeof value === 'string' && value.length > 0);
+}
+
+function findConfiguredReading(
+  asset: Asset,
+  readings: Reading[],
+  metadataKey: 'levelPointId' | 'temperaturePointId' | 'volumePointId'
+): Reading | null {
+  const pointId = asset.metadata?.[metadataKey];
+  if (typeof pointId !== 'string' || !pointId) {
+    return null;
+  }
+
+  return readings.find((reading) => reading.pointId === pointId) ?? null;
 }
 
 function findPointReading(readings: Reading[], patterns: string[]): Reading | null {

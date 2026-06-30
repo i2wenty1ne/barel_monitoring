@@ -142,10 +142,24 @@ export function PointsPage(): React.JSX.Element {
       {
         ...currentConfig,
         points: currentConfig.points.filter((item) => item.id !== point.id),
-        assets: currentConfig.assets.map((asset) => ({
-          ...asset,
-          pointIds: asset.pointIds.filter((pointId) => pointId !== point.id)
-        })),
+        assets: currentConfig.assets.map((asset) => {
+          const metadata = { ...asset.metadata };
+          if (metadata.levelPointId === point.id) {
+            delete metadata.levelPointId;
+          }
+          if (metadata.temperaturePointId === point.id) {
+            delete metadata.temperaturePointId;
+          }
+          if (metadata.volumePointId === point.id) {
+            delete metadata.volumePointId;
+          }
+
+          return {
+            ...asset,
+            metadata,
+            pointIds: asset.pointIds.filter((pointId) => pointId !== point.id)
+          };
+        }),
         monitoringProfiles: currentConfig.monitoringProfiles.map((profile) => ({
           ...profile,
           pointConfigs: profile.pointConfigs.filter((pointConfig) => pointConfig.pointId !== point.id)

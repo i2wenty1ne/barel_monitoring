@@ -46,7 +46,9 @@ export const defaultConfig: AppConfig = {
         cardSize: 'medium',
         displayOrder: 1,
         maxVolumeL: 1000,
-        heightMm: 3000
+        heightMm: 3000,
+        temperaturePointId: 'temperature-barrel-1',
+        levelPointId: 'level-barrel-1'
       },
       createdAt,
       updatedAt: createdAt

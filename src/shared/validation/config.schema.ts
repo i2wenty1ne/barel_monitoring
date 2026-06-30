@@ -412,6 +412,21 @@ export const appConfigSchema = z
           context.addIssue({ code: 'custom', path: ['assets', index, 'actuatorIds'], message: `actuatorId ${actuatorId} не найден` });
         }
       });
+
+      const levelPointId = asset.metadata?.levelPointId;
+      if (typeof levelPointId === 'string' && levelPointId && !pointIds.has(levelPointId)) {
+        context.addIssue({ code: 'custom', path: ['assets', index, 'metadata', 'levelPointId'], message: `levelPointId ${levelPointId} не найден` });
+      }
+
+      const temperaturePointId = asset.metadata?.temperaturePointId;
+      if (typeof temperaturePointId === 'string' && temperaturePointId && !pointIds.has(temperaturePointId)) {
+        context.addIssue({ code: 'custom', path: ['assets', index, 'metadata', 'temperaturePointId'], message: `temperaturePointId ${temperaturePointId} не найден` });
+      }
+
+      const volumePointId = asset.metadata?.volumePointId;
+      if (typeof volumePointId === 'string' && volumePointId && !pointIds.has(volumePointId)) {
+        context.addIssue({ code: 'custom', path: ['assets', index, 'metadata', 'volumePointId'], message: `volumePointId ${volumePointId} не найден` });
+      }
     });
 
     config.points.forEach((point, index) => {
