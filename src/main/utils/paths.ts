@@ -24,3 +24,11 @@ export function getLogsDir(customLogsDir?: string, customUserDataPath?: string):
 export function getEventsLogPath(customEventsLogPath?: string, customLogsDir?: string): string {
   return customEventsLogPath ?? join(getLogsDir(customLogsDir), 'events.jsonl');
 }
+
+export function getHistoryDir(customHistoryDir?: string, customUserDataPath?: string): string {
+  return customHistoryDir ?? join(getUserDataPath(customUserDataPath), 'history');
+}
+
+export function getTimeSeriesPath(customTimeSeriesPath?: string, customHistoryDir?: string): string {
+  return customTimeSeriesPath ?? join(getHistoryDir(customHistoryDir), 'timeseries.jsonl');
+}

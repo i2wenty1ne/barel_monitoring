@@ -7,10 +7,15 @@ import type {
   DataSource,
   DeviceConfig,
   ExecuteCommandRequest,
+  ExportResult,
+  GetTrendQuery,
   GraphValidationResult,
+  MonitoringProfile,
+  MonitoringSession,
   Point,
   ProcessGraph,
-  ProcessJob
+  ProcessJob,
+  TrendSeries
 } from './config.types';
 import type { EventLogEntry, EventLogFilter } from './event.types';
 import type {
@@ -94,6 +99,17 @@ export type BarrelMonitorApi = {
   commands: {
     execute: (request: ExecuteCommandRequest) => Promise<CommandResult>;
     getHistory: (query?: CommandHistoryQuery) => Promise<Command[]>;
+  };
+  history: {
+    getTrend: (query: GetTrendQuery) => Promise<TrendSeries[]>;
+    exportCsv: (query: GetTrendQuery) => Promise<ExportResult>;
+  };
+  sessions: {
+    start: (assetId: string, profileId: string) => Promise<MonitoringSession>;
+    stop: (sessionId: string) => Promise<void>;
+    getActive: () => Promise<MonitoringSession[]>;
+    getProfiles: (assetId: string) => Promise<MonitoringProfile[]>;
+    saveProfile: (profile: MonitoringProfile) => Promise<MonitoringProfile>;
   };
   processes: {
     validateGraph: (graph: ProcessGraph) => Promise<GraphValidationResult>;

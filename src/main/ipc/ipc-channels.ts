@@ -23,6 +23,17 @@ export const IPC_CHANNELS = {
     execute: 'commands:execute',
     getHistory: 'commands:get-history'
   },
+  history: {
+    getTrend: 'history:get-trend',
+    exportCsv: 'history:export-csv'
+  },
+  sessions: {
+    start: 'sessions:start',
+    stop: 'sessions:stop',
+    getActive: 'sessions:get-active',
+    getProfiles: 'sessions:get-profiles',
+    saveProfile: 'sessions:save-profile'
+  },
   processes: {
     validateGraph: 'processes:validate-graph',
     startJob: 'processes:start-job',

@@ -6,8 +6,13 @@ import type {
   CommandResult,
   ExecuteCommandRequest,
   GraphValidationResult,
+  ExportResult,
+  GetTrendQuery,
+  MonitoringProfile,
+  MonitoringSession,
   ProcessGraph,
-  ProcessJob
+  ProcessJob,
+  TrendSeries
 } from '../shared/types/config.types';
 import type { EventLogEntry, EventLogFilter } from '../shared/types/event.types';
 import type {
@@ -83,6 +88,24 @@ const api: BarrelMonitorApi = {
       ipcRenderer.invoke(IPC_CHANNELS.commands.execute, request) as Promise<CommandResult>,
     getHistory: (query?: CommandHistoryQuery) =>
       ipcRenderer.invoke(IPC_CHANNELS.commands.getHistory, query) as Promise<Command[]>
+  },
+  history: {
+    getTrend: (query: GetTrendQuery) =>
+      ipcRenderer.invoke(IPC_CHANNELS.history.getTrend, query) as Promise<TrendSeries[]>,
+    exportCsv: (query: GetTrendQuery) =>
+      ipcRenderer.invoke(IPC_CHANNELS.history.exportCsv, query) as Promise<ExportResult>
+  },
+  sessions: {
+    start: (assetId: string, profileId: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.sessions.start, assetId, profileId) as Promise<MonitoringSession>,
+    stop: (sessionId: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.sessions.stop, sessionId) as Promise<void>,
+    getActive: () =>
+      ipcRenderer.invoke(IPC_CHANNELS.sessions.getActive) as Promise<MonitoringSession[]>,
+    getProfiles: (assetId: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.sessions.getProfiles, assetId) as Promise<MonitoringProfile[]>,
+    saveProfile: (profile: MonitoringProfile) =>
+      ipcRenderer.invoke(IPC_CHANNELS.sessions.saveProfile, profile) as Promise<MonitoringProfile>
   },
   processes: {
     validateGraph: (graph: ProcessGraph) =>

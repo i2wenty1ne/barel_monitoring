@@ -5,14 +5,18 @@ import { ConfigService } from './services/config/config.service';
 import { CommandService } from './services/command/command.service';
 import { DataServiceManager } from './services/data/data-service-manager';
 import { EventLogService } from './services/event-log/event-log.service';
+import { HistorianService } from './services/history/historian.service';
+import { MonitoringSessionService } from './services/history/monitoring-session.service';
+import { TimeSeriesStorage } from './services/history/time-series-storage';
 import { ProcessRuntimeService } from './services/process-runtime/process-runtime.service';
 import type { AppConfig } from '../shared/types/config.types';
 
 let mainWindow: BrowserWindow | null = null;
 let dataServiceManager: DataServiceManager | null = null;
+let unsubscribeHistorian: (() => void) | null = null;
 
-async function createMainWindow(config: AppConfig): Promise<BrowserWindow> {
-  const window = new BrowserWindow({
+function createMainWindow(config: AppConfig): BrowserWindow {
+  return new BrowserWindow({
     width: 1180,
     height: 760,
     minWidth: 960,
@@ -27,14 +31,14 @@ async function createMainWindow(config: AppConfig): Promise<BrowserWindow> {
       sandbox: true
     }
   });
+}
 
+async function loadMainWindow(window: BrowserWindow): Promise<void> {
   if (process.env.ELECTRON_RENDERER_URL) {
     await window.loadURL(process.env.ELECTRON_RENDERER_URL);
   } else {
     await window.loadFile(join(__dirname, '../renderer/index.html'));
   }
-
-  return window;
 }
 
 async function bootstrap(): Promise<void> {
@@ -67,6 +71,9 @@ async function bootstrap(): Promise<void> {
   }
 
   dataServiceManager = new DataServiceManager(configResult.config, eventLogService);
+  const historyStorage = new TimeSeriesStorage();
+  const historianService = new HistorianService(configService, historyStorage, eventLogService);
+  const monitoringSessionService = new MonitoringSessionService(configService, eventLogService);
   const commandService = new CommandService(configService, dataServiceManager, eventLogService);
   const processRuntimeService = new ProcessRuntimeService(
     configService,
@@ -74,7 +81,7 @@ async function bootstrap(): Promise<void> {
     commandService,
     eventLogService
   );
-  mainWindow = await createMainWindow(configResult.config);
+  mainWindow = createMainWindow(configResult.config);
 
   registerIpcHandlers({
     mainWindow,
@@ -82,9 +89,16 @@ async function bootstrap(): Promise<void> {
     eventLogService,
     dataServiceManager,
     commandService,
-    processRuntimeService
+    processRuntimeService,
+    historyStorage,
+    monitoringSessionService
   });
 
+  await loadMainWindow(mainWindow);
+  await historianService.applyRetention();
+  unsubscribeHistorian = dataServiceManager.subscribe((snapshot) => {
+    void historianService.handleSnapshot(snapshot);
+  });
   await dataServiceManager.start();
 
   mainWindow.on('closed', () => {
@@ -112,4 +126,5 @@ app.on('before-quit', () => {
   if (dataServiceManager) {
     void dataServiceManager.stop();
   }
+  unsubscribeHistorian?.();
 });

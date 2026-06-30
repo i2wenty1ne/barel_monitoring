@@ -2,11 +2,14 @@ import type { BrowserWindow } from 'electron';
 import type { ConfigService } from '../services/config/config.service';
 import type { DataServiceManager } from '../services/data/data-service-manager';
 import type { EventLogService } from '../services/event-log/event-log.service';
+import type { MonitoringSessionService } from '../services/history/monitoring-session.service';
+import type { TimeSeriesStorage } from '../services/history/time-series-storage';
 import type { CommandService } from '../services/command/command.service';
 import type { ProcessRuntimeService } from '../services/process-runtime/process-runtime.service';
 import { registerCommandsIpc } from './commands.ipc';
 import { registerConfigIpc } from './config.ipc';
 import { registerEventsIpc } from './events.ipc';
+import { registerHistoryIpc } from './history.ipc';
 import { registerMonitoringIpc } from './monitoring.ipc';
 import { registerProcessesIpc } from './processes.ipc';
 import { registerSystemIpc } from './system.ipc';
@@ -18,11 +21,14 @@ export function registerIpcHandlers(options: {
   dataServiceManager: DataServiceManager;
   commandService: CommandService;
   processRuntimeService: ProcessRuntimeService;
+  historyStorage: TimeSeriesStorage;
+  monitoringSessionService: MonitoringSessionService;
 }): void {
   registerConfigIpc(options.configService, options.dataServiceManager, options.eventLogService);
   registerMonitoringIpc(options.mainWindow, options.dataServiceManager, options.eventLogService);
   registerEventsIpc(options.mainWindow, options.eventLogService);
   registerCommandsIpc(options.commandService);
   registerProcessesIpc(options.processRuntimeService);
+  registerHistoryIpc(options.configService, options.historyStorage, options.monitoringSessionService);
   registerSystemIpc(options.configService, options.eventLogService);
 }

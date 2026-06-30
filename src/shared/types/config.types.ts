@@ -378,6 +378,47 @@ export type ProcessJob = {
   error?: string;
 };
 
+export type TimeSeriesRecord = {
+  id: string;
+  assetId: string;
+  pointId: string;
+  monitoringSessionId?: string;
+  timestamp: string;
+  rawValue: number | boolean | string | null;
+  value: number | boolean | string | null;
+  unit?: string;
+  quality: 'good' | 'bad' | 'uncertain' | 'stale';
+  source: 'modbus' | 'mock' | 'manual' | 'calculated';
+  metadata?: Record<string, unknown>;
+};
+
+export type GetTrendQuery = {
+  assetId?: string;
+  pointIds: string[];
+  from: string;
+  to: string;
+  aggregation?: 'raw' | 'avg' | 'min' | 'max' | 'last';
+  bucketMs?: number;
+};
+
+export type TrendSeries = {
+  pointId: string;
+  pointName: string;
+  unit?: string;
+  values: Array<{
+    timestamp: string;
+    value: number | boolean | string | null;
+    quality: 'good' | 'bad' | 'uncertain' | 'stale';
+  }>;
+};
+
+export type ExportResult = {
+  success: boolean;
+  path?: string;
+  rows: number;
+  message?: string;
+};
+
 export type CardSize = 'small' | 'medium' | 'large';
 
 export type ValueThresholdConfig = {
