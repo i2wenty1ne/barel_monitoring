@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { formatDateTime } from '../../../../shared/lib/format';
-import { selectBarrelViewModels } from '../../../entities/barrel/model/selectors';
-import { BarrelCard } from '../../../entities/barrel/ui/BarrelCard';
+import { selectAssetViewModels } from '../../../entities/asset/model/selectors';
+import { AssetCard } from '../../../entities/asset/ui/AssetCard';
 import { useAppConfig } from '../../../entities/config/model/useAppConfig';
 import { useMonitoringSnapshot } from '../../../entities/monitoring/model/useMonitoringSnapshot';
 import { EmptyState } from '../../../shared/ui/EmptyState';
@@ -16,12 +16,12 @@ export function MonitoringPage(): React.JSX.Element {
   const configState = useAppConfig();
   const snapshotState = useMonitoringSnapshot();
 
-  const barrelCards = useMemo(() => {
+  const assetCards = useMemo(() => {
     if (!configState.config) {
       return [];
     }
 
-    return selectBarrelViewModels(configState.config, snapshotState.data);
+    return selectAssetViewModels(configState.config, snapshotState.data);
   }, [configState.config, snapshotState.data]);
 
   const isLoading =
@@ -88,23 +88,19 @@ export function MonitoringPage(): React.JSX.Element {
         />
       </div>
 
-      {barrelCards.length === 0 ? (
+      {assetCards.length === 0 ? (
         <EmptyState
           title="Объекты не настроены"
           description="Создайте Asset и привяжите к нему telemetry points."
         />
       ) : (
         <div className={gridClassName}>
-          {barrelCards.map((item) => (
-            <BarrelCard
-              key={item.barrel.id}
-              barrel={item.barrel}
-              temperature={item.temperature}
-              level={item.level}
-              status={item.status}
-              updatedAt={item.updatedAt}
+          {assetCards.map((item) => (
+            <AssetCard
+              key={item.asset.id}
+              viewModel={item}
               showLastUpdate={configState.config?.interface.showLastUpdate ?? true}
-              onClick={() => navigate(`/barrels/${item.barrel.id}`)}
+              onClick={() => navigate(`/assets/${item.asset.id}`)}
             />
           ))}
         </div>

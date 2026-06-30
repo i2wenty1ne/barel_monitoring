@@ -237,17 +237,18 @@ function migrateLegacyToV2(value: Record<string, unknown>): AppConfig {
 
 function withCompatibilityProjections(config: Partial<AppConfig>): AppConfig {
   const now = new Date().toISOString();
-  const devices = Array.isArray(config.devices) && config.devices.length > 0
-    ? config.devices
-    : dataSourcesToDevices(config.dataSources ?? []);
-  const channels = Array.isArray(config.channels) && config.channels.length > 0
-    ? config.channels
-    : pointsToChannels(config.points ?? []);
-  const barrels = Array.isArray(config.barrels) && config.barrels.length > 0
-    ? config.barrels
-    : channels.length > 0
-      ? assetsToBarrels(config.assets ?? [])
-      : [];
+  const domainDevices = dataSourcesToDevices(config.dataSources ?? []);
+  const domainChannels = pointsToChannels(config.points ?? []);
+  const domainBarrels = domainChannels.length > 0 ? assetsToBarrels(config.assets ?? []) : [];
+  const devices = mergeById(config.devices ?? [], domainDevices, (device) =>
+    syncDeviceFromDataSource(device, config.dataSources?.find((source) => source.id === device.id))
+  );
+  const channels = mergeById(config.channels ?? [], domainChannels, (channel) =>
+    syncChannelFromPoint(channel, config.points?.find((point) => point.id === channel.id))
+  );
+  const barrels = mergeById(config.barrels ?? [], domainBarrels, (barrel) =>
+    syncBarrelFromAsset(barrel, config.assets?.find((asset) => asset.id === barrel.id))
+  );
 
   return withDomainFromCompatibility({
     ...defaultConfig,
@@ -263,28 +264,94 @@ function withCompatibilityProjections(config: Partial<AppConfig>): AppConfig {
   } as AppConfig, now);
 }
 
+function syncDeviceFromDataSource(device: DeviceConfig, source: DataSource | undefined): DeviceConfig {
+  if (!source || source.type !== 'modbus-rtu' || source.connection.type !== 'modbus-rtu') {
+    return device;
+  }
+
+  return {
+    ...device,
+    name: source.name,
+    model: String(source.metadata?.model ?? device.model),
+    modbusAddress: typeof source.metadata?.slaveId === 'number' ? source.metadata.slaveId : device.modbusAddress,
+    active: source.enabled,
+    connection: {
+      ...source.connection,
+      timeoutMs: source.timeoutMs ?? device.connection.timeoutMs,
+      retries: source.retryCount ?? device.connection.retries
+    }
+  };
+}
+
+function syncChannelFromPoint(channel: ChannelConfig, point: Point | undefined): ChannelConfig {
+  if (
+    !point ||
+    point.kind !== 'telemetry' ||
+    point.address?.protocol !== 'modbus' ||
+    (point.address.functionCode !== 3 && point.address.functionCode !== 4)
+  ) {
+    return channel;
+  }
+
+  return {
+    ...channel,
+    name: point.name,
+    deviceId: point.dataSourceId ?? channel.deviceId,
+    registerAddress: point.address.registerAddress ?? channel.registerAddress,
+    modbusFunction: point.address.functionCode,
+    dataType: point.valueType === 'boolean' || point.valueType === 'string' ? channel.dataType : point.valueType,
+    registerCount: point.address.registerCount ?? channel.registerCount,
+    byteOrder: point.address.byteOrder ?? channel.byteOrder,
+    rawUnit: point.rawUnit ?? channel.rawUnit,
+    displayUnit: point.displayUnit ?? channel.displayUnit,
+    scaling: point.scaling ?? channel.scaling
+  };
+}
+
+function syncBarrelFromAsset(barrel: BarrelConfig, asset: Asset | undefined): BarrelConfig {
+  if (!asset || (asset.type !== 'barrel' && asset.type !== 'tank')) {
+    return barrel;
+  }
+
+  return {
+    ...barrel,
+    name: asset.name,
+    active: Boolean(asset.metadata?.active ?? barrel.active),
+    visible: Boolean(asset.metadata?.visible ?? barrel.visible),
+    temperatureChannelId: asset.pointIds.find((pointId) => pointId.includes('temperature')) ?? barrel.temperatureChannelId,
+    levelChannelId: asset.pointIds.find((pointId) => pointId.includes('level')) ?? barrel.levelChannelId,
+    displayOrder: typeof asset.metadata?.displayOrder === 'number' ? asset.metadata.displayOrder : barrel.displayOrder
+  };
+}
+
 function withDomainFromCompatibility(config: AppConfig, now: string): AppConfig {
-  const dataSourceIds = new Set((config.dataSources ?? []).map((source) => source.id));
-  const dataSources = [
-    ...(config.dataSources ?? []),
-    ...config.devices
-      .filter((device) => !dataSourceIds.has(device.id))
-      .map((device) => deviceToDataSource(device, now))
-  ];
-  const pointIds = new Set((config.points ?? []).map((point) => point.id));
-  const points = [
-    ...(config.points ?? []),
-    ...config.channels
-      .filter((channel) => !pointIds.has(channel.id))
-      .map((channel) => channelToPoint(channel, config.barrels, config.devices, now))
-  ];
-  const assetIds = new Set((config.assets ?? []).map((asset) => asset.id));
-  const assets = [
-    ...(config.assets ?? []),
-    ...config.barrels
-      .filter((barrel) => !assetIds.has(barrel.id))
-      .map((barrel) => barrelToAsset(barrel, now))
-  ];
+  const devicesById = new Map(config.devices.map((device) => [device.id, device]));
+  const channelsById = new Map(config.channels.map((channel) => [channel.id, channel]));
+  const barrelsById = new Map(config.barrels.map((barrel) => [barrel.id, barrel]));
+  const dataSources = mergeById(
+    config.dataSources ?? [],
+    config.devices.map((device) => deviceToDataSource(device, now)),
+    (source) => {
+      const device = devicesById.get(source.id);
+      return device ? syncDataSourceFromDevice(source, device) : source;
+    }
+  );
+  const points = mergeById(
+    config.points ?? [],
+    config.channels.map((channel) => channelToPoint(channel, config.barrels, config.devices, now)),
+    (point) => {
+      const channel = channelsById.get(point.id);
+      return channel ? syncPointFromChannel(point, channel, config.barrels, config.devices) : point;
+    }
+  );
+  const assets = mergeById(
+    config.assets ?? [],
+    config.barrels.map((barrel) => barrelToAsset(barrel, now)),
+    (asset) => {
+      const barrel = barrelsById.get(asset.id);
+      return barrel ? syncAssetFromBarrel(asset, barrel) : asset;
+    }
+  );
 
   return {
     ...config,
@@ -320,6 +387,70 @@ function withDomainFromCompatibility(config: AppConfig, now: string): AppConfig 
     processes: config.processes ?? [],
     processGraphs: config.processGraphs ?? [],
     processJobs: config.processJobs ?? []
+  };
+}
+
+function mergeById<TItem extends { id: string }>(
+  primary: TItem[],
+  fallback: TItem[],
+  sync: (item: TItem) => TItem
+): TItem[] {
+  const result = primary.map((item) => sync(item));
+  const resultIds = new Set(result.map((item) => item.id));
+
+  fallback.forEach((item) => {
+    if (!resultIds.has(item.id)) {
+      result.push(item);
+    }
+  });
+
+  return result;
+}
+
+function syncDataSourceFromDevice(source: DataSource, device: DeviceConfig): DataSource {
+  const next = deviceToDataSource(device, source.createdAt);
+  return {
+    ...source,
+    ...next,
+    metadata: {
+      ...source.metadata,
+      ...next.metadata
+    },
+    createdAt: source.createdAt,
+    updatedAt: new Date().toISOString()
+  };
+}
+
+function syncPointFromChannel(
+  point: Point,
+  channel: ChannelConfig,
+  barrels: BarrelConfig[],
+  devices: DeviceConfig[]
+): Point {
+  const next = channelToPoint(channel, barrels, devices, point.createdAt);
+  return {
+    ...point,
+    ...next,
+    thresholds: point.thresholds ?? next.thresholds,
+    recordable: point.recordable,
+    enabled: point.enabled,
+    createdAt: point.createdAt,
+    updatedAt: new Date().toISOString()
+  };
+}
+
+function syncAssetFromBarrel(asset: Asset, barrel: BarrelConfig): Asset {
+  const next = barrelToAsset(barrel, asset.createdAt);
+  return {
+    ...asset,
+    name: next.name,
+    type: next.type,
+    pointIds: next.pointIds,
+    metadata: {
+      ...asset.metadata,
+      ...next.metadata
+    },
+    updatedAt: new Date().toISOString()
   };
 }
 
