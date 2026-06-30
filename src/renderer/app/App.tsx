@@ -12,6 +12,7 @@ import { HistoryPage } from '../pages/history/ui/HistoryPage';
 import { MonitoringPage } from '../pages/monitoring/ui/MonitoringPage';
 import { PlaceholderPage } from '../pages/placeholder/ui/PlaceholderPage';
 import { PointsPage } from '../pages/points/ui/PointsPage';
+import { ProcessEditorPage } from '../pages/process-editor/ui/ProcessEditorPage';
 import { ProcessJobsPage } from '../pages/process-jobs/ui/ProcessJobsPage';
 import { ProcessesPage } from '../pages/processes/ui/ProcessesPage';
 import { SettingsPage } from '../pages/settings/ui/SettingsPage';
@@ -30,6 +31,7 @@ export function App(): React.JSX.Element {
           <Route path="/points" element={<PointsPage />} />
           <Route path="/actuators" element={<ActuatorsPage />} />
           <Route path="/processes" element={<ProcessesPage />} />
+          <Route path="/processes/:processId/editor" element={<ProcessEditorPage />} />
           <Route path="/process-jobs" element={<ProcessJobsPage />} />
           <Route path="/graphs" element={<GraphsPage />} />
           <Route path="/history" element={<HistoryPage />} />

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import type { Process, ProcessGraph } from '../../../../shared/types/config.types';
 import { useAppConfig } from '../../../entities/config/model/useAppConfig';
 import { createUniqueId } from '../../../features/config-editor/model/config-editor.utils';
@@ -37,6 +38,11 @@ export function ProcessesPage(): React.JSX.Element {
       title: '',
       render: (item) => (
         <div className="flex flex-wrap justify-end gap-2">
+          <Link to={`/processes/${item.id}/editor`}>
+            <Button disabled={isSaving} variant="primary">
+              Редактировать graph
+            </Button>
+          </Link>
           <Button disabled={isSaving} onClick={() => void validateProcess(item)} variant="ghost">
             Проверить
           </Button>
@@ -86,8 +92,8 @@ export function ProcessesPage(): React.JSX.Element {
       id: graphId,
       processId,
       nodes: [
-        { id: 'start', type: 'start', data: {} },
-        { id: 'complete', type: 'complete', data: {} }
+        { id: 'start', type: 'start', data: { label: 'Start', position: { x: 120, y: 160 } } },
+        { id: 'complete', type: 'complete', data: { label: 'Complete', position: { x: 420, y: 160 } } }
       ],
       edges: [{ id: 'start-complete', source: 'start', target: 'complete' }],
       createdAt: now,

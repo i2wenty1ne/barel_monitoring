@@ -56,6 +56,20 @@ export class ProcessRuntimeService {
       }
     });
 
+    if (startNodes.length === 1) {
+      const startNode = startNodes[0];
+      const reachableNodeIds = startNode ? getReachableNodeIds(graph, startNode.id) : new Set<string>();
+      graph.nodes.forEach((node) => {
+        if (!reachableNodeIds.has(node.id)) {
+          errors.push({ nodeId: node.id, message: 'Node недоступен из start node' });
+        }
+      });
+    }
+
+    getCyclesWithoutWait(graph).forEach((cycle) => {
+      errors.push({ nodeId: cycle[0], message: `Цикл без wait node: ${cycle.join(' -> ')}` });
+    });
+
     return { valid: errors.length === 0, errors };
   }
 
@@ -230,6 +244,57 @@ function isKnownPoint(points: Array<{ id: string }>, value: unknown): boolean {
 
 function isKnownActuator(actuators: Array<{ id: string }>, value: unknown): boolean {
   return typeof value === 'string' && actuators.some((actuator) => actuator.id === value);
+}
+
+function getReachableNodeIds(graph: ProcessGraph, startNodeId: string): Set<string> {
+  const reachable = new Set<string>();
+  const stack = [startNodeId];
+
+  while (stack.length > 0) {
+    const nodeId = stack.pop();
+    if (!nodeId || reachable.has(nodeId)) {
+      continue;
+    }
+
+    reachable.add(nodeId);
+    graph.edges
+      .filter((edge) => edge.source === nodeId)
+      .forEach((edge) => stack.push(edge.target));
+  }
+
+  return reachable;
+}
+
+function getCyclesWithoutWait(graph: ProcessGraph): string[][] {
+  const nodesById = new Map(graph.nodes.map((node) => [node.id, node]));
+  const cycles: string[][] = [];
+  const reported = new Set<string>();
+
+  function visit(nodeId: string, path: string[]): void {
+    const indexInPath = path.indexOf(nodeId);
+    if (indexInPath >= 0) {
+      const cycle = path.slice(indexInPath);
+      const cycleKey = [...cycle].sort().join('|');
+      const hasWait = cycle.some((id) => nodesById.get(id)?.type === 'wait');
+      if (!hasWait && !reported.has(cycleKey)) {
+        reported.add(cycleKey);
+        cycles.push(cycle);
+      }
+      return;
+    }
+
+    const node = nodesById.get(nodeId);
+    if (!node) {
+      return;
+    }
+
+    graph.edges
+      .filter((edge) => edge.source === nodeId)
+      .forEach((edge) => visit(edge.target, [...path, nodeId]));
+  }
+
+  graph.nodes.forEach((node) => visit(node.id, []));
+  return cycles;
 }
 
 function normalizeCommandValue(value: unknown): boolean | number | string | undefined {
