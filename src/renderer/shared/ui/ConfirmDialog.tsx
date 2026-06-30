@@ -6,6 +6,7 @@ type ConfirmDialogProps = {
   confirmText: string;
   cancelText: string;
   details?: React.ReactNode;
+  confirmDisabled?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 };
@@ -16,6 +17,7 @@ export function ConfirmDialog({
   confirmText,
   cancelText,
   details,
+  confirmDisabled,
   onConfirm,
   onCancel
 }: ConfirmDialogProps): React.JSX.Element {
@@ -29,7 +31,7 @@ export function ConfirmDialog({
           <Button onClick={onCancel} variant="secondary">
             {cancelText}
           </Button>
-          <Button onClick={onConfirm} variant="danger">
+          <Button disabled={confirmDisabled} onClick={onConfirm} variant="danger">
             {confirmText}
           </Button>
         </div>

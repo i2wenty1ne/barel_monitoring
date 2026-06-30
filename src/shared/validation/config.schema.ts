@@ -451,6 +451,7 @@ export const appConfigSchema = z
     const dataSourceIds = new Set(config.dataSources.map((item) => item.id));
     const assetIds = new Set(config.assets.map((item) => item.id));
     const pointIds = new Set(config.points.map((item) => item.id));
+    const controlPointIds = new Set(config.points.filter((point) => point.kind === 'control').map((point) => point.id));
     const actuatorIds = new Set(config.actuators.map((item) => item.id));
     const deviceIds = new Set(config.devices.map((device) => device.id));
     const channelIds = new Set(config.channels.map((channel) => channel.id));
@@ -490,6 +491,26 @@ export const appConfigSchema = z
     config.actuators.forEach((actuator, index) => {
       if (actuator.assetId && !assetIds.has(actuator.assetId)) {
         context.addIssue({ code: 'custom', path: ['actuators', index, 'assetId'], message: 'assetId должен ссылаться на существующий asset.id' });
+      }
+
+      actuator.commandPointIds.forEach((pointId) => {
+        if (!pointIds.has(pointId)) {
+          context.addIssue({ code: 'custom', path: ['actuators', index, 'commandPointIds'], message: `commandPointId ${pointId} не найден` });
+        } else if (!controlPointIds.has(pointId)) {
+          context.addIssue({ code: 'custom', path: ['actuators', index, 'commandPointIds'], message: `commandPointId ${pointId} должен ссылаться на ControlPoint` });
+        }
+      });
+
+      actuator.feedbackPointIds.forEach((pointId) => {
+        if (!pointIds.has(pointId)) {
+          context.addIssue({ code: 'custom', path: ['actuators', index, 'feedbackPointIds'], message: `feedbackPointId ${pointId} не найден` });
+        }
+      });
+    });
+
+    config.interlocks.forEach((interlock, index) => {
+      if (!actuatorIds.has(interlock.targetActuatorId)) {
+        context.addIssue({ code: 'custom', path: ['interlocks', index, 'targetActuatorId'], message: 'targetActuatorId должен ссылаться на существующий actuator.id' });
       }
     });
 

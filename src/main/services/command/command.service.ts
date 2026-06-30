@@ -103,8 +103,8 @@ export class CommandService {
       });
     }
 
-    const blockedBy = await this.findBlockingInterlock(actuator.id, request.commandType);
-    if (blockedBy) {
+    const interlockResult = await this.checkInterlocks(actuator.id, request.commandType);
+    if (interlockResult.blockedBy) {
       return this.persistCommand({
         id: commandId,
         actuatorId: actuator.id,
@@ -113,17 +113,21 @@ export class CommandService {
         requestedBy: request.requestedBy,
         requestedAt,
         status: 'blocked',
-        error: blockedBy.message
+        error: interlockResult.blockedBy.message
       });
     }
 
     const now = new Date().toISOString();
+    const feedback = await this.readFeedback(actuator.feedbackPointIds);
     const result: CommandResult = {
       commandId,
       success: true,
       sentAt: now,
-      confirmedAt: now
+      confirmedAt: now,
+      feedbackPointId: feedback?.pointId,
+      feedbackValue: feedback?.value ?? undefined
     };
+    const isSimulation = config.app.simulationCommandsOnly || !config.app.realWriteEnabled;
     const command: Command = {
       id: commandId,
       actuatorId: actuator.id,
@@ -131,19 +135,23 @@ export class CommandService {
       value: request.value,
       requestedBy: request.requestedBy,
       requestedAt,
-      status: config.app.realWriteEnabled ? 'sent' : 'confirmed',
+      status: isSimulation ? 'confirmed' : 'sent',
       result
     };
 
     await this.persistCommand(command);
     await this.eventLogService.addEvent({
-      level: config.app.realWriteEnabled ? 'warning' : 'info',
+      level: isSimulation ? 'info' : 'warning',
       source: 'command',
       entityId: actuator.id,
-      message: config.app.realWriteEnabled
-        ? 'Real write command accepted but hardware write is not implemented in this stage'
-        : 'Simulation command completed',
-      details: { command, controlPointId: controlPoint.id }
+      message: isSimulation
+        ? 'Simulation command completed'
+        : 'Real write command accepted but hardware write is not implemented in this stage',
+      details: {
+        command,
+        controlPointId: controlPoint.id,
+        warnings: interlockResult.warnings.map((interlock) => interlock.message)
+      }
     });
 
     return result;
@@ -164,28 +172,56 @@ export class CommandService {
     return point ? (point as ControlPoint) : null;
   }
 
-  private async findBlockingInterlock(actuatorId: string, commandType: Command['commandType']): Promise<Interlock | null> {
+  private async checkInterlocks(
+    actuatorId: string,
+    commandType: Command['commandType']
+  ): Promise<{ blockedBy: Interlock | null; warnings: Interlock[] }> {
     const config = this.configService.getCurrentConfig();
     const interlocks = config.interlocks.filter(
       (interlock) =>
         interlock.enabled &&
         interlock.targetActuatorId === actuatorId &&
-        interlock.targetCommand === commandType &&
-        interlock.effect === 'block'
+        interlock.targetCommand === commandType
     );
 
     if (interlocks.length === 0) {
+      return { blockedBy: null, warnings: [] };
+    }
+
+    const snapshot = await this.dataServiceManager.readAllChannels();
+    const warnings: Interlock[] = [];
+    for (const interlock of interlocks) {
+      if (evaluateCondition(interlock.condition, snapshot.live.readingsByPointId)) {
+        if (interlock.effect === 'block') {
+          return { blockedBy: interlock, warnings };
+        }
+        warnings.push(interlock);
+      }
+    }
+
+    return { blockedBy: null, warnings };
+  }
+
+  private async readFeedback(pointIds: string[]): Promise<{ pointId: string; value: number | boolean | string | null } | null> {
+    if (pointIds.length === 0) {
       return null;
     }
 
     const snapshot = await this.dataServiceManager.readAllChannels();
-    for (const interlock of interlocks) {
-      if (evaluateCondition(interlock.condition, snapshot.live.readingsByPointId)) {
-        return interlock;
-      }
+    const pointId = pointIds.find((id) => snapshot.live.readingsByPointId[id]);
+    if (!pointId) {
+      return null;
     }
 
-    return null;
+    const reading = snapshot.live.readingsByPointId[pointId];
+    if (!reading) {
+      return null;
+    }
+
+    return {
+      pointId,
+      value: reading.displayValue ?? reading.rawValue
+    };
   }
 
   private async persistCommand(command: Command): Promise<CommandResult> {
