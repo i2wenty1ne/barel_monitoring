@@ -85,7 +85,7 @@ export function DiagnosticsPage(): React.JSX.Element {
         </div>
 
         <ManualReadPanel config={config} />
-        <RegisterScanPanel config={config} />
+        <RegisterScanPanel config={config} onConfigChanged={diagnostics.refresh} />
         <PointsDiagnosticsTable config={config} snapshot={snapshot} />
         <AssetsDiagnosticsTable config={config} snapshot={snapshot} />
         <RawSnapshotPanel snapshot={snapshot} />

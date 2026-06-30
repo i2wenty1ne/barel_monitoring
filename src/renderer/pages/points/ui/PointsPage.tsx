@@ -149,6 +149,11 @@ export function PointsPage(): React.JSX.Element {
         monitoringProfiles: currentConfig.monitoringProfiles.map((profile) => ({
           ...profile,
           pointConfigs: profile.pointConfigs.filter((pointConfig) => pointConfig.pointId !== point.id)
+        })),
+        actuators: currentConfig.actuators.map((actuator) => ({
+          ...actuator,
+          commandPointIds: actuator.commandPointIds.filter((pointId) => pointId !== point.id),
+          feedbackPointIds: actuator.feedbackPointIds.filter((pointId) => pointId !== point.id)
         }))
       },
       'Точка данных удалена'

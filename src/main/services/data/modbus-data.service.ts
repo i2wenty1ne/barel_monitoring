@@ -295,15 +295,34 @@ export class ModbusDataService implements DataService {
       ? this.config.points.find((point): point is Point & { address: ModbusDataAddress } => point.dataSourceId === source.id && isReadableModbusPoint(point))
       : null;
 
-    if (!source || !firstPoint) {
+    if (!source) {
       return {
         success: false,
-        message: 'No active data source with configured Modbus points for test read'
+        message: 'No active Modbus RTU data source for connection test'
       };
     }
 
     try {
       const client = await this.ensureConnected(source);
+      if (!firstPoint) {
+        await this.logEvent('info', 'test connection opened without points', {
+          dataSourceId: source.id,
+          port: source.connection.port
+        });
+
+        return {
+          success: true,
+          message: 'Connection opened; no points configured for read test',
+          details: {
+            port: source.connection.port,
+            baudRate: source.connection.baudRate,
+            slaveId: getSlaveId(source),
+            dataSourceId: source.id,
+            readTest: false
+          }
+        };
+      }
+
       const registers = await this.readRegisterValues(
         client,
         firstPoint.address.functionCode === 3 ? 3 : 4,
@@ -340,7 +359,7 @@ export class ModbusDataService implements DataService {
         details: {
           port: source.connection.port,
           baudRate: source.connection.baudRate,
-          slaveId: getSlaveId(source, firstPoint.address),
+          slaveId: firstPoint ? getSlaveId(source, firstPoint.address) : getSlaveId(source),
           dataSourceId: source.id
         }
       };

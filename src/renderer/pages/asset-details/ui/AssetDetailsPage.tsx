@@ -1,6 +1,10 @@
 import { Link, useParams } from 'react-router-dom';
 import { useState } from 'react';
+import { formatDateTime } from '../../../../shared/lib/format';
+import type { MonitoringProfile, Point, PointStatus } from '../../../../shared/types/config.types';
+import type { Reading, Status } from '../../../../shared/types/monitoring.types';
 import { useAppConfig } from '../../../entities/config/model/useAppConfig';
+import { useMonitoringSnapshot } from '../../../entities/monitoring/model/useMonitoringSnapshot';
 import { Badge } from '../../../shared/ui/Badge';
 import { Button } from '../../../shared/ui/Button';
 import { DataTable, type DataTableColumn } from '../../../shared/ui/DataTable';
@@ -9,15 +13,25 @@ import { ErrorState } from '../../../shared/ui/ErrorState';
 import { LoadingState } from '../../../shared/ui/LoadingState';
 import { PageHeader } from '../../../shared/ui/PageHeader';
 import { Panel } from '../../../shared/ui/Panel';
+import { StatusBadge } from '../../../shared/ui/StatusBadge';
 import { Tabs, type TabItem } from '../../../shared/ui/Tabs';
-import type { MonitoringProfile, Point } from '../../../../shared/types/config.types';
 
 type AssetDetailsTab = 'points' | 'history' | 'actuators' | 'graph';
 
+type PointRow = Point & {
+  rawValue: string;
+  displayValue: string;
+  readingStatus: React.ReactNode;
+  updatedAt: string;
+  error: string;
+};
+
 export function AssetDetailsPage(): React.JSX.Element {
   const { assetId } = useParams<{ assetId: string }>();
-  const { config, isLoading, error, refresh } = useAppConfig();
+  const configState = useAppConfig();
+  const snapshotState = useMonitoringSnapshot();
   const [activeTab, setActiveTab] = useState<AssetDetailsTab>('points');
+  const { config, isLoading, error, refresh } = configState;
 
   if (isLoading || !config) {
     return <LoadingState />;
@@ -34,6 +48,18 @@ export function AssetDetailsPage(): React.JSX.Element {
   }
 
   const points = config.points.filter((point) => asset.pointIds.includes(point.id) || point.assetId === asset.id);
+  const pointRows: PointRow[] = points.map((point) => {
+    const reading = snapshotState.data?.live.readingsByPointId[point.id];
+
+    return {
+      ...point,
+      rawValue: reading ? formatReadingValue(reading.rawValue, reading.rawUnit) : '—',
+      displayValue: reading ? formatReadingValue(reading.displayValue, reading.displayUnit) : '—',
+      readingStatus: <StatusBadge status={pointStatusToStatus(reading?.status)} />,
+      updatedAt: formatDateTime(reading?.timestamp),
+      error: reading?.error ?? (reading ? '—' : 'Нет данных')
+    };
+  });
   const actuators = config.actuators.filter((actuator) => asset.actuatorIds.includes(actuator.id) || actuator.assetId === asset.id);
   const profiles = config.monitoringProfiles.filter((item) => item.assetId === asset.id);
   const profile = profiles[0];
@@ -44,12 +70,17 @@ export function AssetDetailsPage(): React.JSX.Element {
     { id: 'actuators', label: 'Механизмы' },
     { id: 'graph', label: 'Связи' }
   ];
-  const pointColumns: DataTableColumn<Point>[] = [
+  const pointColumns: DataTableColumn<PointRow>[] = [
     { key: 'name', title: 'Точка', render: (point) => <div><div className="font-medium text-slate-100">{point.name}</div><div className="mt-1 font-mono text-xs text-slate-500">{point.id}</div></div> },
     { key: 'kind', title: 'Kind', render: (point) => <Badge tone={point.kind === 'control' ? 'warning' : 'success'}>{point.kind}</Badge> },
     { key: 'source', title: 'DataSource', render: (point) => point.dataSourceId ?? '—' },
+    { key: 'display', title: 'Значение', render: (point) => point.displayValue },
+    { key: 'raw', title: 'Raw', render: (point) => point.rawValue },
+    { key: 'status', title: 'Статус', render: (point) => point.readingStatus },
+    { key: 'updated', title: 'Обновлено', render: (point) => point.updatedAt },
     { key: 'unit', title: 'Ед.', render: (point) => point.displayUnit ?? point.rawUnit ?? '—' },
-    { key: 'recordable', title: 'История', render: (point) => (point.recordable ? 'да' : 'нет') }
+    { key: 'recordable', title: 'История', render: (point) => (point.recordable ? 'да' : 'нет') },
+    { key: 'error', title: 'Ошибка', render: (point) => point.error }
   ];
   const profileColumns: DataTableColumn<MonitoringProfile>[] = [
     {
@@ -81,7 +112,7 @@ export function AssetDetailsPage(): React.JSX.Element {
               {points.length === 0 ? (
                 <EmptyState title="Точки не привязаны" description="Добавьте pointIds или assetId у точек данных." />
               ) : (
-                <DataTable compact columns={pointColumns} getRowKey={(point) => point.id} rows={points} />
+                <DataTable compact columns={pointColumns} getRowKey={(point) => point.id} rows={pointRows} />
               )}
             </Panel>
           ) : null}
@@ -174,6 +205,30 @@ export function AssetDetailsPage(): React.JSX.Element {
       </div>
     </section>
   );
+}
+
+function formatReadingValue(value: Reading['displayValue'], unit?: string): string {
+  if (typeof value === 'number') {
+    return `${Number(value.toFixed(2))}${unit ? ` ${unit}` : ''}`;
+  }
+
+  if (typeof value === 'boolean') {
+    return value ? 'да' : 'нет';
+  }
+
+  return value ?? '—';
+}
+
+function pointStatusToStatus(status: PointStatus | undefined): Status {
+  if (status === 'error') {
+    return 'connection-error';
+  }
+
+  if (!status || status === 'stale' || status === 'disabled') {
+    return 'no-data';
+  }
+
+  return status;
 }
 
 function InfoRow({ label, value, monospace }: { label: string; value: string; monospace?: boolean }): React.JSX.Element {

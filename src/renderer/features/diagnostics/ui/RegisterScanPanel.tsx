@@ -17,9 +17,21 @@ import { Select } from '../../../shared/ui/Select';
 
 type RegisterScanPanelProps = {
   config: AppConfig;
+  onConfigChanged?: () => Promise<void>;
 };
 
-export function RegisterScanPanel({ config }: RegisterScanPanelProps): React.JSX.Element {
+type ImportMessage = {
+  type: 'info' | 'success';
+  text: string;
+};
+
+type ImportFoundPointsResult = {
+  found: number;
+  created: number;
+  existing: number;
+};
+
+export function RegisterScanPanel({ config, onConfigChanged }: RegisterScanPanelProps): React.JSX.Element {
   const modbusSources = config.dataSources.filter((source) => source.type === 'modbus-rtu' && source.connection.type === 'modbus-rtu');
   const defaultPoint = config.points.find((point) => point.address?.protocol === 'modbus' && point.dataSourceId);
   const [request, setRequest] = useState<RegisterScanRequest>({
@@ -34,7 +46,7 @@ export function RegisterScanPanel({ config }: RegisterScanPanelProps): React.JSX
     retryDelayMs: 80
   });
   const [result, setResult] = useState<RegisterScanResult | null>(null);
-  const [importMessage, setImportMessage] = useState<string | null>(null);
+  const [importMessage, setImportMessage] = useState<ImportMessage | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const validationError = getValidationError(request);
 
@@ -69,9 +81,10 @@ export function RegisterScanPanel({ config }: RegisterScanPanelProps): React.JSX
       const nextResult = await window.barrelMonitor.monitoring.scanRegisters(request);
       setResult(nextResult);
       const importResult = await importFoundPoints(config, request, nextResult);
-      setImportMessage(
-        `Найдено успешно: ${nextResult.successCount}. Создано точек: ${importResult.created}. Дубликатов пропущено: ${importResult.skipped}.`
-      );
+      if (importResult.created > 0) {
+        await onConfigChanged?.();
+      }
+      setImportMessage(createImportMessage(importResult));
     } finally {
       setIsScanning(false);
     }
@@ -202,7 +215,7 @@ export function RegisterScanPanel({ config }: RegisterScanPanelProps): React.JSX
 
       {result ? (
         <div className="mt-5 space-y-4">
-          {importMessage ? <Alert type="success">{importMessage}</Alert> : null}
+          {importMessage ? <Alert type={importMessage.type}>{importMessage.text}</Alert> : null}
           <ScanSummary result={result} />
           <DataTable
             compact
@@ -297,29 +310,21 @@ async function importFoundPoints(
   config: AppConfig,
   request: RegisterScanRequest,
   result: RegisterScanResult
-): Promise<{ created: number; skipped: number }> {
+): Promise<ImportFoundPointsResult> {
   const successRows = result.rows.filter((row) => row.success);
   const existingPointIds = config.points.map((point) => point.id);
   const nextPoints: Point[] = [...config.points];
   const dataSource = config.dataSources.find((source) => source.id === request.dataSourceId);
   const slaveId = typeof dataSource?.metadata?.slaveId === 'number' ? dataSource.metadata.slaveId : 1;
   let created = 0;
-  let skipped = 0;
+  let existing = 0;
 
   successRows.forEach((row) => {
-    const isDuplicate = nextPoints.some(
-      (point) =>
-        point.dataSourceId === request.dataSourceId &&
-        point.address?.protocol === 'modbus' &&
-        point.address.functionCode === row.modbusFunction &&
-        point.address.registerAddress === row.registerAddress &&
-        point.address.registerCount === request.registerCount &&
-        point.valueType === request.dataType &&
-        (point.address.byteOrder ?? 'ABCD') === request.byteOrder
-    );
+    const addressSignature = createScanAddressSignature(request, row);
+    const isExistingPoint = nextPoints.some((point) => createPointAddressSignature(point) === addressSignature);
 
-    if (isDuplicate) {
-      skipped += 1;
+    if (isExistingPoint) {
+      existing += 1;
       return;
     }
 
@@ -362,5 +367,47 @@ async function importFoundPoints(
     }
   }
 
-  return { created, skipped };
+  return { found: successRows.length, created, existing };
+}
+
+function createImportMessage(result: ImportFoundPointsResult): ImportMessage {
+  if (result.found === 0) {
+    return {
+      type: 'info',
+      text: 'Поиск завершен: успешных регистров не найдено, точки данных не создавались.'
+    };
+  }
+
+  return {
+    type: result.created > 0 ? 'success' : 'info',
+    text: `Найдено регистров: ${result.found}. Создано точек: ${result.created}. Уже существовало: ${result.existing}.`
+  };
+}
+
+function createScanAddressSignature(request: RegisterScanRequest, row: RegisterScanRow): string {
+  return [
+    request.dataSourceId,
+    'modbus',
+    row.modbusFunction,
+    row.registerAddress,
+    request.registerCount,
+    request.dataType,
+    request.byteOrder
+  ].join('|');
+}
+
+function createPointAddressSignature(point: Point): string | null {
+  if (point.address?.protocol !== 'modbus') {
+    return null;
+  }
+
+  return [
+    point.dataSourceId ?? '',
+    point.address.protocol,
+    point.address.functionCode,
+    point.address.registerAddress ?? '',
+    point.address.registerCount ?? '',
+    point.valueType,
+    point.address.byteOrder ?? 'ABCD'
+  ].join('|');
 }
