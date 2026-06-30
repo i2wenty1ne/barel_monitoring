@@ -10,7 +10,6 @@ export function createDiagnosticsReport(data: DiagnosticsData, lastTestResult: u
     dataSources: data.config.dataSources,
     assets: data.config.assets,
     points: data.config.points,
-    devices: data.config.devices,
     serviceStatus: data.serviceStatus,
     snapshot: data.snapshot,
     lastTestConnectionResult: lastTestResult,

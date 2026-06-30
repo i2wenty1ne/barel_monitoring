@@ -1,10 +1,10 @@
 import { formatDateTime } from '../../../../shared/lib/format';
-import { BarrelsDiagnosticsTable } from '../../../features/diagnostics/ui/BarrelsDiagnosticsTable';
-import { ChannelsDiagnosticsTable } from '../../../features/diagnostics/ui/ChannelsDiagnosticsTable';
+import { AssetsDiagnosticsTable } from '../../../features/diagnostics/ui/AssetsDiagnosticsTable';
 import { ConnectionDiagnosticsPanel } from '../../../features/diagnostics/ui/ConnectionDiagnosticsPanel';
-import { DeviceDiagnosticsPanel } from '../../../features/diagnostics/ui/DeviceDiagnosticsPanel';
+import { DataSourcesDiagnosticsPanel } from '../../../features/diagnostics/ui/DataSourcesDiagnosticsPanel';
 import { DiagnosticActionsPanel } from '../../../features/diagnostics/ui/DiagnosticActionsPanel';
 import { ManualReadPanel } from '../../../features/diagnostics/ui/ManualReadPanel';
+import { PointsDiagnosticsTable } from '../../../features/diagnostics/ui/PointsDiagnosticsTable';
 import { RegisterScanPanel } from '../../../features/diagnostics/ui/RegisterScanPanel';
 import { RawSnapshotPanel } from '../../../features/diagnostics/ui/RawSnapshotPanel';
 import { useDiagnostics } from '../../../features/diagnostics/model/useDiagnostics';
@@ -51,7 +51,7 @@ export function DiagnosticsPage(): React.JSX.Element {
       <PageHeader
         eyebrow="Инженерный раздел"
         title="Диагностика"
-        description="Состояние подключения, каналов, бочек и ручная проверка регистров."
+        description="Состояние подключения, источников данных, точек, объектов и ручная проверка регистров."
       />
 
       <div className="space-y-5">
@@ -80,14 +80,14 @@ export function DiagnosticsPage(): React.JSX.Element {
               onRefresh={() => void diagnostics.refresh()}
               onTestConnection={() => void diagnostics.testConnection()}
             />
-            <DeviceDiagnosticsPanel devices={config.devices} />
+            <DataSourcesDiagnosticsPanel dataSources={config.dataSources} />
           </div>
         </div>
 
         <ManualReadPanel config={config} />
         <RegisterScanPanel config={config} />
-        <ChannelsDiagnosticsTable config={config} snapshot={snapshot} />
-        <BarrelsDiagnosticsTable config={config} snapshot={snapshot} />
+        <PointsDiagnosticsTable config={config} snapshot={snapshot} />
+        <AssetsDiagnosticsTable config={config} snapshot={snapshot} />
         <RawSnapshotPanel snapshot={snapshot} />
       </div>
     </section>

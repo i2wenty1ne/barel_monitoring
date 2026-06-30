@@ -442,51 +442,8 @@ export type InterfaceConfig = {
   fullscreenOnStart: boolean;
 };
 
-export type ConnectionConfig = ModbusRtuConnectionConfig & {
-  timeoutMs: number;
-  retries: number;
-};
-
-export type DeviceConfig = {
-  id: string;
-  name: string;
-  model: string;
-  protocol: 'modbus-rtu';
-  modbusAddress: number;
-  active: boolean;
-  connection: ConnectionConfig;
-};
-
-export type ChannelType = 'temperature' | 'level' | 'custom';
-export type ChannelDataType = 'int16' | 'uint16' | 'int32' | 'uint32' | 'float32';
-
-export type ChannelConfig = {
-  id: string;
-  name: string;
-  type: ChannelType;
-  deviceId: string;
-  moduleInputNumber: number;
-  registerAddress: number;
-  modbusFunction: 3 | 4;
-  dataType: ChannelDataType;
-  registerCount: number;
-  byteOrder: 'ABCD' | 'BADC' | 'CDAB' | 'DCBA';
-  rawUnit: string;
-  displayUnit: string;
-  decimals: number;
-  scaling: ScalingConfig;
-};
-
-export type BarrelConfig = {
-  id: string;
-  name: string;
-  active: boolean;
-  visible: boolean;
-  temperatureChannelId: string;
-  levelChannelId: string;
-  displayOrder: number;
-  cardSize: CardSize;
-};
+export type ModbusNumericValueType = Exclude<PointValueType, 'boolean' | 'string'>;
+export type ModbusByteOrder = NonNullable<ModbusDataAddress['byteOrder']>;
 
 export type AppConfig = {
   schemaVersion: 2;
@@ -504,12 +461,4 @@ export type AppConfig = {
   processJobs: ProcessJob[];
   thresholds: ThresholdConfig;
   interface: InterfaceConfig;
-
-  /**
-   * Compatibility projections for the existing Barrel Monitor UI and services.
-   * New code should prefer dataSources/assets/points.
-   */
-  devices: DeviceConfig[];
-  channels: ChannelConfig[];
-  barrels: BarrelConfig[];
 };

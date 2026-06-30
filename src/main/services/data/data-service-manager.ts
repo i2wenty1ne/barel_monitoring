@@ -50,8 +50,8 @@ export class DataServiceManager implements DataService {
     await this.start();
   }
 
-  public async readAllChannels(): Promise<MonitoringSnapshot> {
-    return this.service.readAllChannels();
+  public async readAllPoints(): Promise<MonitoringSnapshot> {
+    return this.service.readAllPoints();
   }
 
   public async readRegisters(request: ManualReadRequest): Promise<ManualReadResult> {

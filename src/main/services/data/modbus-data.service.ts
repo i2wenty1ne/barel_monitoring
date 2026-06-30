@@ -1,8 +1,13 @@
 import ModbusRTU from 'modbus-serial';
-import type { AppConfig, ChannelConfig, DeviceConfig } from '../../../shared/types/config.types';
-import {
-  BarrelReading,
-  ChannelReading,
+import type {
+  AppConfig,
+  DataSource,
+  ModbusDataAddress,
+  ModbusNumericValueType,
+  Point,
+  PointStatus
+} from '../../../shared/types/config.types';
+import type {
   DataSourceStatus,
   DataServiceStatus,
   LiveSnapshot,
@@ -13,17 +18,17 @@ import {
   RegisterScanRequest,
   RegisterScanResult,
   RegisterScanRow,
-  Status,
   TestConnectionResult
 } from '../../../shared/types/monitoring.types';
 import { applyScaling } from '../../../shared/lib/scaling';
-import { getValueStatus, getWorstStatus } from '../../../shared/lib/thresholds';
+import { getWorstStatus } from '../../../shared/lib/thresholds';
 import type { EventLogService } from '../event-log/event-log.service';
 import type { DataService, MonitoringSnapshotListener } from './data-service.types';
 import { getRequiredRegisterCount, decodeRegisters } from './modbus-register-decoder';
 import { getTechnicalErrorMessage, mapModbusError } from './modbus-error-mapper';
 
 type ConnectionState = 'closed' | 'opening' | 'open' | 'error';
+type ModbusRtuDataSource = DataSource & { connection: Extract<DataSource['connection'], { type: 'modbus-rtu' }> };
 
 export class ModbusDataService implements DataService {
   private config: AppConfig;
@@ -49,21 +54,21 @@ export class ModbusDataService implements DataService {
     }
 
     await this.logEvent('info', 'real data service started', {
-      devices: this.config.devices.map((device) => ({
-        id: device.id,
-        port: device.connection.port,
-        baudRate: device.connection.baudRate
+      dataSources: this.getModbusSources().map((source) => ({
+        id: source.id,
+        port: source.connection.port,
+        baudRate: source.connection.baudRate
       }))
     });
 
     try {
-      const device = this.getDefaultDevice();
-      if (device) {
-        await this.ensureConnected(device);
+      const source = this.getDefaultDataSource();
+      if (source) {
+        await this.ensureConnected(source);
       }
     } catch (error) {
-      const device = this.getDefaultDevice();
-      this.lastError = mapModbusError(error, device?.connection.port ?? '');
+      const source = this.getDefaultDataSource();
+      this.lastError = mapModbusError(error, source?.connection.port ?? '');
       await this.logEvent('error', 'serial port open failed', {
         error: this.lastError,
         technicalError: getTechnicalErrorMessage(error)
@@ -96,7 +101,7 @@ export class ModbusDataService implements DataService {
     await this.start();
   }
 
-  public async readAllChannels(): Promise<MonitoringSnapshot> {
+  public async readAllPoints(): Promise<MonitoringSnapshot> {
     if (this.isReading) {
       return this.lastSnapshot ?? this.createConnectionErrorSnapshot('Чтение уже выполняется');
     }
@@ -105,17 +110,18 @@ export class ModbusDataService implements DataService {
 
     try {
       const updatedAt = new Date().toISOString();
-      const readingsByChannelId = new Map<string, ChannelReading>();
-      for (const channelGroup of this.groupChannelsByDevice()) {
-        for (const channel of channelGroup) {
-          readingsByChannelId.set(channel.id, await this.readChannel(channel, updatedAt));
+      const readingsByPointId = new Map<string, Reading>();
+      for (const pointGroup of this.groupPointsByDataSource()) {
+        for (const point of pointGroup) {
+          readingsByPointId.set(point.id, await this.readPoint(point, updatedAt));
         }
       }
-      const channels = this.config.channels
-        .map((channel) => readingsByChannelId.get(channel.id))
-        .filter((channel): channel is ChannelReading => Boolean(channel));
-      const snapshot = this.createSnapshot(channels, updatedAt);
-      const hasConnectionErrors = channels.some((channel) => channel.status === 'connection-error');
+
+      const readings = this.config.points
+        .map((point) => readingsByPointId.get(point.id))
+        .filter((reading): reading is Reading => Boolean(reading));
+      const snapshot = this.createSnapshot(readings, updatedAt);
+      const hasConnectionErrors = readings.some((reading) => reading.status === 'error');
 
       if (!hasConnectionErrors) {
         this.lastSuccessfulReadAt = updatedAt;
@@ -128,7 +134,7 @@ export class ModbusDataService implements DataService {
       this.lastSnapshot = snapshot;
       return snapshot;
     } catch (error) {
-      const message = mapModbusError(error, this.getDefaultDevice()?.connection.port ?? '');
+      const message = mapModbusError(error, this.getDefaultDataSource()?.connection.port ?? '');
       this.lastError = message;
       await this.logEventThrottled('connection-error', 'error', 'connection lost', {
         error: message,
@@ -144,8 +150,8 @@ export class ModbusDataService implements DataService {
 
   public async readRegisters(request: ManualReadRequest): Promise<ManualReadResult> {
     try {
-      const device = this.getDeviceById(request.deviceId);
-      const client = await this.ensureConnected(device);
+      const source = this.getDataSourceById(request.dataSourceId);
+      const client = await this.ensureConnected(source);
       const registers = await this.readRegisterValues(
         client,
         request.modbusFunction,
@@ -166,8 +172,8 @@ export class ModbusDataService implements DataService {
         message: 'Manual register read completed'
       };
     } catch (error) {
-      const device = this.getDeviceByIdOrNull(request.deviceId);
-      const message = mapModbusError(error, device?.connection.port ?? '');
+      const source = this.getDataSourceByIdOrNull(request.dataSourceId);
+      const message = mapModbusError(error, source?.connection.port ?? '');
       await this.logEvent('error', 'manual register read failed', {
         request,
         error: message,
@@ -179,8 +185,6 @@ export class ModbusDataService implements DataService {
         message,
         error: getTechnicalErrorMessage(error)
       };
-    } finally {
-      // Keep persistent clients open for polling.
     }
   }
 
@@ -193,8 +197,8 @@ export class ModbusDataService implements DataService {
     const rows: RegisterScanRow[] = [];
 
     try {
-      const device = this.getDeviceById(normalizedRequest.deviceId);
-      const client = await this.ensureConnected(device);
+      const source = this.getDataSourceById(normalizedRequest.dataSourceId);
+      const client = await this.ensureConnected(source);
 
       for (const modbusFunction of normalizedRequest.modbusFunctions) {
         for (
@@ -204,7 +208,7 @@ export class ModbusDataService implements DataService {
         ) {
           const readResult = await this.scanRegisterWithRetries(
             client,
-            device,
+            source,
             modbusFunction,
             registerAddress,
             normalizedRequest
@@ -242,7 +246,7 @@ export class ModbusDataService implements DataService {
               registerAddress,
               success: false,
               attempts: readResult.attempts,
-              message: mapModbusError(readResult.error, device.connection.port),
+              message: mapModbusError(readResult.error, source.connection.port),
               error: getTechnicalErrorMessage(readResult.error)
             });
           }
@@ -259,16 +263,15 @@ export class ModbusDataService implements DataService {
         modbusFunction: normalizedRequest.modbusFunctions[0] ?? 3,
         registerAddress: normalizedRequest.startAddress,
         success: false,
-        message: mapModbusError(error, this.getDeviceByIdOrNull(normalizedRequest.deviceId)?.connection.port ?? ''),
+        message: mapModbusError(error, this.getDataSourceByIdOrNull(normalizedRequest.dataSourceId)?.connection.port ?? ''),
         error: getTechnicalErrorMessage(error)
       });
       await this.logEvent('error', 'register scan failed', {
         request: normalizedRequest,
-        error: mapModbusError(error, this.getDeviceByIdOrNull(normalizedRequest.deviceId)?.connection.port ?? ''),
+        error: mapModbusError(error, this.getDataSourceByIdOrNull(normalizedRequest.dataSourceId)?.connection.port ?? ''),
         technicalError: getTechnicalErrorMessage(error)
       });
     } finally {
-      // Keep persistent clients open for polling.
       this.isReading = false;
     }
 
@@ -287,28 +290,28 @@ export class ModbusDataService implements DataService {
   }
 
   public async testConnection(dataSourceId?: string): Promise<TestConnectionResult> {
-    const device = dataSourceId ? this.getDeviceByIdOrNull(dataSourceId) : this.getDefaultDevice();
-    const firstChannel = device
-      ? this.config.channels.find((channel) => channel.deviceId === device.id)
+    const source = dataSourceId ? this.getDataSourceByIdOrNull(dataSourceId) : this.getDefaultDataSource();
+    const firstPoint = source
+      ? this.config.points.find((point): point is Point & { address: ModbusDataAddress } => point.dataSourceId === source.id && isReadableModbusPoint(point))
       : null;
 
-    if (!device || !firstChannel) {
+    if (!source || !firstPoint) {
       return {
         success: false,
-        message: 'No active device with configured channels for test read'
+        message: 'No active data source with configured Modbus points for test read'
       };
     }
 
     try {
-      const client = await this.ensureConnected(device);
+      const client = await this.ensureConnected(source);
       const registers = await this.readRegisterValues(
         client,
-        firstChannel.modbusFunction,
-        firstChannel.registerAddress,
-        firstChannel.registerCount
+        firstPoint.address.functionCode === 3 ? 3 : 4,
+        firstPoint.address.registerAddress ?? 0,
+        firstPoint.address.registerCount ?? getRequiredRegisterCount(getModbusDataType(firstPoint))
       );
       await this.logEvent('info', 'test connection success', {
-        channelId: firstChannel.id,
+        pointId: firstPoint.id,
         registers
       });
 
@@ -316,16 +319,16 @@ export class ModbusDataService implements DataService {
         success: true,
         message: 'Connection successful',
         details: {
-          port: device.connection.port,
-          baudRate: device.connection.baudRate,
-          modbusAddress: device.modbusAddress,
-          deviceId: device.id,
-          channelId: firstChannel.id,
+          port: source.connection.port,
+          baudRate: source.connection.baudRate,
+          slaveId: getSlaveId(source, firstPoint.address),
+          dataSourceId: source.id,
+          pointId: firstPoint.id,
           registers
         }
       };
     } catch (error) {
-      const message = mapModbusError(error, device.connection.port);
+      const message = mapModbusError(error, source.connection.port);
       await this.logEvent('error', 'test connection failed', {
         error: message,
         technicalError: getTechnicalErrorMessage(error)
@@ -335,10 +338,10 @@ export class ModbusDataService implements DataService {
         success: false,
         message,
         details: {
-          port: device.connection.port,
-          baudRate: device.connection.baudRate,
-          modbusAddress: device.modbusAddress,
-          deviceId: device.id
+          port: source.connection.port,
+          baudRate: source.connection.baudRate,
+          slaveId: getSlaveId(source, firstPoint.address),
+          dataSourceId: source.id
         }
       };
     }
@@ -366,55 +369,53 @@ export class ModbusDataService implements DataService {
     };
   }
 
-  private async ensureConnected(device: DeviceConfig): Promise<ModbusRTU> {
-    const existingClient = this.clients.get(device.id);
+  private async ensureConnected(source: ModbusRtuDataSource): Promise<ModbusRTU> {
+    const existingClient = this.clients.get(source.id);
     if (existingClient?.isOpen) {
-      existingClient.setID(device.modbusAddress);
       return existingClient;
     }
 
-    if (this.connectionStates.get(device.id) === 'opening') {
-      throw new Error(`Serial connection is opening for ${device.id}`);
+    if (this.connectionStates.get(source.id) === 'opening') {
+      throw new Error(`Serial connection is opening for ${source.id}`);
     }
 
-    this.connectionStates.set(device.id, 'opening');
-    await this.closeClientsSharingPort(device);
+    this.connectionStates.set(source.id, 'opening');
+    await this.closeClientsSharingPort(source);
     const client = new ModbusRTU();
-    client.setTimeout(device.connection.timeoutMs);
+    client.setTimeout(source.timeoutMs ?? 1000);
 
     try {
-      await client.connectRTUBuffered(device.connection.port, {
-        baudRate: device.connection.baudRate,
-        dataBits: device.connection.dataBits,
-        stopBits: device.connection.stopBits,
-        parity: device.connection.parity
+      await client.connectRTUBuffered(source.connection.port, {
+        baudRate: source.connection.baudRate,
+        dataBits: source.connection.dataBits,
+        stopBits: source.connection.stopBits,
+        parity: source.connection.parity
       });
-      client.setID(device.modbusAddress);
-      client.setTimeout(device.connection.timeoutMs);
+      client.setTimeout(source.timeoutMs ?? 1000);
       client.on('error', (error) => {
-        this.lastError = mapModbusError(error, device.connection.port);
-        this.connectionStates.set(device.id, 'error');
-        void this.logEventThrottled(`client-error-${device.id}`, 'error', 'serial client error', {
-          deviceId: device.id,
+        this.lastError = mapModbusError(error, source.connection.port);
+        this.connectionStates.set(source.id, 'error');
+        void this.logEventThrottled(`client-error-${source.id}`, 'error', 'serial client error', {
+          dataSourceId: source.id,
           error: this.lastError,
           technicalError: getTechnicalErrorMessage(error)
         });
       });
       client.on('close', () => {
-        this.connectionStates.set(device.id, 'closed');
-        void this.logEvent('warning', 'serial port closed', { deviceId: device.id });
+        this.connectionStates.set(source.id, 'closed');
+        void this.logEvent('warning', 'serial port closed', { dataSourceId: source.id });
       });
-      this.clients.set(device.id, client);
-      this.connectionStates.set(device.id, 'open');
+      this.clients.set(source.id, client);
+      this.connectionStates.set(source.id, 'open');
       await this.logEvent('info', 'serial port opened', {
-        deviceId: device.id,
-        port: device.connection.port,
-        baudRate: device.connection.baudRate
+        dataSourceId: source.id,
+        port: source.connection.port,
+        baudRate: source.connection.baudRate
       });
       return client;
     } catch (error) {
-      this.connectionStates.set(device.id, 'error');
-      this.clients.delete(device.id);
+      this.connectionStates.set(source.id, 'error');
+      this.clients.delete(source.id);
       throw error;
     }
   }
@@ -442,7 +443,7 @@ export class ModbusDataService implements DataService {
 
   private async scanRegisterWithRetries(
     client: ModbusRTU,
-    device: DeviceConfig,
+    source: ModbusRtuDataSource,
     modbusFunction: 3 | 4,
     registerAddress: number,
     request: RegisterScanRequest
@@ -453,7 +454,7 @@ export class ModbusDataService implements DataService {
 
     for (let attempt = 1; attempt <= attemptsPerRegister; attempt += 1) {
       try {
-        client.setID(device.modbusAddress);
+        client.setID(getSlaveId(source));
         const registers = await this.readRegisterValues(
           client,
           modbusFunction,
@@ -484,26 +485,26 @@ export class ModbusDataService implements DataService {
   }
 
   private async closeClient(): Promise<void> {
-    for (const [deviceId, client] of this.clients) {
+    for (const [dataSourceId, client] of this.clients) {
       if (client.isOpen) {
         await new Promise<void>((resolve) => {
           client.close(() => resolve());
         });
       }
-      this.connectionStates.set(deviceId, 'closed');
+      this.connectionStates.set(dataSourceId, 'closed');
     }
     this.clients.clear();
     await this.logEvent('info', 'serial ports closed');
   }
 
-  private async closeClientsSharingPort(device: DeviceConfig): Promise<void> {
-    for (const [deviceId, client] of this.clients) {
-      if (deviceId === device.id) {
+  private async closeClientsSharingPort(source: ModbusRtuDataSource): Promise<void> {
+    for (const [dataSourceId, client] of this.clients) {
+      if (dataSourceId === source.id) {
         continue;
       }
 
-      const otherDevice = this.getDeviceByIdOrNull(deviceId);
-      if (otherDevice?.connection.port !== device.connection.port) {
+      const otherSource = this.getDataSourceByIdOrNull(dataSourceId);
+      if (otherSource?.connection.port !== source.connection.port) {
         continue;
       }
 
@@ -512,70 +513,77 @@ export class ModbusDataService implements DataService {
           client.close(() => resolve());
         });
       }
-      this.clients.delete(deviceId);
-      this.connectionStates.set(deviceId, 'closed');
-      await this.logEvent('info', 'serial port released before device switch', {
-        previousDeviceId: deviceId,
-        nextDeviceId: device.id,
-        port: device.connection.port
+      this.clients.delete(dataSourceId);
+      this.connectionStates.set(dataSourceId, 'closed');
+      await this.logEvent('info', 'serial port released before data source switch', {
+        previousDataSourceId: dataSourceId,
+        nextDataSourceId: source.id,
+        port: source.connection.port
       });
     }
   }
 
-  private async readChannel(channel: ChannelConfig, updatedAt: string): Promise<ChannelReading> {
-    const device = this.getDeviceByIdOrNull(channel.deviceId);
-    if (!device) {
-      return this.createChannelErrorReading(channel, updatedAt, `Устройство ${channel.deviceId} не найдено`);
+  private async readPoint(point: Point, updatedAt: string): Promise<Reading> {
+    if (!isReadableModbusPoint(point)) {
+      return this.createPointErrorReading(point, updatedAt, 'Точка не является читаемой Modbus telemetry point');
     }
 
-    if (!device.active) {
-      return this.createChannelErrorReading(channel, updatedAt, `Устройство ${device.name} неактивно`);
+    const source = point.dataSourceId ? this.getDataSourceByIdOrNull(point.dataSourceId) : null;
+    if (!source) {
+      return this.createPointErrorReading(point, updatedAt, `Источник данных ${point.dataSourceId ?? ''} не найден`);
     }
 
-    const attempts = device.connection.retries + 1;
+    if (!source.enabled) {
+      return this.createPointErrorReading(point, updatedAt, `Источник данных ${source.name} отключен`, 'disabled');
+    }
+
+    const dataType = getModbusDataType(point);
+    const registerCount = point.address.registerCount ?? getRequiredRegisterCount(dataType);
+    const attempts = (source.retryCount ?? 1) + 1;
     let lastError: unknown = null;
 
-    if (channel.dataType === 'float32' && channel.registerCount !== 2) {
-      return this.createChannelErrorReading(channel, updatedAt, 'Некорректная конфигурация float32');
-    }
-
-    if (channel.registerCount < getRequiredRegisterCount(channel.dataType)) {
-      return this.createChannelErrorReading(channel, updatedAt, 'Недостаточное количество регистров');
+    if (registerCount < getRequiredRegisterCount(dataType)) {
+      return this.createPointErrorReading(point, updatedAt, 'Недостаточное количество регистров');
     }
 
     for (let attempt = 1; attempt <= attempts; attempt += 1) {
       try {
-        const client = await this.ensureConnected(device);
+        const client = await this.ensureConnected(source);
+        client.setID(getSlaveId(source, point.address));
         const registers = await this.readRegisterValues(
           client,
-          channel.modbusFunction,
-          channel.registerAddress,
-          channel.registerCount
+          point.address.functionCode === 3 ? 3 : 4,
+          point.address.registerAddress ?? 0,
+          registerCount
         );
-        const rawValue = decodeRegisters(registers, channel.dataType, channel.byteOrder);
-        const displayValue = Number(applyScaling(rawValue, channel.scaling).toFixed(channel.decimals));
+        const rawValue = decodeRegisters(registers, dataType, point.address.byteOrder ?? 'ABCD');
+        const scaledValue = point.scaling ? applyScaling(rawValue, point.scaling) : rawValue;
+        const displayValue = Number(scaledValue.toFixed(getPointDecimals(point, dataType)));
+        const status = getPointStatus(point, displayValue);
 
         return {
-          channelId: channel.id,
+          pointId: point.id,
+          assetId: point.assetId,
           rawValue: Number(rawValue.toFixed(6)),
           displayValue,
-          rawUnit: channel.rawUnit,
-          displayUnit: channel.displayUnit,
-          status: this.getChannelStatus(channel, displayValue),
-          updatedAt
+          rawUnit: point.rawUnit,
+          displayUnit: point.displayUnit,
+          status,
+          quality: status === 'ok' || status === 'warning' || status === 'alarm' ? 'good' : 'bad',
+          timestamp: updatedAt
         };
       } catch (error) {
         lastError = error;
       }
     }
 
-    const message = mapModbusError(lastError, device.connection.port);
-    await this.logEventThrottled(`channel-${channel.id}-${message}`, 'error', 'channel read error', {
-      channelId: channel.id,
+    const message = mapModbusError(lastError, source.connection.port);
+    await this.logEventThrottled(`point-${point.id}-${message}`, 'error', 'point read error', {
+      pointId: point.id,
       error: message,
       technicalError: getTechnicalErrorMessage(lastError)
     });
-    return this.createChannelErrorReading(channel, updatedAt, message);
+    return this.createPointErrorReading(point, updatedAt, message);
   }
 
   private async readRegisterValues(
@@ -596,44 +604,25 @@ export class ModbusDataService implements DataService {
     return result.data;
   }
 
-  private createSnapshot(channels: ChannelReading[], updatedAt: string): MonitoringSnapshot {
-    const readingsByChannelId = new Map(channels.map((channel) => [channel.channelId, channel]));
-    const barrels = this.config.barrels.map((barrel): BarrelReading => {
-      const temperature = readingsByChannelId.get(barrel.temperatureChannelId) ?? null;
-      const level = readingsByChannelId.get(barrel.levelChannelId) ?? null;
-      const status = getWorstStatus([
-        temperature?.status ?? 'no-data',
-        level?.status ?? 'no-data'
-      ]);
-
-      return {
-        barrelId: barrel.id,
-        temperature,
-        level,
-        status,
-        updatedAt
-      };
-    });
-    const status = getWorstStatus([...barrels.map((barrel) => barrel.status), ...channels.map((channel) => channel.status)]);
+  private createSnapshot(readings: Reading[], updatedAt: string): MonitoringSnapshot {
+    const status = getWorstStatus(readings.map((reading) => pointStatusToStatus(reading.status)));
 
     return {
       status,
       mode: this.config.app.mode,
       updatedAt,
-      live: this.createLiveSnapshot(channels, updatedAt),
-      channels,
-      barrels,
-      activeWarningsCount: barrels.filter((barrel) => barrel.status === 'warning').length,
-      activeAlarmsCount: barrels.filter((barrel) => barrel.status === 'alarm').length
+      live: this.createLiveSnapshot(readings, updatedAt),
+      activeWarningsCount: readings.filter((reading) => reading.status === 'warning').length,
+      activeAlarmsCount: readings.filter((reading) => reading.status === 'alarm').length
     };
   }
 
   private createConnectionErrorSnapshot(message: string): MonitoringSnapshot {
     const updatedAt = new Date().toISOString();
-    const channels = this.config.channels.map((channel) =>
-      this.createChannelErrorReading(channel, updatedAt, message)
-    );
-    const snapshot = this.createSnapshot(channels, updatedAt);
+    const readings = this.config.points
+      .filter((point) => point.kind === 'telemetry')
+      .map((point) => this.createPointErrorReading(point, updatedAt, message));
+    const snapshot = this.createSnapshot(readings, updatedAt);
 
     return {
       ...snapshot,
@@ -641,27 +630,28 @@ export class ModbusDataService implements DataService {
     };
   }
 
-  private createChannelErrorReading(
-    channel: ChannelConfig,
+  private createPointErrorReading(
+    point: Point,
     updatedAt: string,
-    message: string
-  ): ChannelReading {
+    message: string,
+    status: PointStatus = 'error'
+  ): Reading {
     return {
-      channelId: channel.id,
-      rawValue: 0,
-      displayValue: 0,
-      rawUnit: channel.rawUnit,
-      displayUnit: channel.displayUnit,
-      status: 'connection-error',
-      updatedAt,
+      pointId: point.id,
+      assetId: point.assetId,
+      rawValue: null,
+      displayValue: null,
+      rawUnit: point.rawUnit,
+      displayUnit: point.displayUnit,
+      status,
+      quality: 'bad',
+      timestamp: updatedAt,
       error: message
     };
   }
 
-  private createLiveSnapshot(channels: ChannelReading[], updatedAt: string): LiveSnapshot {
-    const readingsByPointId = Object.fromEntries(
-      channels.map((channel) => [channel.channelId, this.channelReadingToPointReading(channel)])
-    );
+  private createLiveSnapshot(readings: Reading[], updatedAt: string): LiveSnapshot {
+    const readingsByPointId = Object.fromEntries(readings.map((reading) => [reading.pointId, reading]));
     const dataSourceStatuses = Object.fromEntries(
       this.config.dataSources.map((source): [string, DataSourceStatus] => {
         const state = this.connectionStates.get(source.id);
@@ -682,82 +672,63 @@ export class ModbusDataService implements DataService {
       timestamp: updatedAt,
       readingsByPointId,
       dataSourceStatuses,
-      errors: channels
-        .filter((channel) => channel.error)
-        .map((channel) => ({
-          source: channel.channelId,
-          message: channel.error ?? 'Modbus reading error',
+      errors: readings
+        .filter((reading) => reading.error)
+        .map((reading) => ({
+          source: reading.pointId,
+          message: reading.error ?? 'Modbus reading error',
           timestamp: updatedAt
         }))
     };
   }
 
-  private channelReadingToPointReading(channel: ChannelReading): Reading {
-    const point = this.config.points.find((item) => item.id === channel.channelId);
-
-    return {
-      pointId: channel.channelId,
-      assetId: point?.assetId,
-      rawValue: channel.rawValue,
-      displayValue: channel.displayValue,
-      rawUnit: channel.rawUnit,
-      displayUnit: channel.displayUnit,
-      status: channel.status === 'connection-error' ? 'error' : channel.status === 'no-data' ? 'stale' : channel.status,
-      quality: channel.status === 'ok' || channel.status === 'warning' || channel.status === 'alarm' ? 'good' : 'bad',
-      timestamp: channel.updatedAt,
-      error: channel.error
-    };
+  private getDefaultDataSource(): ModbusRtuDataSource | null {
+    return this.getModbusSources().find((source) => source.enabled) ?? this.getModbusSources()[0] ?? null;
   }
 
-  private getChannelStatus(channel: ChannelConfig, displayValue: number): Status {
-    if (channel.type === 'temperature') {
-      return getValueStatus(displayValue, this.config.thresholds.temperature);
+  private getDataSourceById(dataSourceId: string): ModbusRtuDataSource {
+    const source = this.getDataSourceByIdOrNull(dataSourceId);
+
+    if (!source) {
+      throw new Error(`DataSource '${dataSourceId}' not found`);
     }
 
-    if (channel.type === 'level') {
-      return getValueStatus(displayValue, this.config.thresholds.level);
-    }
-
-    return 'ok';
+    return source;
   }
 
-  private getDefaultDevice(): DeviceConfig | null {
-    return this.config.devices.find((device) => device.active) ?? this.config.devices[0] ?? null;
+  private getDataSourceByIdOrNull(dataSourceId: string): ModbusRtuDataSource | null {
+    const source = this.config.dataSources.find((item) => item.id === dataSourceId);
+    return source && source.type === 'modbus-rtu' && source.connection.type === 'modbus-rtu'
+      ? source as ModbusRtuDataSource
+      : null;
   }
 
-  private getDeviceById(deviceId: string): DeviceConfig {
-    const device = this.getDeviceByIdOrNull(deviceId);
-
-    if (!device) {
-      throw new Error(`Device '${deviceId}' not found`);
-    }
-
-    return device;
+  private getModbusSources(): ModbusRtuDataSource[] {
+    return this.config.dataSources.filter(
+      (source): source is ModbusRtuDataSource => source.type === 'modbus-rtu' && source.connection.type === 'modbus-rtu'
+    );
   }
 
-  private getDeviceByIdOrNull(deviceId: string): DeviceConfig | null {
-    return this.config.devices.find((device) => device.id === deviceId) ?? null;
-  }
+  private groupPointsByDataSource(): Point[][] {
+    const groups = new Map<string, Point[]>();
 
-  private groupChannelsByDevice(): ChannelConfig[][] {
-    const groups = new Map<string, ChannelConfig[]>();
-
-    this.config.channels.forEach((channel) => {
-      const group = groups.get(channel.deviceId) ?? [];
-      group.push(channel);
-      groups.set(channel.deviceId, group);
+    this.config.points.filter(isReadableModbusPoint).forEach((point) => {
+      const dataSourceId = point.dataSourceId ?? '';
+      const group = groups.get(dataSourceId) ?? [];
+      group.push(point);
+      groups.set(dataSourceId, group);
     });
 
     return [
-      ...this.config.devices
-        .map((device) => groups.get(device.id))
-        .filter((group): group is ChannelConfig[] => Boolean(group)),
-      ...[...groups].filter(([deviceId]) => !this.getDeviceByIdOrNull(deviceId)).map(([, channels]) => channels)
+      ...this.getModbusSources()
+        .map((source) => groups.get(source.id))
+        .filter((group): group is Point[] => Boolean(group)),
+      ...[...groups].filter(([dataSourceId]) => !this.getDataSourceByIdOrNull(dataSourceId)).map(([, points]) => points)
     ];
   }
 
   private async publishSnapshot(): Promise<void> {
-    const snapshot = await this.readAllChannels();
+    const snapshot = await this.readAllPoints();
     this.listeners.forEach((listener) => listener(snapshot));
   }
 
@@ -794,6 +765,66 @@ export class ModbusDataService implements DataService {
     this.lastLoggedAtByKey.set(key, now);
     await this.logEvent(level, message, details);
   }
+}
+
+function isReadableModbusPoint(point: Point): point is Point & { address: ModbusDataAddress } {
+  return (
+    point.kind === 'telemetry' &&
+    point.enabled &&
+    point.address?.protocol === 'modbus' &&
+    (point.address.functionCode === 3 || point.address.functionCode === 4) &&
+    point.valueType !== 'boolean' &&
+    point.valueType !== 'string'
+  );
+}
+
+function getModbusDataType(point: Point & { address: ModbusDataAddress }): ModbusNumericValueType {
+  const valueType = point.address.valueType === 'boolean' ? point.valueType : point.address.valueType;
+  return valueType === 'boolean' || valueType === 'string' ? 'uint16' : valueType;
+}
+
+function getSlaveId(source: ModbusRtuDataSource, address?: ModbusDataAddress): number {
+  if (typeof address?.slaveId === 'number') {
+    return address.slaveId;
+  }
+
+  return typeof source.metadata?.slaveId === 'number' ? source.metadata.slaveId : 1;
+}
+
+function getPointDecimals(_point: Point, dataType: ModbusNumericValueType): number {
+  return dataType === 'float32' ? 2 : 0;
+}
+
+function getPointStatus(point: Point, displayValue: number): PointStatus {
+  if (point.thresholds?.alarmLow !== undefined && displayValue <= point.thresholds.alarmLow) {
+    return 'alarm';
+  }
+
+  if (point.thresholds?.alarmHigh !== undefined && displayValue >= point.thresholds.alarmHigh) {
+    return 'alarm';
+  }
+
+  if (point.thresholds?.warningLow !== undefined && displayValue <= point.thresholds.warningLow) {
+    return 'warning';
+  }
+
+  if (point.thresholds?.warningHigh !== undefined && displayValue >= point.thresholds.warningHigh) {
+    return 'warning';
+  }
+
+  return 'ok';
+}
+
+function pointStatusToStatus(status: PointStatus): MonitoringSnapshot['status'] {
+  if (status === 'error') {
+    return 'connection-error';
+  }
+
+  if (status === 'stale' || status === 'disabled') {
+    return 'no-data';
+  }
+
+  return status;
 }
 
 function sleep(delayMs: number): Promise<void> {

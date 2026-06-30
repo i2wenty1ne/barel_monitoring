@@ -14,13 +14,15 @@ type ManualReadPanelProps = {
 };
 
 export function ManualReadPanel({ config }: ManualReadPanelProps): React.JSX.Element {
+  const modbusSources = config.dataSources.filter((source) => source.type === 'modbus-rtu' && source.connection.type === 'modbus-rtu');
+  const defaultPoint = config.points.find((point) => point.address?.protocol === 'modbus' && point.dataSourceId);
   const [request, setRequest] = useState<ManualReadRequest>({
-    deviceId: config.devices[0]?.id ?? '',
-    modbusFunction: 4,
-    registerAddress: config.channels[0]?.registerAddress ?? 0,
-    registerCount: config.channels[0]?.registerCount ?? 2,
-    dataType: config.channels[0]?.dataType ?? 'float32',
-    byteOrder: config.channels[0]?.byteOrder ?? 'ABCD'
+    dataSourceId: defaultPoint?.dataSourceId ?? modbusSources[0]?.id ?? '',
+    modbusFunction: defaultPoint?.address?.protocol === 'modbus' && defaultPoint.address.functionCode === 3 ? 3 : 4,
+    registerAddress: defaultPoint?.address?.protocol === 'modbus' ? defaultPoint.address.registerAddress ?? 0 : 0,
+    registerCount: defaultPoint?.address?.protocol === 'modbus' ? defaultPoint.address.registerCount ?? 2 : 2,
+    dataType: defaultPoint?.valueType !== 'boolean' && defaultPoint?.valueType !== 'string' ? defaultPoint?.valueType ?? 'float32' : 'float32',
+    byteOrder: defaultPoint?.address?.protocol === 'modbus' ? defaultPoint.address.byteOrder ?? 'ABCD' : 'ABCD'
   });
   const [result, setResult] = useState<ManualReadResult | null>(null);
   const [isReading, setIsReading] = useState(false);
@@ -39,10 +41,10 @@ export function ManualReadPanel({ config }: ManualReadPanelProps): React.JSX.Ele
     <Panel className="p-5" title="Ручное чтение регистров">
       <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
         <Select
-          label="Устройство"
-          onChange={(deviceId) => setRequest({ ...request, deviceId })}
-          options={config.devices.map((device) => ({ label: `${device.name} (${device.id})`, value: device.id }))}
-          value={request.deviceId}
+          label="Источник данных"
+          onChange={(dataSourceId) => setRequest({ ...request, dataSourceId })}
+          options={modbusSources.map((source) => ({ label: `${source.name} (${source.id})`, value: source.id }))}
+          value={request.dataSourceId}
         />
         <Select
           label="Функция"

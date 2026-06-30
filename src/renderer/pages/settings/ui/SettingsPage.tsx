@@ -1,11 +1,8 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { BarrelsSettingsTab } from '../../../features/barrel-settings/ui/BarrelsSettingsTab';
-import { ChannelsSettingsTab } from '../../../features/channel-settings/ui/ChannelsSettingsTab';
 import { ConfigValidationSummary } from '../../../features/config-editor/ui/ConfigValidationSummary';
 import { SaveConfigPanel } from '../../../features/config-editor/ui/SaveConfigPanel';
 import { useConfigEditor } from '../../../features/config-editor/model/useConfigEditor';
-import { DeviceSettingsTab } from '../../../features/device-settings/ui/DeviceSettingsTab';
 import { InterfaceSettingsTab } from '../../../features/interface-settings/ui/InterfaceSettingsTab';
 import { ServiceSettingsTab } from '../../../features/service-settings/ui/ServiceSettingsTab';
 import { ThresholdsSettingsTab } from '../../../features/threshold-settings/ui/ThresholdsSettingsTab';
@@ -23,7 +20,7 @@ export function SettingsPage(): React.JSX.Element {
   const activeTab = getSettingsTab(searchParams.get('tab'));
 
   function handleTabChange(tab: SettingsTabId): void {
-    setSearchParams(tab === 'device' ? {} : { tab });
+    setSearchParams(tab === 'thresholds' ? {} : { tab });
   }
 
   if (editor.isLoading && !editor.config) {
@@ -78,25 +75,6 @@ export function SettingsPage(): React.JSX.Element {
 
         <SettingsTabs activeTab={activeTab} onChange={handleTabChange} />
 
-        {activeTab === 'device' ? (
-          <DeviceSettingsTab
-            config={config}
-            onChange={(nextConfig) => editor.updateConfig(() => nextConfig)}
-            validationErrors={editor.validationErrors}
-          />
-        ) : null}
-        {activeTab === 'channels' ? (
-          <ChannelsSettingsTab
-            config={config}
-            onChange={(nextConfig) => editor.updateConfig(() => nextConfig)}
-          />
-        ) : null}
-        {activeTab === 'barrels' ? (
-          <BarrelsSettingsTab
-            config={config}
-            onChange={(nextConfig) => editor.updateConfig(() => nextConfig)}
-          />
-        ) : null}
         {activeTab === 'thresholds' ? (
           <ThresholdsSettingsTab
             config={config}
@@ -141,13 +119,10 @@ export function SettingsPage(): React.JSX.Element {
 
 function getSettingsTab(value: string | null): SettingsTabId {
   const tabs: SettingsTabId[] = [
-    'device',
-    'channels',
-    'barrels',
     'thresholds',
     'interface',
     'service'
   ];
 
-  return value && tabs.includes(value as SettingsTabId) ? (value as SettingsTabId) : 'device';
+  return value && tabs.includes(value as SettingsTabId) ? (value as SettingsTabId) : 'thresholds';
 }

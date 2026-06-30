@@ -1,7 +1,5 @@
-import type { AppConfig, ChannelConfig, Point } from '../../../shared/types/config.types';
+import type { AppConfig, Point, PointStatus } from '../../../shared/types/config.types';
 import type {
-  BarrelReading,
-  ChannelReading,
   DataSourceStatus,
   DataServiceStatus,
   LiveSnapshot,
@@ -12,11 +10,10 @@ import type {
   RegisterScanRequest,
   RegisterScanResult,
   RegisterScanRow,
-  Status,
   TestConnectionResult
 } from '../../../shared/types/monitoring.types';
 import { applyScaling } from '../../../shared/lib/scaling';
-import { getValueStatus, getWorstStatus } from '../../../shared/lib/thresholds';
+import { getWorstStatus } from '../../../shared/lib/thresholds';
 import type { DataService, MonitoringSnapshotListener } from './data-service.types';
 
 export class MockDataService implements DataService {
@@ -55,37 +52,18 @@ export class MockDataService implements DataService {
     await this.start();
   }
 
-  public async readAllChannels(): Promise<MonitoringSnapshot> {
+  public async readAllPoints(): Promise<MonitoringSnapshot> {
     const updatedAt = new Date().toISOString();
-    const channels = this.config.channels.map((channel) => this.createChannelReading(channel, updatedAt));
-    const readingByChannelId = new Map(channels.map((reading) => [reading.channelId, reading]));
-    const barrels = this.config.barrels.map((barrel) => {
-      const temperature = readingByChannelId.get(barrel.temperatureChannelId) ?? null;
-      const level = readingByChannelId.get(barrel.levelChannelId) ?? null;
-      const barrelStatus = getWorstStatus([
-        temperature?.status ?? 'no-data',
-        level?.status ?? 'no-data'
-      ]);
-
-      return {
-        barrelId: barrel.id,
-        temperature,
-        level,
-        status: barrelStatus,
-        updatedAt
-      } satisfies BarrelReading;
-    });
-    const status = getWorstStatus(barrels.map((barrel) => barrel.status));
+    const readings = this.config.points.map((point) => this.createPointReading(point, updatedAt));
+    const status = getWorstStatus(readings.map((reading) => pointStatusToStatus(reading.status)));
 
     const snapshot: MonitoringSnapshot = {
       status,
       mode: this.config.app.mode,
       updatedAt,
-      live: this.createLiveSnapshot(channels, updatedAt),
-      channels,
-      barrels,
-      activeWarningsCount: barrels.filter((barrel) => barrel.status === 'warning').length,
-      activeAlarmsCount: barrels.filter((barrel) => barrel.status === 'alarm').length
+      live: this.createLiveSnapshot(readings, updatedAt),
+      activeWarningsCount: readings.filter((reading) => reading.status === 'warning').length,
+      activeAlarmsCount: readings.filter((reading) => reading.status === 'alarm').length
     };
 
     this.lastSnapshot = snapshot;
@@ -160,8 +138,8 @@ export class MockDataService implements DataService {
         mode: this.config.app.mode,
         dataSourceId: source?.id,
         dataSourceName: source?.name,
-        channels: this.config.channels.length,
-        barrels: this.config.barrels.length
+        points: this.config.points.length,
+        assets: this.config.assets.length
       }
     };
   }
@@ -186,29 +164,8 @@ export class MockDataService implements DataService {
     };
   }
 
-  private createChannelReading(channel: ChannelConfig, updatedAt: string): ChannelReading {
-    const rawValue = this.createRawValue(channel);
-    const displayValue = applyScaling(rawValue, channel.scaling);
-    const roundedDisplayValue = Number(displayValue.toFixed(channel.decimals));
-
-    return {
-      channelId: channel.id,
-      rawValue: Number(rawValue.toFixed(3)),
-      displayValue: roundedDisplayValue,
-      rawUnit: channel.rawUnit,
-      displayUnit: channel.displayUnit,
-      status: this.getChannelStatus(channel, roundedDisplayValue),
-      updatedAt
-    };
-  }
-
-  private createLiveSnapshot(channels: ChannelReading[], updatedAt: string): LiveSnapshot {
-    const channelReadings = channels.map((channel) => [channel.channelId, this.channelReadingToPointReading(channel)] as const);
-    const channelPointIds = new Set(channels.map((channel) => channel.channelId));
-    const pointReadings = this.config.points
-      .filter((point) => !channelPointIds.has(point.id))
-      .map((point) => [point.id, this.createPointReading(point, updatedAt)] as const);
-    const readingsByPointId = Object.fromEntries([...channelReadings, ...pointReadings]);
+  private createLiveSnapshot(readings: Reading[], updatedAt: string): LiveSnapshot {
+    const readingsByPointId = Object.fromEntries(readings.map((reading) => [reading.pointId, reading]));
     const dataSourceStatuses = Object.fromEntries(
       this.config.dataSources.map((source): [string, DataSourceStatus] => [
         source.id,
@@ -224,30 +181,13 @@ export class MockDataService implements DataService {
       timestamp: updatedAt,
       readingsByPointId,
       dataSourceStatuses,
-      errors: channels
-        .filter((channel) => channel.error)
-        .map((channel) => ({
-          source: channel.channelId,
-          message: channel.error ?? 'Mock reading error',
+      errors: readings
+        .filter((reading) => reading.error)
+        .map((reading) => ({
+          source: reading.pointId,
+          message: reading.error ?? 'Mock reading error',
           timestamp: updatedAt
         }))
-    };
-  }
-
-  private channelReadingToPointReading(channel: ChannelReading): Reading {
-    const point = this.config.points.find((item) => item.id === channel.channelId);
-
-    return {
-      pointId: channel.channelId,
-      assetId: point?.assetId,
-      rawValue: channel.rawValue,
-      displayValue: channel.displayValue,
-      rawUnit: channel.rawUnit,
-      displayUnit: channel.displayUnit,
-      status: channel.status === 'connection-error' ? 'error' : channel.status === 'no-data' ? 'stale' : channel.status,
-      quality: channel.status === 'ok' || channel.status === 'warning' || channel.status === 'alarm' ? 'good' : 'bad',
-      timestamp: channel.updatedAt,
-      error: channel.error
     };
   }
 
@@ -264,7 +204,7 @@ export class MockDataService implements DataService {
       displayValue: typeof displayValue === 'number' ? Number(displayValue.toFixed(2)) : displayValue,
       rawUnit: point.rawUnit,
       displayUnit: point.displayUnit,
-      status: point.enabled ? 'ok' : 'disabled',
+      status: point.enabled ? inferMockPointStatus(point, displayValue) : 'disabled',
       quality: point.enabled ? 'good' : 'bad',
       timestamp: updatedAt
     };
@@ -304,18 +244,6 @@ export class MockDataService implements DataService {
     return Math.random() * 100;
   }
 
-  private createRawValue(channel: ChannelConfig): number {
-    if (channel.type === 'temperature') {
-      return 20 + Math.random() * 10;
-    }
-
-    if (channel.type === 'level') {
-      return 4 + Math.random() * 16;
-    }
-
-    return Math.random() * 100;
-  }
-
   private isActuatorRunning(type: string): boolean {
     const actuators = this.config.actuators.filter((actuator) => actuator.type === type);
     if (actuators.length === 0) {
@@ -333,22 +261,46 @@ export class MockDataService implements DataService {
     });
   }
 
-  private getChannelStatus(channel: ChannelConfig, displayValue: number): Status {
-    if (channel.type === 'temperature') {
-      return getValueStatus(displayValue, this.config.thresholds.temperature);
-    }
+  private async publishSnapshot(): Promise<void> {
+    const snapshot = await this.readAllPoints();
+    this.listeners.forEach((listener) => listener(snapshot));
+  }
+}
 
-    if (channel.type === 'level') {
-      return getValueStatus(displayValue, this.config.thresholds.level);
-    }
-
+function inferMockPointStatus(point: Point, displayValue: Reading['displayValue']): PointStatus {
+  if (typeof displayValue !== 'number') {
     return 'ok';
   }
 
-  private async publishSnapshot(): Promise<void> {
-    const snapshot = await this.readAllChannels();
-    this.listeners.forEach((listener) => listener(snapshot));
+  if (point.thresholds?.alarmLow !== undefined && displayValue <= point.thresholds.alarmLow) {
+    return 'alarm';
   }
+
+  if (point.thresholds?.alarmHigh !== undefined && displayValue >= point.thresholds.alarmHigh) {
+    return 'alarm';
+  }
+
+  if (point.thresholds?.warningLow !== undefined && displayValue <= point.thresholds.warningLow) {
+    return 'warning';
+  }
+
+  if (point.thresholds?.warningHigh !== undefined && displayValue >= point.thresholds.warningHigh) {
+    return 'warning';
+  }
+
+  return 'ok';
+}
+
+function pointStatusToStatus(status: PointStatus): MonitoringSnapshot['status'] {
+  if (status === 'error') {
+    return 'connection-error';
+  }
+
+  if (status === 'stale' || status === 'disabled') {
+    return 'no-data';
+  }
+
+  return status;
 }
 
 function normalizeRegisterScanRequest(request: RegisterScanRequest): RegisterScanRequest {

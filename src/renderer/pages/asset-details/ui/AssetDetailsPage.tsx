@@ -38,7 +38,6 @@ export function AssetDetailsPage(): React.JSX.Element {
   const profiles = config.monitoringProfiles.filter((item) => item.assetId === asset.id);
   const profile = profiles[0];
   const activeSession = config.monitoringSessions.find((session) => session.assetId === asset.id && session.status === 'running');
-  const legacyBarrel = config.barrels.find((barrel) => barrel.id === asset.id);
   const tabs: TabItem<AssetDetailsTab>[] = [
     { id: 'points', label: 'Параметры' },
     { id: 'history', label: 'История' },
@@ -170,14 +169,6 @@ export function AssetDetailsPage(): React.JSX.Element {
               <InfoRow label="Профиль истории" value={profile?.name ?? 'не настроен'} />
               <InfoRow label="Сессия истории" value={activeSession ? 'running' : 'stopped'} />
             </div>
-            {legacyBarrel ? (
-              <Link
-                className="mt-4 inline-flex rounded-md bg-teal-500/15 px-3 py-2 text-sm text-teal-100 ring-1 ring-teal-400/30 hover:bg-teal-500/20"
-                to={`/barrels/${legacyBarrel.id}`}
-              >
-                Открыть виджет бочки
-              </Link>
-            ) : null}
           </Panel>
         </aside>
       </div>

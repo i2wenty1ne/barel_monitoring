@@ -3,7 +3,6 @@ import { AboutPage } from '../pages/about/ui/AboutPage';
 import { ActuatorsPage } from '../pages/actuators/ui/ActuatorsPage';
 import { AssetDetailsPage } from '../pages/asset-details/ui/AssetDetailsPage';
 import { AssetsPage } from '../pages/assets/ui/AssetsPage';
-import { BarrelDetailsPage } from '../pages/barrel-details/ui/BarrelDetailsPage';
 import { DataSourcesPage } from '../pages/data-sources/ui/DataSourcesPage';
 import { DiagnosticsPage } from '../pages/diagnostics/ui/DiagnosticsPage';
 import { EventLogPage } from '../pages/event-log/ui/EventLogPage';
@@ -35,7 +34,6 @@ export function App(): React.JSX.Element {
           <Route path="/process-jobs" element={<ProcessJobsPage />} />
           <Route path="/graphs" element={<GraphsPage />} />
           <Route path="/history" element={<HistoryPage />} />
-          <Route path="/barrels/:barrelId" element={<BarrelDetailsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/diagnostics" element={<DiagnosticsPage />} />
           <Route path="/events" element={<EventLogPage />} />

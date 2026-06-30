@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import type { AppConfig, ChannelConfig } from '../../../../shared/types/config.types';
+import type { AppConfig, Point } from '../../../../shared/types/config.types';
 import type {
   RegisterScanRequest,
   RegisterScanResult,
@@ -20,14 +20,16 @@ type RegisterScanPanelProps = {
 };
 
 export function RegisterScanPanel({ config }: RegisterScanPanelProps): React.JSX.Element {
+  const modbusSources = config.dataSources.filter((source) => source.type === 'modbus-rtu' && source.connection.type === 'modbus-rtu');
+  const defaultPoint = config.points.find((point) => point.address?.protocol === 'modbus' && point.dataSourceId);
   const [request, setRequest] = useState<RegisterScanRequest>({
-    deviceId: config.devices[0]?.id ?? '',
+    dataSourceId: defaultPoint?.dataSourceId ?? modbusSources[0]?.id ?? '',
     startAddress: 0,
     endAddress: 255,
-    registerCount: config.channels[0]?.registerCount ?? 1,
+    registerCount: defaultPoint?.address?.protocol === 'modbus' ? defaultPoint.address.registerCount ?? 1 : 1,
     modbusFunctions: [3, 4],
-    dataType: config.channels[0]?.dataType ?? 'float32',
-    byteOrder: config.channels[0]?.byteOrder ?? 'ABCD',
+    dataType: defaultPoint?.valueType !== 'boolean' && defaultPoint?.valueType !== 'string' ? defaultPoint?.valueType ?? 'float32' : 'float32',
+    byteOrder: defaultPoint?.address?.protocol === 'modbus' ? defaultPoint.address.byteOrder ?? 'ABCD' : 'ABCD',
     attemptsPerRegister: 3,
     retryDelayMs: 80
   });
@@ -66,9 +68,9 @@ export function RegisterScanPanel({ config }: RegisterScanPanelProps): React.JSX
     try {
       const nextResult = await window.barrelMonitor.monitoring.scanRegisters(request);
       setResult(nextResult);
-      const importResult = await importFoundChannels(config, request, nextResult);
+      const importResult = await importFoundPoints(config, request, nextResult);
       setImportMessage(
-        `Найдено успешно: ${nextResult.successCount}. Создано каналов: ${importResult.created}. Дубликатов пропущено: ${importResult.skipped}.`
+        `Найдено успешно: ${nextResult.successCount}. Создано точек: ${importResult.created}. Дубликатов пропущено: ${importResult.skipped}.`
       );
     } finally {
       setIsScanning(false);
@@ -94,10 +96,10 @@ export function RegisterScanPanel({ config }: RegisterScanPanelProps): React.JSX
 
       <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-8">
         <Select
-          label="Устройство"
-          onChange={(deviceId) => setRequest({ ...request, deviceId })}
-          options={config.devices.map((device) => ({ label: `${device.name} (${device.id})`, value: device.id }))}
-          value={request.deviceId}
+          label="Источник данных"
+          onChange={(dataSourceId) => setRequest({ ...request, dataSourceId })}
+          options={modbusSources.map((source) => ({ label: `${source.name} (${source.id})`, value: source.id }))}
+          value={request.dataSourceId}
         />
         <NumberInput
           label="Начальный регистр"
@@ -276,8 +278,8 @@ function getValidationError(request: RegisterScanRequest): string | null {
     return 'Выберите хотя бы одну Modbus-функцию.';
   }
 
-  if (!request.deviceId) {
-    return 'Выберите устройство.';
+  if (!request.dataSourceId) {
+    return 'Выберите источник данных.';
   }
 
   return null;
@@ -291,26 +293,29 @@ function formatDecodedValue(value: number | undefined): string {
   return String(Number(value.toFixed(6)));
 }
 
-async function importFoundChannels(
+async function importFoundPoints(
   config: AppConfig,
   request: RegisterScanRequest,
   result: RegisterScanResult
 ): Promise<{ created: number; skipped: number }> {
   const successRows = result.rows.filter((row) => row.success);
-  const existingChannelIds = config.channels.map((channel) => channel.id);
-  const nextChannels: ChannelConfig[] = [...config.channels];
+  const existingPointIds = config.points.map((point) => point.id);
+  const nextPoints: Point[] = [...config.points];
+  const dataSource = config.dataSources.find((source) => source.id === request.dataSourceId);
+  const slaveId = typeof dataSource?.metadata?.slaveId === 'number' ? dataSource.metadata.slaveId : 1;
   let created = 0;
   let skipped = 0;
 
   successRows.forEach((row) => {
-    const isDuplicate = nextChannels.some(
-      (channel) =>
-        channel.deviceId === request.deviceId &&
-        channel.modbusFunction === row.modbusFunction &&
-        channel.registerAddress === row.registerAddress &&
-        channel.registerCount === request.registerCount &&
-        channel.dataType === request.dataType &&
-        channel.byteOrder === request.byteOrder
+    const isDuplicate = nextPoints.some(
+      (point) =>
+        point.dataSourceId === request.dataSourceId &&
+        point.address?.protocol === 'modbus' &&
+        point.address.functionCode === row.modbusFunction &&
+        point.address.registerAddress === row.registerAddress &&
+        point.address.registerCount === request.registerCount &&
+        point.valueType === request.dataType &&
+        (point.address.byteOrder ?? 'ABCD') === request.byteOrder
     );
 
     if (isDuplicate) {
@@ -319,32 +324,41 @@ async function importFoundChannels(
     }
 
     const id = createUniqueId(
-      `${request.deviceId}-fn${row.modbusFunction}-reg${row.registerAddress}`,
-      [...existingChannelIds, ...nextChannels.map((channel) => channel.id)]
+      `${request.dataSourceId}-fn${row.modbusFunction}-reg${row.registerAddress}`,
+      [...existingPointIds, ...nextPoints.map((point) => point.id)]
     );
-    nextChannels.push({
+    const now = new Date().toISOString();
+    nextPoints.push({
       id,
       name: `Найденный регистр ${row.registerAddress} (${row.modbusFunction === 3 ? '3 Holding' : '4 Input'})`,
-      type: 'custom',
-      deviceId: request.deviceId,
-      moduleInputNumber: created + 1,
-      registerAddress: row.registerAddress,
-      modbusFunction: row.modbusFunction,
-      dataType: request.dataType,
-      registerCount: request.registerCount,
-      byteOrder: request.byteOrder,
+      kind: 'telemetry',
+      dataSourceId: request.dataSourceId,
+      valueType: request.dataType,
       rawUnit: 'raw',
       displayUnit: 'raw',
-      decimals: 2,
-      scaling: { type: 'none' }
+      address: {
+        protocol: 'modbus',
+        slaveId,
+        area: row.modbusFunction === 3 ? 'holding-register' : 'input-register',
+        functionCode: row.modbusFunction,
+        registerAddress: row.registerAddress,
+        registerCount: request.registerCount,
+        valueType: request.dataType,
+        byteOrder: request.byteOrder
+      },
+      scaling: { type: 'none' },
+      recordable: true,
+      enabled: true,
+      createdAt: now,
+      updatedAt: now
     });
     created += 1;
   });
 
   if (created > 0) {
-    const saveResult = await window.barrelMonitor.config.save({ ...config, channels: nextChannels });
+    const saveResult = await window.barrelMonitor.config.save({ ...config, points: nextPoints });
     if (!saveResult.success) {
-      throw new Error(saveResult.message ?? 'Не удалось сохранить найденные каналы');
+      throw new Error(saveResult.message ?? 'Не удалось сохранить найденные точки');
     }
   }
 

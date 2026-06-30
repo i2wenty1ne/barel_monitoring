@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { ChannelDataType, Point, PointValueType, ScalingConfig } from '../../../../shared/types/config.types';
+import type { ModbusNumericValueType, Point, PointValueType, ScalingConfig } from '../../../../shared/types/config.types';
 import type { ManualReadResult } from '../../../../shared/types/monitoring.types';
 import { createUniqueId } from '../../../features/config-editor/model/config-editor.utils';
 import { useAppConfig } from '../../../entities/config/model/useAppConfig';
@@ -149,8 +149,7 @@ export function PointsPage(): React.JSX.Element {
         monitoringProfiles: currentConfig.monitoringProfiles.map((profile) => ({
           ...profile,
           pointConfigs: profile.pointConfigs.filter((pointConfig) => pointConfig.pointId !== point.id)
-        })),
-        channels: currentConfig.channels.filter((channel) => channel.id !== point.id)
+        }))
       },
       'Точка данных удалена'
     );
@@ -171,11 +170,11 @@ export function PointsPage(): React.JSX.Element {
       }
 
       const result = await window.barrelMonitor.monitoring.readRegisters({
-        deviceId: point.dataSourceId,
+        dataSourceId: point.dataSourceId,
         modbusFunction,
         registerAddress: point.address.registerAddress ?? 0,
         registerCount: point.address.registerCount ?? 1,
-        dataType: point.valueType as ChannelDataType,
+        dataType: point.valueType as ModbusNumericValueType,
         byteOrder: point.address.byteOrder ?? 'ABCD'
       });
       setManualReadResult(result);
@@ -211,7 +210,7 @@ export function PointsPage(): React.JSX.Element {
             </div>
           ) : null}
           {currentConfig.points.length === 0 ? (
-            <EmptyState title="Точки не настроены" description="Миграция channels создаёт telemetry points автоматически." />
+            <EmptyState title="Точки не настроены" description="Добавьте telemetry point или импортируйте регистры через диагностику." />
           ) : (
             <DataTable compact columns={columns} getRowKey={(point) => point.id} maxHeight="620px" rows={currentConfig.points} />
           )}

@@ -3,11 +3,10 @@ import { dirname } from 'node:path';
 import type {
   AppConfig,
   Asset,
-  BarrelConfig,
-  ChannelConfig,
-  ConnectionConfig,
   DataSource,
-  DeviceConfig,
+  ModbusByteOrder,
+  ModbusNumericValueType,
+  ModbusRtuConnectionConfig,
   Point
 } from '../../../shared/types/config.types';
 import { defaultConfig } from '../../../shared/config/default-config';
@@ -39,6 +38,49 @@ type NormalizeResult = {
   config: unknown;
   migrated: boolean;
   fromSchemaVersion: number | 'legacy';
+};
+
+type LegacyConnectionConfig = ModbusRtuConnectionConfig & {
+  timeoutMs: number;
+  retries: number;
+};
+
+type LegacyDeviceConfig = {
+  id: string;
+  name: string;
+  model: string;
+  protocol: 'modbus-rtu';
+  modbusAddress: number;
+  active: boolean;
+  connection: LegacyConnectionConfig;
+};
+
+type LegacyChannelConfig = {
+  id: string;
+  name: string;
+  type: 'temperature' | 'level' | 'custom';
+  deviceId: string;
+  moduleInputNumber: number;
+  registerAddress: number;
+  modbusFunction: 3 | 4;
+  dataType: ModbusNumericValueType;
+  registerCount: number;
+  byteOrder: ModbusByteOrder;
+  rawUnit: string;
+  displayUnit: string;
+  decimals: number;
+  scaling: Point['scaling'];
+};
+
+type LegacyBarrelConfig = {
+  id: string;
+  name: string;
+  active: boolean;
+  visible: boolean;
+  temperatureChannelId: string;
+  levelChannelId: string;
+  displayOrder: number;
+  cardSize: 'small' | 'medium' | 'large';
 };
 
 export class ConfigService {
@@ -171,8 +213,8 @@ function normalizeConfig(value: unknown): NormalizeResult {
 
   if (hasV2Shape) {
     return {
-      config: withCompatibilityProjections(config as Partial<AppConfig>),
-      migrated: !Array.isArray(config.devices) || !Array.isArray(config.channels) || !Array.isArray(config.barrels),
+      config: normalizeV2Config(config),
+      migrated: hasLegacyProjectionFields(config) || hasLegacyCardSize(config),
       fromSchemaVersion: 2
     };
   }
@@ -193,8 +235,8 @@ function normalizeSingleDeviceLegacy(value: Record<string, unknown>): Record<str
     return value;
   }
 
-  const legacyDevice = value.device as Partial<DeviceConfig>;
-  const legacyConnection = value.connection as ConnectionConfig;
+  const legacyDevice = value.device as Partial<LegacyDeviceConfig>;
+  const legacyConnection = value.connection as LegacyConnectionConfig;
   const { device: _device, connection: _connection, ...restConfig } = value;
 
   return {
@@ -210,11 +252,26 @@ function normalizeSingleDeviceLegacy(value: Record<string, unknown>): Record<str
 
 function migrateLegacyToV2(value: Record<string, unknown>): AppConfig {
   const now = new Date().toISOString();
-  const legacyDevices = Array.isArray(value.devices) ? (value.devices as DeviceConfig[]) : defaultConfig.devices;
-  const legacyChannels = Array.isArray(value.channels) ? (value.channels as ChannelConfig[]) : defaultConfig.channels;
-  const legacyBarrels = Array.isArray(value.barrels) ? (value.barrels as BarrelConfig[]) : defaultConfig.barrels;
-  const base = {
-    ...defaultConfig,
+  const legacyDevices = readArray<LegacyDeviceConfig>(value.devices);
+  const legacyChannels = readArray<LegacyChannelConfig>(value.channels);
+  const legacyBarrels = readArray<LegacyBarrelConfig>(value.barrels);
+  const dataSources = mergeById(
+    readArray<DataSource>(value.dataSources),
+    legacyDevices.map((device) => legacyDeviceToDataSource(device, now)),
+    (source) => source
+  );
+  const points = mergeById(
+    readArray<Point>(value.points),
+    legacyChannels.map((channel) => legacyChannelToPoint(channel, legacyBarrels, legacyDevices, now)),
+    (point) => point
+  );
+  const assets = mergeById(
+    readArray<Asset>(value.assets),
+    legacyBarrels.map((barrel) => legacyBarrelToAsset(barrel, now)),
+    normalizeAssetMetadata
+  );
+
+  return normalizeV2Config({
     ...pickLegacyShell(value),
     schemaVersion: 2 as const,
     app: {
@@ -227,167 +284,49 @@ function migrateLegacyToV2(value: Record<string, unknown>): AppConfig {
         ? value.app.realWriteEnabled
         : false
     },
-    devices: legacyDevices,
-    channels: legacyChannels,
-    barrels: legacyBarrels
-  } satisfies AppConfig;
-
-  return withDomainFromCompatibility(base, now);
+    dataSources,
+    assets,
+    points,
+    actuators: readArray(value.actuators),
+    interlocks: readArray(value.interlocks),
+    commands: readArray(value.commands),
+    monitoringProfiles: readArray(value.monitoringProfiles),
+    monitoringSessions: readArray(value.monitoringSessions),
+    processes: readArray(value.processes),
+    processGraphs: readArray(value.processGraphs),
+    processJobs: readArray(value.processJobs)
+  });
 }
 
-function withCompatibilityProjections(config: Partial<AppConfig>): AppConfig {
+function normalizeV2Config(config: Record<string, unknown> | Partial<AppConfig>): AppConfig {
   const now = new Date().toISOString();
-  const domainDevices = dataSourcesToDevices(config.dataSources ?? []);
-  const domainChannels = pointsToChannels(config.points ?? []);
-  const domainBarrels = domainChannels.length > 0 ? assetsToBarrels(config.assets ?? []) : [];
-  const devices = mergeById(config.devices ?? [], domainDevices, (device) =>
-    syncDeviceFromDataSource(device, config.dataSources?.find((source) => source.id === device.id))
-  );
-  const channels = mergeById(config.channels ?? [], domainChannels, (channel) =>
-    syncChannelFromPoint(channel, config.points?.find((point) => point.id === channel.id))
-  );
-  const barrels = mergeById(config.barrels ?? [], domainBarrels, (barrel) =>
-    syncBarrelFromAsset(barrel, config.assets?.find((asset) => asset.id === barrel.id))
-  );
+  const points = readArray<Point>(config.points);
+  const assets = readArray<Asset>(config.assets).map((asset) => ({
+    ...normalizeAssetMetadata(asset),
+    pointIds: asset.pointIds.length > 0 ? asset.pointIds : points.filter((point) => point.assetId === asset.id).map((point) => point.id)
+  }));
+  const monitoringProfiles = readArray<AppConfig['monitoringProfiles'][number]>(config.monitoringProfiles);
 
-  return withDomainFromCompatibility({
+  return {
     ...defaultConfig,
-    ...config,
     schemaVersion: 2,
     app: {
       ...defaultConfig.app,
-      ...config.app
+      ...(isRecord(config.app) ? config.app : {})
     },
-    devices,
-    channels,
-    barrels
-  } as AppConfig, now);
-}
-
-function syncDeviceFromDataSource(device: DeviceConfig, source: DataSource | undefined): DeviceConfig {
-  if (!source || source.type !== 'modbus-rtu' || source.connection.type !== 'modbus-rtu') {
-    return device;
-  }
-
-  return {
-    ...device,
-    name: source.name,
-    model: String(source.metadata?.model ?? device.model),
-    modbusAddress: typeof source.metadata?.slaveId === 'number' ? source.metadata.slaveId : device.modbusAddress,
-    active: source.enabled,
-    connection: {
-      ...source.connection,
-      timeoutMs: source.timeoutMs ?? device.connection.timeoutMs,
-      retries: source.retryCount ?? device.connection.retries
-    }
-  };
-}
-
-function syncChannelFromPoint(channel: ChannelConfig, point: Point | undefined): ChannelConfig {
-  if (
-    !point ||
-    point.kind !== 'telemetry' ||
-    point.address?.protocol !== 'modbus' ||
-    (point.address.functionCode !== 3 && point.address.functionCode !== 4)
-  ) {
-    return channel;
-  }
-
-  return {
-    ...channel,
-    name: point.name,
-    deviceId: point.dataSourceId ?? channel.deviceId,
-    registerAddress: point.address.registerAddress ?? channel.registerAddress,
-    modbusFunction: point.address.functionCode,
-    dataType: point.valueType === 'boolean' || point.valueType === 'string' ? channel.dataType : point.valueType,
-    registerCount: point.address.registerCount ?? channel.registerCount,
-    byteOrder: point.address.byteOrder ?? channel.byteOrder,
-    rawUnit: point.rawUnit ?? channel.rawUnit,
-    displayUnit: point.displayUnit ?? channel.displayUnit,
-    scaling: point.scaling ?? channel.scaling
-  };
-}
-
-function syncBarrelFromAsset(barrel: BarrelConfig, asset: Asset | undefined): BarrelConfig {
-  if (!asset || (asset.type !== 'barrel' && asset.type !== 'tank')) {
-    return barrel;
-  }
-
-  return {
-    ...barrel,
-    name: asset.name,
-    active: Boolean(asset.metadata?.active ?? barrel.active),
-    visible: Boolean(asset.metadata?.visible ?? barrel.visible),
-    temperatureChannelId: asset.pointIds.find((pointId) => pointId.includes('temperature')) ?? barrel.temperatureChannelId,
-    levelChannelId: asset.pointIds.find((pointId) => pointId.includes('level')) ?? barrel.levelChannelId,
-    displayOrder: typeof asset.metadata?.displayOrder === 'number' ? asset.metadata.displayOrder : barrel.displayOrder
-  };
-}
-
-function withDomainFromCompatibility(config: AppConfig, now: string): AppConfig {
-  const devicesById = new Map(config.devices.map((device) => [device.id, device]));
-  const channelsById = new Map(config.channels.map((channel) => [channel.id, channel]));
-  const barrelsById = new Map(config.barrels.map((barrel) => [barrel.id, barrel]));
-  const dataSources = mergeById(
-    config.dataSources ?? [],
-    config.devices.map((device) => deviceToDataSource(device, now)),
-    (source) => {
-      const device = devicesById.get(source.id);
-      return device ? syncDataSourceFromDevice(source, device) : source;
-    }
-  );
-  const points = mergeById(
-    config.points ?? [],
-    config.channels.map((channel) => channelToPoint(channel, config.barrels, config.devices, now)),
-    (point) => {
-      const channel = channelsById.get(point.id);
-      return channel ? syncPointFromChannel(point, channel, config.barrels, config.devices) : point;
-    }
-  );
-  const assets = mergeById(
-    config.assets ?? [],
-    config.barrels.map((barrel) => barrelToAsset(barrel, now)),
-    (asset) => {
-      const barrel = barrelsById.get(asset.id);
-      return barrel ? syncAssetFromBarrel(asset, barrel) : asset;
-    }
-  );
-
-  return {
-    ...config,
-    schemaVersion: 2,
-    dataSources,
-    assets: assets.map((asset) => ({
-      ...asset,
-      pointIds: asset.pointIds.length > 0 ? asset.pointIds : points.filter((point) => point.assetId === asset.id).map((point) => point.id)
-    })),
+    dataSources: readArray<DataSource>(config.dataSources),
+    assets,
     points,
-    actuators: config.actuators ?? [],
-    interlocks: config.interlocks ?? [],
-    commands: config.commands ?? [],
-    monitoringProfiles: config.monitoringProfiles?.length > 0
-      ? config.monitoringProfiles
-      : assets.map((asset) => ({
-          id: `${asset.id}-monitoring-profile`,
-          assetId: asset.id,
-          name: `Мониторинг ${asset.name}`,
-          enabled: true,
-          pointConfigs: points
-            .filter((point) => point.assetId === asset.id && point.recordable)
-            .map((point) => ({
-              pointId: point.id,
-              enabled: true,
-              mode: 'both' as const,
-              sampleIntervalMs: point.valueType === 'float32' ? 5000 : 10000,
-              retentionDays: 30
-            })),
-          createdAt: now,
-          updatedAt: now
-        })),
-    monitoringSessions: config.monitoringSessions ?? [],
-    processes: config.processes ?? [],
-    processGraphs: config.processGraphs ?? [],
-    processJobs: config.processJobs ?? []
+    actuators: readArray(config.actuators),
+    interlocks: readArray(config.interlocks),
+    commands: readArray(config.commands),
+    monitoringProfiles: monitoringProfiles.length > 0 ? monitoringProfiles : createDefaultMonitoringProfiles(assets, points, now),
+    monitoringSessions: readArray(config.monitoringSessions),
+    processes: readArray(config.processes),
+    processGraphs: readArray(config.processGraphs),
+    processJobs: readArray(config.processJobs),
+    thresholds: isRecord(config.thresholds) ? (config.thresholds as AppConfig['thresholds']) : defaultConfig.thresholds,
+    interface: isRecord(config.interface) ? (config.interface as AppConfig['interface']) : defaultConfig.interface
   };
 }
 
@@ -408,54 +347,7 @@ function mergeById<TItem extends { id: string }>(
   return result;
 }
 
-function syncDataSourceFromDevice(source: DataSource, device: DeviceConfig): DataSource {
-  const next = deviceToDataSource(device, source.createdAt);
-  return {
-    ...source,
-    ...next,
-    metadata: {
-      ...source.metadata,
-      ...next.metadata
-    },
-    createdAt: source.createdAt,
-    updatedAt: new Date().toISOString()
-  };
-}
-
-function syncPointFromChannel(
-  point: Point,
-  channel: ChannelConfig,
-  barrels: BarrelConfig[],
-  devices: DeviceConfig[]
-): Point {
-  const next = channelToPoint(channel, barrels, devices, point.createdAt);
-  return {
-    ...point,
-    ...next,
-    thresholds: point.thresholds ?? next.thresholds,
-    recordable: point.recordable,
-    enabled: point.enabled,
-    createdAt: point.createdAt,
-    updatedAt: new Date().toISOString()
-  };
-}
-
-function syncAssetFromBarrel(asset: Asset, barrel: BarrelConfig): Asset {
-  const next = barrelToAsset(barrel, asset.createdAt);
-  return {
-    ...asset,
-    name: next.name,
-    type: next.type,
-    pointIds: next.pointIds,
-    metadata: {
-      ...asset.metadata,
-      ...next.metadata
-    },
-    updatedAt: new Date().toISOString()
-  };
-}
-
-function deviceToDataSource(device: DeviceConfig, now: string): DataSource {
+function legacyDeviceToDataSource(device: LegacyDeviceConfig, now: string): DataSource {
   return {
     id: device.id,
     name: device.name,
@@ -481,7 +373,7 @@ function deviceToDataSource(device: DeviceConfig, now: string): DataSource {
   };
 }
 
-function channelToPoint(channel: ChannelConfig, barrels: BarrelConfig[], devices: DeviceConfig[], now: string): Point {
+function legacyChannelToPoint(channel: LegacyChannelConfig, barrels: LegacyBarrelConfig[], devices: LegacyDeviceConfig[], now: string): Point {
   const barrel = barrels.find(
     (item) => item.temperatureChannelId === channel.id || item.levelChannelId === channel.id
   );
@@ -519,7 +411,7 @@ function channelToPoint(channel: ChannelConfig, barrels: BarrelConfig[], devices
   };
 }
 
-function barrelToAsset(barrel: BarrelConfig, now: string): Asset {
+function legacyBarrelToAsset(barrel: LegacyBarrelConfig, now: string): Asset {
   return {
     id: barrel.id,
     name: barrel.name,
@@ -530,79 +422,62 @@ function barrelToAsset(barrel: BarrelConfig, now: string): Asset {
       active: barrel.active,
       visible: barrel.visible,
       displayOrder: barrel.displayOrder,
-      legacyCardSize: barrel.cardSize
+      cardSize: barrel.cardSize
     },
     createdAt: now,
     updatedAt: now
   };
 }
 
-function dataSourcesToDevices(dataSources: DataSource[]): DeviceConfig[] {
-  return dataSources.flatMap((source) => {
-    if (source.type !== 'modbus-rtu' || source.connection.type !== 'modbus-rtu') {
-      return [];
-    }
-
-    return [{
-      id: source.id,
-      name: source.name,
-      model: String(source.metadata?.model ?? 'Modbus RTU'),
-      protocol: 'modbus-rtu',
-      modbusAddress: typeof source.metadata?.slaveId === 'number' ? source.metadata.slaveId : 1,
-      active: source.enabled,
-      connection: {
-        ...source.connection,
-        timeoutMs: source.timeoutMs ?? 1000,
-        retries: source.retryCount ?? 1
-      }
-    }];
-  });
+function readArray<TItem>(value: unknown): TItem[] {
+  return Array.isArray(value) ? (value as TItem[]) : [];
 }
 
-function pointsToChannels(points: Point[]): ChannelConfig[] {
-  return points.flatMap((point, index) => {
-    if (
-      point.kind !== 'telemetry' ||
-      point.address?.protocol !== 'modbus' ||
-      (point.address.functionCode !== 3 && point.address.functionCode !== 4)
-    ) {
-      return [];
-    }
-
-    return [{
-      id: point.id,
-      name: point.name,
-      type: inferChannelType(point),
-      deviceId: point.dataSourceId ?? '',
-      moduleInputNumber: index + 1,
-      registerAddress: point.address.registerAddress ?? 0,
-      modbusFunction: point.address.functionCode,
-      dataType: point.valueType === 'boolean' || point.valueType === 'string' ? 'uint16' : point.valueType,
-      registerCount: point.address.registerCount ?? 1,
-      byteOrder: point.address.byteOrder ?? 'ABCD',
-      rawUnit: point.rawUnit ?? '',
-      displayUnit: point.displayUnit ?? '',
-      decimals: point.valueType === 'float32' ? 2 : 0,
-      scaling: point.scaling ?? { type: 'none' }
-    }];
-  });
+function hasLegacyProjectionFields(config: Record<string, unknown>): boolean {
+  return Array.isArray(config.devices) || Array.isArray(config.channels) || Array.isArray(config.barrels);
 }
 
-function assetsToBarrels(assets: Asset[]): BarrelConfig[] {
-  return assets
-    .filter((asset) => asset.type === 'barrel' || asset.type === 'tank')
-    .map((asset, index) => ({
-      id: asset.id,
-      name: asset.name,
-      active: Boolean(asset.metadata?.active ?? true),
-      visible: Boolean(asset.metadata?.visible ?? true),
-      temperatureChannelId: asset.pointIds.find((pointId) => pointId.includes('temperature')) ?? asset.pointIds[0] ?? '',
-      levelChannelId: asset.pointIds.find((pointId) => pointId.includes('level')) ?? asset.pointIds[1] ?? asset.pointIds[0] ?? '',
-      displayOrder: typeof asset.metadata?.displayOrder === 'number' ? asset.metadata.displayOrder : index + 1,
-      cardSize: asset.metadata?.legacyCardSize === 'small' || asset.metadata?.legacyCardSize === 'large'
-        ? asset.metadata.legacyCardSize
-        : 'medium'
-    }));
+function hasLegacyCardSize(config: Record<string, unknown>): boolean {
+  return readArray<Asset>(config.assets).some((asset) => isRecord(asset.metadata) && 'legacyCardSize' in asset.metadata);
+}
+
+function normalizeAssetMetadata(asset: Asset): Asset {
+  if (!isRecord(asset.metadata) || !('legacyCardSize' in asset.metadata)) {
+    return asset;
+  }
+
+  const { legacyCardSize, ...metadata } = asset.metadata;
+  return {
+    ...asset,
+    metadata: {
+      ...metadata,
+      cardSize: metadata.cardSize ?? legacyCardSize
+    }
+  };
+}
+
+function createDefaultMonitoringProfiles(
+  assets: Asset[],
+  points: Point[],
+  now: string
+): AppConfig['monitoringProfiles'] {
+  return assets.map((asset) => ({
+    id: `${asset.id}-monitoring-profile`,
+    assetId: asset.id,
+    name: `Мониторинг ${asset.name}`,
+    enabled: true,
+    pointConfigs: points
+      .filter((point) => point.assetId === asset.id && point.recordable)
+      .map((point) => ({
+        pointId: point.id,
+        enabled: true,
+        mode: 'both' as const,
+        sampleIntervalMs: point.valueType === 'float32' ? 5000 : 10000,
+        retentionDays: 30
+      })),
+    createdAt: now,
+    updatedAt: now
+  }));
 }
 
 function pickLegacyShell(value: Record<string, unknown>): Partial<AppConfig> {
@@ -619,20 +494,6 @@ function configThresholdToPoint(threshold: AppConfig['thresholds']['temperature'
     alarmLow: threshold.alarmLow,
     alarmHigh: threshold.alarmHigh
   };
-}
-
-function inferChannelType(point: Point): ChannelConfig['type'] {
-  const text = `${point.id} ${point.name}`.toLowerCase();
-
-  if (text.includes('temperature') || text.includes('темпера')) {
-    return 'temperature';
-  }
-
-  if (text.includes('level') || text.includes('уров')) {
-    return 'level';
-  }
-
-  return 'custom';
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

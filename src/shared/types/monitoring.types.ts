@@ -1,5 +1,4 @@
-import type { AppMode, PointStatus } from './config.types';
-import type { ChannelDataType, ChannelConfig } from './config.types';
+import type { AppMode, ModbusByteOrder, ModbusNumericValueType, PointStatus } from './config.types';
 
 export type Status = 'ok' | 'warning' | 'alarm' | 'no-data' | 'connection-error';
 
@@ -34,32 +33,11 @@ export type LiveSnapshot = {
   }>;
 };
 
-export type ChannelReading = {
-  channelId: string;
-  rawValue: number;
-  displayValue: number;
-  rawUnit: string;
-  displayUnit: string;
-  status: Status;
-  updatedAt: string;
-  error?: string;
-};
-
-export type BarrelReading = {
-  barrelId: string;
-  temperature: ChannelReading | null;
-  level: ChannelReading | null;
-  status: Status;
-  updatedAt: string;
-};
-
 export type MonitoringSnapshot = {
   status: Status;
   mode: AppMode;
   updatedAt: string;
   live: LiveSnapshot;
-  channels: ChannelReading[];
-  barrels: BarrelReading[];
   activeWarningsCount: number;
   activeAlarmsCount: number;
 };
@@ -78,12 +56,12 @@ export type TestConnectionResult = {
 };
 
 export type ManualReadRequest = {
-  deviceId: string;
+  dataSourceId: string;
   modbusFunction: 3 | 4;
   registerAddress: number;
   registerCount: number;
-  dataType: ChannelDataType;
-  byteOrder: ChannelConfig['byteOrder'];
+  dataType: ModbusNumericValueType;
+  byteOrder: ModbusByteOrder;
 };
 
 export type ManualReadResult = {
@@ -95,13 +73,13 @@ export type ManualReadResult = {
 };
 
 export type RegisterScanRequest = {
-  deviceId: string;
+  dataSourceId: string;
   startAddress: number;
   endAddress: number;
   registerCount: number;
   modbusFunctions: Array<3 | 4>;
-  dataType: ChannelDataType;
-  byteOrder: ChannelConfig['byteOrder'];
+  dataType: ModbusNumericValueType;
+  byteOrder: ModbusByteOrder;
   attemptsPerRegister?: number;
   retryDelayMs?: number;
 };

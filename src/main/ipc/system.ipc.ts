@@ -25,7 +25,6 @@ export function registerSystemIpc(
       appMode: config.app.mode,
       configPath: configService.getConfigPath(),
       logsPath: eventLogService.getEventsLogPath(),
-      devices: config.devices,
       dataSources: config.dataSources,
       assets: config.assets,
       points: config.points

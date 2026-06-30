@@ -20,18 +20,18 @@ export function registerMonitoringIpc(
 ): void {
   ipcMain.handle(
     IPC_CHANNELS.monitoring.getSnapshot,
-    async (_event): Promise<MonitoringSnapshot> => dataServiceManager.readAllChannels()
+    async (_event): Promise<MonitoringSnapshot> => dataServiceManager.readAllPoints()
   );
 
   ipcMain.handle(
     IPC_CHANNELS.monitoring.readAllNow,
     async (_event): Promise<MonitoringSnapshot> => {
       try {
-        const snapshot = await dataServiceManager.readAllChannels();
+        const snapshot = await dataServiceManager.readAllPoints();
         await eventLogService.addEvent({
           level: 'info',
           source: 'diagnostics',
-          message: 'Read all channels clicked',
+          message: 'Read all points clicked',
           details: { status: snapshot.status, updatedAt: snapshot.updatedAt }
         });
         return snapshot;
@@ -39,7 +39,7 @@ export function registerMonitoringIpc(
         await eventLogService.addEvent({
           level: 'error',
           source: 'diagnostics',
-          message: 'Read all channels failed',
+          message: 'Read all points failed',
           details: { error: error instanceof Error ? error.message : 'Unknown read error' }
         });
         throw error;

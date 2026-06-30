@@ -1,9 +1,9 @@
-import type { ChannelConfig, ChannelDataType } from '../../../shared/types/config.types';
+import type { ModbusByteOrder, ModbusNumericValueType } from '../../../shared/types/config.types';
 
 export function decodeRegisters(
   registers: number[],
-  dataType: ChannelDataType,
-  byteOrder: ChannelConfig['byteOrder']
+  dataType: ModbusNumericValueType,
+  byteOrder: ModbusByteOrder
 ): number {
   const requiredRegisters = getRequiredRegisterCount(dataType);
 
@@ -35,7 +35,7 @@ export function decodeRegisters(
   return buffer.readFloatBE(0);
 }
 
-export function getRequiredRegisterCount(dataType: ChannelDataType): number {
+export function getRequiredRegisterCount(dataType: ModbusNumericValueType): number {
   return dataType === 'int16' || dataType === 'uint16' ? 1 : 2;
 }
 
@@ -45,11 +45,11 @@ function createRegisterBuffer(register: number): Buffer {
   return buffer;
 }
 
-function createOrderedBytes(registers: number[], byteOrder: ChannelConfig['byteOrder']): number[] {
+function createOrderedBytes(registers: number[], byteOrder: ModbusByteOrder): number[] {
   const first = createRegisterBuffer(registers[0] ?? 0);
   const second = createRegisterBuffer(registers[1] ?? 0);
   const bytes = [first[0] ?? 0, first[1] ?? 0, second[0] ?? 0, second[1] ?? 0];
-  const indexesByOrder: Record<ChannelConfig['byteOrder'], number[]> = {
+  const indexesByOrder: Record<ModbusByteOrder, number[]> = {
     ABCD: [0, 1, 2, 3],
     CDAB: [2, 3, 0, 1],
     BADC: [1, 0, 3, 2],

@@ -233,7 +233,7 @@ export class ProcessRuntimeService {
         throw new Error(`Node ${node.id} requires pointId and variable`);
       }
 
-      const snapshot = await this.dataServiceManager.readAllChannels();
+      const snapshot = await this.dataServiceManager.readAllPoints();
       const reading = snapshot.live.readingsByPointId[pointId] ?? null;
       context[variable] = reading?.displayValue ?? reading?.rawValue ?? null;
       context[`${variable}.quality`] = reading?.quality ?? 'bad';

@@ -151,7 +151,6 @@ export function AssetsPage(): React.JSX.Element {
             parentAssetId: item.parentAssetId === asset.id ? undefined : item.parentAssetId,
             childAssetIds: item.childAssetIds?.filter((childAssetId) => childAssetId !== asset.id)
           })),
-        barrels: currentConfig.barrels.filter((item) => item.id !== asset.id),
         points: currentConfig.points.map((point) => (
           point.assetId === asset.id ? { ...point, assetId: undefined } : point
         )),
@@ -327,7 +326,7 @@ function createDefaultAsset(id: string, type: AssetType, displayOrder: number, n
       active: true,
       visible: true,
       displayOrder,
-      legacyCardSize: 'medium'
+      cardSize: 'medium'
     },
     createdAt: now,
     updatedAt: now

@@ -88,6 +88,6 @@ function formatReadingValue(value: ReadingValue, unit?: string): string {
 }
 
 function getTankSize(asset: AssetViewModel['asset']): 'small' | 'medium' | 'large' {
-  const size = asset.metadata?.legacyCardSize;
+  const size = asset.metadata?.cardSize;
   return size === 'small' || size === 'large' ? size : 'medium';
 }

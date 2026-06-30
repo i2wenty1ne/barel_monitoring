@@ -5,7 +5,6 @@ import type {
   CommandHistoryQuery,
   CommandResult,
   DataSource,
-  DeviceConfig,
   ExecuteCommandRequest,
   ExportResult,
   GetTrendQuery,
@@ -49,7 +48,6 @@ export type SystemInfo = {
   appMode?: string;
   configPath: string;
   logsPath: string;
-  devices: DeviceConfig[];
   dataSources: DataSource[];
   assets: Asset[];
   points: Point[];

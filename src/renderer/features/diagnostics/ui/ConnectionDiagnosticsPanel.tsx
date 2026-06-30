@@ -21,17 +21,25 @@ export function ConnectionDiagnosticsPanel({
         <InfoRow label="Последняя ошибка" value={serviceStatus.lastError ?? '—'} />
       </div>
       <div className="grid gap-3">
-        {config.devices.map((device) => (
-          <div className="rounded-md border border-white/10 bg-slate-950/35 p-3" key={device.id}>
-            <div className="font-medium text-slate-100">{device.name}</div>
+        {config.dataSources.map((source) => (
+          <div className="rounded-md border border-white/10 bg-slate-950/35 p-3" key={source.id}>
+            <div className="font-medium text-slate-100">{source.name}</div>
             <dl className="mt-3 grid gap-2 text-sm md:grid-cols-2">
-              <InfoRow label="COM-порт" value={device.connection.port} />
-              <InfoRow label="Скорость" value={String(device.connection.baudRate)} />
-              <InfoRow label="Биты данных" value={String(device.connection.dataBits)} />
-              <InfoRow label="Стоп-биты" value={String(device.connection.stopBits)} />
-              <InfoRow label="Четность" value={device.connection.parity} />
-              <InfoRow label="Таймаут" value={`${device.connection.timeoutMs} ms`} />
-              <InfoRow label="Повторы" value={String(device.connection.retries)} />
+              <InfoRow label="ID" value={source.id} />
+              <InfoRow label="Тип" value={source.type} />
+              <InfoRow label="Включен" value={source.enabled ? 'Да' : 'Нет'} />
+              {source.connection.type === 'modbus-rtu' ? (
+                <>
+                  <InfoRow label="COM-порт" value={source.connection.port} />
+                  <InfoRow label="Скорость" value={String(source.connection.baudRate)} />
+                  <InfoRow label="Биты данных" value={String(source.connection.dataBits)} />
+                  <InfoRow label="Стоп-биты" value={String(source.connection.stopBits)} />
+                  <InfoRow label="Четность" value={source.connection.parity} />
+                  <InfoRow label="Таймаут" value={`${source.timeoutMs ?? 1000} ms`} />
+                  <InfoRow label="Повторы" value={String(source.retryCount ?? 1)} />
+                  <InfoRow label="Slave ID" value={String(source.metadata?.slaveId ?? '—')} />
+                </>
+              ) : null}
               <InfoRow label="Опрос" value={`${config.app.pollingIntervalMs} ms`} />
             </dl>
           </div>

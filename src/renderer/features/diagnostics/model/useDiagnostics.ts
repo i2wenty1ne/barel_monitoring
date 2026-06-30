@@ -97,7 +97,7 @@ export function useDiagnostics(): UseDiagnosticsResult {
         );
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Read all channels error';
+      const message = error instanceof Error ? error.message : 'Read all points error';
       console.error(message, error);
       if (isMountedRef.current) {
         setState((current) => ({ ...current, actionResult: { type: 'error', message } }));

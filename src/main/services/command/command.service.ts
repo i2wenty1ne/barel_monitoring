@@ -191,7 +191,7 @@ export class CommandService {
       return { blockedBy: null, warnings: [] };
     }
 
-    const snapshot = await this.dataServiceManager.readAllChannels();
+    const snapshot = await this.dataServiceManager.readAllPoints();
     const warnings: Interlock[] = [];
     for (const interlock of interlocks) {
       if (evaluateCondition(interlock.condition, snapshot.live.readingsByPointId)) {
@@ -210,7 +210,7 @@ export class CommandService {
       return null;
     }
 
-    const snapshot = await this.dataServiceManager.readAllChannels();
+    const snapshot = await this.dataServiceManager.readAllPoints();
     const pointId = pointIds.find((id) => snapshot.live.readingsByPointId[id]);
     if (!pointId) {
       return null;

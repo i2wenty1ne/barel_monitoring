@@ -24,6 +24,7 @@ export function DataSourcesPage(): React.JSX.Element {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [draft, setDraft] = useState<DataSource | null>(null);
+  const [editingSourceId, setEditingSourceId] = useState<string | null>(null);
   const [ports, setPorts] = useState<SerialPortInfo[]>([]);
   const [testResult, setTestResult] = useState<TestConnectionResult | null>(null);
 
@@ -62,7 +63,7 @@ export function DataSourcesPage(): React.JSX.Element {
         const isUsed = currentConfig.points.some((point) => point.dataSourceId === source.id);
         return (
           <div className="flex flex-wrap justify-end gap-2">
-            <Button disabled={isSaving} onClick={() => setDraft(source)} variant="secondary">
+            <Button disabled={isSaving} onClick={() => startEditSource(source)} variant="secondary">
               Редактировать
             </Button>
             <Button disabled={isSaving} onClick={() => void testSource(source)} variant="ghost">
@@ -80,7 +81,7 @@ export function DataSourcesPage(): React.JSX.Element {
     }
   ];
 
-  async function save(nextConfig: typeof currentConfig, successMessage: string): Promise<void> {
+  async function save(nextConfig: typeof currentConfig, successMessage: string): Promise<boolean> {
     setIsSaving(true);
     setMessage(null);
     setSaveError(null);
@@ -91,8 +92,10 @@ export function DataSourcesPage(): React.JSX.Element {
       }
       setMessage(successMessage);
       await refresh();
+      return true;
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : 'Ошибка сохранения config');
+      return false;
     } finally {
       setIsSaving(false);
     }
@@ -102,8 +105,19 @@ export function DataSourcesPage(): React.JSX.Element {
     const now = new Date().toISOString();
     const id = createUniqueId(`${type}-1`, currentConfig.dataSources.map((source) => source.id));
     const source = createDefaultSource(id, type, currentConfig.app.pollingIntervalMs, now);
-    await save({ ...currentConfig, dataSources: [...currentConfig.dataSources, source] }, 'Источник данных добавлен');
+    const isSaved = await save({ ...currentConfig, dataSources: [...currentConfig.dataSources, source] }, 'Источник данных добавлен');
+    if (isSaved) {
+      setDraft(source);
+      setEditingSourceId(source.id);
+    }
+  }
+
+  function startEditSource(source: DataSource): void {
     setDraft(source);
+    setEditingSourceId(source.id);
+    setMessage(null);
+    setSaveError(null);
+    setTestResult(null);
   }
 
   async function saveDraft(): Promise<void> {
@@ -111,16 +125,51 @@ export function DataSourcesPage(): React.JSX.Element {
       return;
     }
 
-    await save(
+    const sourceId = editingSourceId ?? draft.id;
+    const savedSource = currentConfig.dataSources.find((source) => source.id === sourceId);
+    const nextSource = {
+      ...draft,
+      id: draft.id.trim(),
+      name: draft.name.trim(),
+      updatedAt: new Date().toISOString()
+    };
+
+    if (!savedSource) {
+      setSaveError('Редактируемый источник больше не найден. Обновите список и повторите изменение.');
+      return;
+    }
+
+    if (!nextSource.id) {
+      setSaveError('ID источника данных не может быть пустым.');
+      return;
+    }
+
+    if (!nextSource.name) {
+      setSaveError('Название источника данных не может быть пустым.');
+      return;
+    }
+
+    if (currentConfig.dataSources.some((source) => source.id !== sourceId && source.id === nextSource.id)) {
+      setSaveError(`Источник данных с ID "${nextSource.id}" уже существует.`);
+      return;
+    }
+
+    const isSaved = await save(
       {
         ...currentConfig,
         dataSources: currentConfig.dataSources.map((source) =>
-          source.id === draft.id ? { ...draft, updatedAt: new Date().toISOString() } : source
+          source.id === sourceId ? nextSource : source
+        ),
+        points: currentConfig.points.map((point) =>
+          point.dataSourceId === sourceId ? { ...point, dataSourceId: nextSource.id, updatedAt: nextSource.updatedAt } : point
         )
       },
       'Источник данных сохранен'
     );
-    setDraft(null);
+    if (isSaved) {
+      setDraft(null);
+      setEditingSourceId(null);
+    }
   }
 
   async function toggleSource(source: DataSource): Promise<void> {
@@ -144,8 +193,7 @@ export function DataSourcesPage(): React.JSX.Element {
     await save(
       {
         ...currentConfig,
-        dataSources: currentConfig.dataSources.filter((item) => item.id !== source.id),
-        devices: currentConfig.devices.filter((item) => item.id !== source.id)
+        dataSources: currentConfig.dataSources.filter((item) => item.id !== source.id)
       },
       'Источник данных удален'
     );
@@ -211,7 +259,10 @@ export function DataSourcesPage(): React.JSX.Element {
               <Button disabled={isSaving} onClick={() => void saveDraft()} variant="secondary">
                 Сохранить источник
               </Button>
-              <Button disabled={isSaving} onClick={() => setDraft(null)} variant="ghost">
+              <Button disabled={isSaving} onClick={() => {
+                setDraft(null);
+                setEditingSourceId(null);
+              }} variant="ghost">
                 Отмена
               </Button>
             </div>

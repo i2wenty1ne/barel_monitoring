@@ -345,61 +345,6 @@ const processJobSchema = z.object({
   error: z.string().optional()
 });
 
-const channelSchema = z
-  .object({
-    id: z.string().min(1, 'id канала не может быть пустым'),
-    name: z.string().min(1, 'name канала не может быть пустым'),
-    type: z.enum(['temperature', 'level', 'custom']),
-    deviceId: z.string().min(1),
-    moduleInputNumber: z.number().int().positive(),
-    registerAddress: z.number().int().min(0),
-    modbusFunction: z.union([z.literal(3), z.literal(4)]),
-    dataType: z.enum(['int16', 'uint16', 'int32', 'uint32', 'float32']),
-    registerCount: z.number().int().positive(),
-    byteOrder: z.enum(['ABCD', 'BADC', 'CDAB', 'DCBA']),
-    rawUnit: z.string(),
-    displayUnit: z.string(),
-    decimals: z.number().int().min(0).max(6),
-    scaling: scalingSchema
-  })
-  .superRefine((value, context) => {
-    if (value.dataType === 'float32' && value.registerCount !== 2) {
-      context.addIssue({ code: 'custom', path: ['registerCount'], message: 'Для float32 registerCount должен быть равен 2' });
-    }
-  });
-
-const barrelSchema = z.object({
-  id: z.string().min(1, 'id бочки не может быть пустым'),
-  name: z.string().min(1, 'name бочки не может быть пустым'),
-  active: z.boolean(),
-  visible: z.boolean(),
-  temperatureChannelId: z.string(),
-  levelChannelId: z.string(),
-  displayOrder: z.number().int().positive(),
-  cardSize: z.enum(['small', 'medium', 'large'])
-});
-
-const connectionSchema = z.object({
-  type: z.literal('modbus-rtu'),
-  port: z.string().min(1, 'port не может быть пустым'),
-  baudRate: z.number().int().positive(),
-  dataBits: z.union([z.literal(7), z.literal(8)]),
-  stopBits: z.union([z.literal(1), z.literal(2)]),
-  parity: z.enum(['none', 'even', 'odd']),
-  timeoutMs: z.number().int().positive(),
-  retries: z.number().int().min(0)
-});
-
-const deviceSchema = z.object({
-  id: z.string().min(1, 'id устройства не может быть пустым'),
-  name: z.string().min(1, 'name устройства не может быть пустым'),
-  model: z.string().min(1, 'model устройства не может быть пустым'),
-  protocol: z.literal('modbus-rtu'),
-  modbusAddress: z.number().int().min(1).max(247),
-  active: z.boolean(),
-  connection: connectionSchema
-});
-
 export const appConfigSchema = z
   .object({
     schemaVersion: z.literal(2),
@@ -431,9 +376,6 @@ export const appConfigSchema = z
     processes: z.array(processSchema),
     processGraphs: z.array(processGraphSchema),
     processJobs: z.array(processJobSchema),
-    devices: z.array(deviceSchema),
-    channels: z.array(channelSchema),
-    barrels: z.array(barrelSchema),
     thresholds: z.object({
       temperature: thresholdSchema,
       level: thresholdSchema
@@ -453,17 +395,11 @@ export const appConfigSchema = z
     const pointIds = new Set(config.points.map((item) => item.id));
     const controlPointIds = new Set(config.points.filter((point) => point.kind === 'control').map((point) => point.id));
     const actuatorIds = new Set(config.actuators.map((item) => item.id));
-    const deviceIds = new Set(config.devices.map((device) => device.id));
-    const channelIds = new Set(config.channels.map((channel) => channel.id));
-    const barrelIds = new Set(config.barrels.map((barrel) => barrel.id));
 
     assertUnique(config.dataSources.map((item) => item.id), ['dataSources'], 'dataSource.id должен быть уникальным', context);
     assertUnique(config.assets.map((item) => item.id), ['assets'], 'asset.id должен быть уникальным', context);
     assertUnique(config.points.map((item) => item.id), ['points'], 'point.id должен быть уникальным', context);
     assertUnique(config.actuators.map((item) => item.id), ['actuators'], 'actuator.id должен быть уникальным', context);
-    assertUnique(config.devices.map((item) => item.id), ['devices'], 'device.id должен быть уникальным', context);
-    assertUnique(config.channels.map((item) => item.id), ['channels'], 'channel.id должен быть уникальным', context);
-    assertUnique(config.barrels.map((item) => item.id), ['barrels'], 'barrel.id должен быть уникальным', context);
 
     config.assets.forEach((asset, index) => {
       asset.pointIds.forEach((pointId) => {
@@ -525,29 +461,6 @@ export const appConfigSchema = z
       });
     });
 
-    config.channels.forEach((channel, index) => {
-      if (!deviceIds.has(channel.deviceId)) {
-        context.addIssue({ code: 'custom', path: ['channels', index, 'deviceId'], message: 'deviceId должен ссылаться на существующий device.id' });
-      }
-    });
-
-    config.barrels.forEach((barrel, index) => {
-      if (!barrelIds.has(barrel.id)) {
-        context.addIssue({ code: 'custom', path: ['barrels', index, 'id'], message: 'barrel.id не найден' });
-      }
-
-      if (barrel.active && (!barrel.temperatureChannelId || !barrel.levelChannelId)) {
-        context.addIssue({ code: 'custom', path: ['barrels', index], message: 'Активная бочка должна иметь каналы температуры и уровня' });
-      }
-
-      if (!channelIds.has(barrel.temperatureChannelId)) {
-        context.addIssue({ code: 'custom', path: ['barrels', index, 'temperatureChannelId'], message: 'temperatureChannelId должен ссылаться на channel.id' });
-      }
-
-      if (!channelIds.has(barrel.levelChannelId)) {
-        context.addIssue({ code: 'custom', path: ['barrels', index, 'levelChannelId'], message: 'levelChannelId должен ссылаться на channel.id' });
-      }
-    });
   });
 
 export type AppConfigSchema = z.infer<typeof appConfigSchema>;
