@@ -20,7 +20,7 @@ export function DiagnosticsPage(): React.JSX.Element {
   if (diagnostics.isLoading && !diagnostics.data) {
     return (
       <section className="mx-auto max-w-7xl">
-        <PageHeader eyebrow="Engineering" title="Диагностика" />
+        <PageHeader eyebrow="Инженерный раздел" title="Диагностика" />
         <LoadingState />
       </section>
     );
@@ -29,7 +29,7 @@ export function DiagnosticsPage(): React.JSX.Element {
   if (diagnostics.error && !diagnostics.data) {
     return (
       <section className="mx-auto max-w-7xl">
-        <PageHeader eyebrow="Engineering" title="Диагностика" />
+        <PageHeader eyebrow="Инженерный раздел" title="Диагностика" />
         <ErrorState message={diagnostics.error} onRetry={() => void diagnostics.refresh()} />
       </section>
     );
@@ -38,7 +38,7 @@ export function DiagnosticsPage(): React.JSX.Element {
   if (!diagnostics.data) {
     return (
       <section className="mx-auto max-w-7xl">
-        <PageHeader eyebrow="Engineering" title="Диагностика" />
+        <PageHeader eyebrow="Инженерный раздел" title="Диагностика" />
         <ErrorState message="Диагностические данные не загружены" onRetry={() => void diagnostics.refresh()} />
       </section>
     );
@@ -49,7 +49,7 @@ export function DiagnosticsPage(): React.JSX.Element {
   return (
     <section className="mx-auto max-w-7xl">
       <PageHeader
-        eyebrow="Engineering"
+        eyebrow="Инженерный раздел"
         title="Диагностика"
         description="Состояние подключения, каналов, бочек и ручная проверка регистров."
       />

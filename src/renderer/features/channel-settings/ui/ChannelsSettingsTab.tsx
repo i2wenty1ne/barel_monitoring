@@ -327,25 +327,25 @@ function ChannelForm({
       {channel.scaling.type === 'linear' ? (
         <>
           <NumberInput
-            label="Raw min"
+            label="Сырой минимум"
             onChange={(rawMin) => updateLinearScaling('rawMin', rawMin)}
             step={0.01}
             value={channel.scaling.rawMin}
           />
           <NumberInput
-            label="Raw max"
+            label="Сырой максимум"
             onChange={(rawMax) => updateLinearScaling('rawMax', rawMax)}
             step={0.01}
             value={channel.scaling.rawMax}
           />
           <NumberInput
-            label="Display min"
+            label="Минимум отображения"
             onChange={(displayMin) => updateLinearScaling('displayMin', displayMin)}
             step={0.01}
             value={channel.scaling.displayMin}
           />
           <NumberInput
-            label="Display max"
+            label="Максимум отображения"
             onChange={(displayMax) => updateLinearScaling('displayMax', displayMax)}
             step={0.01}
             value={channel.scaling.displayMax}

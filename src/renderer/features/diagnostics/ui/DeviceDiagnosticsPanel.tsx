@@ -24,7 +24,7 @@ export function DeviceDiagnosticsPanel({ devices }: DeviceDiagnosticsPanelProps)
                 <InfoRow label="ID" value={device.id} />
                 <InfoRow label="Название" value={device.name} />
                 <InfoRow label="Модель" value={device.model} />
-                <InfoRow label="Modbus address" value={String(device.modbusAddress)} />
+                <InfoRow label="Modbus-адрес" value={String(device.modbusAddress)} />
                 <InfoRow label="COM-порт" value={device.connection.port} />
                 <InfoRow label="Скорость" value={String(device.connection.baudRate)} />
                 <InfoRow label="Активно" value={device.active ? 'Да' : 'Нет'} />

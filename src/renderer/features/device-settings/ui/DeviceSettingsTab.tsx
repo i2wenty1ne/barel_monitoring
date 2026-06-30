@@ -210,7 +210,7 @@ function DeviceForm({
               value={device.connection.baudRate}
             />
             <Select
-              label="Data bits"
+              label="Биты данных"
               onChange={(dataBits) => updateConnection({ ...device.connection, dataBits })}
               options={[
                 { label: '7', value: 7 },
@@ -219,7 +219,7 @@ function DeviceForm({
               value={device.connection.dataBits}
             />
             <Select
-              label="Stop bits"
+              label="Стоп-биты"
               onChange={(stopBits) => updateConnection({ ...device.connection, stopBits })}
               options={[
                 { label: '1', value: 1 },
@@ -228,7 +228,7 @@ function DeviceForm({
               value={device.connection.stopBits}
             />
             <Select
-              label="Parity"
+              label="Четность"
               onChange={(parity) => updateConnection({ ...device.connection, parity })}
               options={[
                 { label: 'none', value: 'none' },

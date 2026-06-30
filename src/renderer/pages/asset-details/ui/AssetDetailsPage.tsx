@@ -70,7 +70,7 @@ export function AssetDetailsPage(): React.JSX.Element {
   return (
     <section className="mx-auto max-w-7xl">
       <PageHeader
-        eyebrow="Asset"
+        eyebrow="Объект"
         title={asset.name}
         description={asset.description ?? `Тип объекта: ${asset.type}`}
       />

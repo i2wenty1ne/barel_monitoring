@@ -272,7 +272,7 @@ export function HistoryPage(): React.JSX.Element {
   return (
     <section className="mx-auto max-w-7xl">
       <PageHeader
-        eyebrow="Industrial Flow Monitor"
+        eyebrow="Промышленный мониторинг"
         title="История"
         description="Профили записи, активные сессии, trend query и CSV export для TimeSeriesRecord."
         actions={
@@ -318,7 +318,7 @@ export function HistoryPage(): React.JSX.Element {
             </div>
             <div className="grid gap-3">
               <NumberInput label="Период, часов" min={1} max={168} onChange={setHoursBack} value={hoursBack} />
-              <Select label="Aggregation" onChange={setAggregation} options={aggregationOptions} value={aggregation} />
+              <Select label="Агрегация" onChange={setAggregation} options={aggregationOptions} value={aggregation} />
               <NumberInput
                 disabled={aggregation === 'raw'}
                 label="Bucket, минут"
@@ -349,7 +349,7 @@ export function HistoryPage(): React.JSX.Element {
         </Panel>
 
         <div className="grid gap-5 xl:grid-cols-[420px_1fr]">
-          <Panel className="p-5" title="MonitoringProfile">
+          <Panel className="p-5" title="Профиль мониторинга">
             <div className="space-y-4">
               {profiles.length > 0 ? (
                 <Select
@@ -370,7 +370,7 @@ export function HistoryPage(): React.JSX.Element {
                   value={sampleIntervalMs}
                 />
                 <NumberInput
-                  label="Min change delta"
+                  label="Минимальное изменение"
                   min={0}
                   step={0.1}
                   onChange={setMinChangeDelta}
@@ -399,7 +399,7 @@ export function HistoryPage(): React.JSX.Element {
             </div>
           </Panel>
 
-          <Panel className="p-5" title="Trend">
+          <Panel className="p-5" title="Тренд">
             {series.length === 0 ? (
               <EmptyState title="Нет данных для графика" description="Запустите MonitoringSession, подождите записи значений и постройте график." />
             ) : (

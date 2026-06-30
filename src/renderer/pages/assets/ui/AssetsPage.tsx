@@ -68,13 +68,12 @@ export function AssetsPage(): React.JSX.Element {
       key: 'actions',
       title: '',
       render: (asset) => {
-        const hasLinks = asset.pointIds.length > 0 || asset.actuatorIds.length > 0;
         return (
           <div className="flex flex-wrap justify-end gap-2">
             <Button disabled={isSaving} onClick={() => setDraft(asset)} variant="secondary">
               Редактировать
             </Button>
-            <Button disabled={isSaving || hasLinks} onClick={() => void deleteAsset(asset)} variant="danger">
+            <Button disabled={isSaving} onClick={() => void deleteAsset(asset)} variant="danger">
               Удалить
             </Button>
           </div>
@@ -142,16 +141,24 @@ export function AssetsPage(): React.JSX.Element {
   }
 
   async function deleteAsset(asset: Asset): Promise<void> {
-    if (asset.pointIds.length > 0 || asset.actuatorIds.length > 0) {
-      setSaveError('Объект содержит точки или механизмы. Сначала отвяжите их.');
-      return;
-    }
-
     await save(
       {
         ...currentConfig,
-        assets: currentConfig.assets.filter((item) => item.id !== asset.id),
-        barrels: currentConfig.barrels.filter((item) => item.id !== asset.id)
+        assets: currentConfig.assets
+          .filter((item) => item.id !== asset.id)
+          .map((item) => ({
+            ...item,
+            parentAssetId: item.parentAssetId === asset.id ? undefined : item.parentAssetId,
+            childAssetIds: item.childAssetIds?.filter((childAssetId) => childAssetId !== asset.id)
+          })),
+        barrels: currentConfig.barrels.filter((item) => item.id !== asset.id),
+        points: currentConfig.points.map((point) => (
+          point.assetId === asset.id ? { ...point, assetId: undefined } : point
+        )),
+        actuators: currentConfig.actuators.map((actuator) => (
+          actuator.assetId === asset.id ? { ...actuator, assetId: undefined } : actuator
+        )),
+        monitoringProfiles: currentConfig.monitoringProfiles.filter((profile) => profile.assetId !== asset.id)
       },
       'Объект удален'
     );
@@ -160,9 +167,9 @@ export function AssetsPage(): React.JSX.Element {
   return (
     <section className="mx-auto max-w-7xl">
       <PageHeader
-        eyebrow="Industrial Flow Monitor"
+        eyebrow="Промышленный мониторинг"
         title="Объекты"
-        description="Asset-модель из SPEC 1.0.0: бочки, резервуары, насосы, весы, станции и другие промышленные объекты."
+        description="Модель объектов из SPEC 1.0.0: бочки, резервуары, насосы, весы, станции и другие промышленные объекты."
         actions={
           <div className="flex flex-wrap gap-2">
             <Button disabled={isSaving} onClick={() => void addAsset('barrel')} variant="secondary">

@@ -171,14 +171,14 @@ export function ProcessEditorPage(): React.JSX.Element {
         ),
         processGraphs: currentConfig.processGraphs.map((item) => item.id === currentGraph.id ? nextGraph : item)
       },
-      'ProcessGraph сохранен'
+      'Граф процесса сохранен'
     );
   }
 
   async function validateGraph(): Promise<GraphValidationResult> {
     const result = await window.barrelMonitor.processes.validateGraph(buildGraph());
     setValidation(result);
-    setMessage(result.valid ? 'Graph validation passed' : null);
+    setMessage(result.valid ? 'Граф прошел проверку' : null);
     setSaveError(result.valid ? null : result.errors.map((item) => item.message).join('; '));
     return result;
   }
@@ -191,16 +191,16 @@ export function ProcessEditorPage(): React.JSX.Element {
       await saveGraph();
       const result = await validateGraph();
       if (!result.valid) {
-        throw new Error('Граф не прошел validation');
+        throw new Error('Граф не прошел проверку');
       }
       const job = await window.barrelMonitor.processes.startJob(currentProcess.id, {});
       if (job.status !== 'completed') {
         throw new Error(job.error ?? `Job status: ${job.status}`);
       }
-      setMessage(`Simulation completed: ${job.id}`);
+      setMessage(`Симуляция завершена: ${job.id}`);
       await refresh();
     } catch (error) {
-      setSaveError(error instanceof Error ? error.message : 'Ошибка запуска simulation');
+      setSaveError(error instanceof Error ? error.message : 'Ошибка запуска симуляции');
     } finally {
       setIsBusy(false);
     }
@@ -245,33 +245,33 @@ export function ProcessEditorPage(): React.JSX.Element {
   }
 
   return (
-    <section className="mx-auto max-w-7xl">
+    <section className="flex min-h-[calc(100vh-7rem)] flex-col">
       <PageHeader
-        eyebrow="Process graph editor"
+        eyebrow="Редактор графа процесса"
         title={processName || currentProcess.name}
-        description="React Flow editor для сценариев Start, ReadPoint, Condition, Command, Wait и Complete."
+        description="Редактор сценариев: старт, чтение точки, условие, команда, ожидание и завершение."
         actions={
           <div className="flex flex-wrap gap-2">
             <Link to="/processes">
               <Button variant="ghost">К списку</Button>
             </Link>
             <Button disabled={isBusy} onClick={() => void validateGraph()} variant="secondary">
-              Validate
+              Проверить
             </Button>
             <Button disabled={isBusy} onClick={() => void saveGraph()} variant="primary">
-              Save graph
+              Сохранить граф
             </Button>
             <Button disabled={isBusy} onClick={() => void runSimulation()} variant="secondary">
-              Run simulation
+              Запустить симуляцию
             </Button>
           </div>
         }
       />
-      <div className="space-y-5">
+      <div className="flex min-h-0 flex-1 flex-col gap-4">
         {message ? <Alert type="success">{message}</Alert> : null}
         {saveError ? <Alert type="error">{saveError}</Alert> : null}
         {validation && !validation.valid ? (
-          <Panel className="p-4" title="Validation errors">
+          <Panel className="p-4" title="Ошибки проверки">
             <div className="space-y-2 text-sm text-rose-100">
               {validation.errors.map((item, index) => (
                 <div className="rounded-md border border-rose-300/20 bg-rose-500/10 p-2" key={`${item.nodeId ?? item.edgeId ?? 'graph'}-${index}`}>
@@ -284,25 +284,25 @@ export function ProcessEditorPage(): React.JSX.Element {
           </Panel>
         ) : null}
 
-        <div className="grid gap-5 xl:grid-cols-[220px_1fr_340px]">
-          <Panel className="p-4" title="Nodes">
+        <div className="grid min-h-[620px] flex-1 gap-5 xl:grid-cols-[220px_minmax(0,1fr)_340px]">
+          <Panel className="min-h-0 overflow-auto p-4" title="Узлы">
             <div className="space-y-2">
-              <TextInput label="Process name" onChange={setProcessName} value={processName} />
+              <TextInput label="Название процесса" onChange={setProcessName} value={processName} />
               <div className="grid gap-2">
                 {processNodeTypes.map((type) => (
                   <Button disabled={isBusy} key={type} onClick={() => addProcessNode(type)} variant="secondary">
-                    {type}
+                    {getProcessNodeLabel(type)}
                   </Button>
                 ))}
               </div>
             </div>
           </Panel>
 
-          <Panel className="p-3" title="ProcessGraph">
+          <Panel className="flex min-h-0 flex-col p-3" title="Граф процесса">
             {nodes.length === 0 ? (
-              <EmptyState title="Graph is empty" description="Добавьте start и complete nodes." />
+              <EmptyState title="Граф пуст" description="Добавьте узлы старта и завершения." />
             ) : (
-              <div className="h-[720px] overflow-hidden rounded-md border border-white/10 bg-slate-950">
+              <div className="min-h-0 flex-1 overflow-hidden rounded-md border border-white/10 bg-slate-950">
                 <ReactFlow
                   colorMode="dark"
                   defaultEdgeOptions={{ type: 'smoothstep', markerEnd: { type: 'arrowclosed' } }}
@@ -334,7 +334,7 @@ export function ProcessEditorPage(): React.JSX.Element {
             )}
           </Panel>
 
-          <Panel className="p-4" title="Properties">
+          <Panel className="min-h-0 overflow-auto p-4" title="Свойства">
             {selectedNode ? (
               <ProcessNodeInspector
                 config={currentConfig}
@@ -343,7 +343,7 @@ export function ProcessEditorPage(): React.JSX.Element {
                 onDelete={deleteSelectedNode}
               />
             ) : (
-              <EmptyState title="Node не выбран" description="Выберите node на графе для редактирования properties." />
+              <EmptyState title="Узел не выбран" description="Выберите узел на графе для редактирования свойств." />
             )}
           </Panel>
         </div>
@@ -371,31 +371,31 @@ function ProcessNodeInspector({
         <Badge tone="info">{type}</Badge>
         <div className="mt-2 font-mono text-xs text-slate-500">{node.id}</div>
       </div>
-      <TextInput label="Label" onChange={(label) => onChange({ label })} value={String(node.data.label ?? '')} />
+      <TextInput label="Название" onChange={(label) => onChange({ label })} value={String(node.data.label ?? '')} />
 
       {type === 'input' ? (
         <>
-          <TextInput label="Input key" onChange={(key) => onChange({ key })} value={String(node.data.key ?? '')} />
-          <TextInput label="Default value" onChange={(defaultValue) => onChange({ defaultValue })} value={String(node.data.defaultValue ?? '')} />
+          <TextInput label="Ключ входного параметра" onChange={(key) => onChange({ key })} value={String(node.data.key ?? '')} />
+          <TextInput label="Значение по умолчанию" onChange={(defaultValue) => onChange({ defaultValue })} value={String(node.data.defaultValue ?? '')} />
         </>
       ) : null}
 
       {type === 'readPoint' || type === 'captureReading' ? (
         <>
           <Select
-            label="Point"
+            label="Точка"
             onChange={(pointId) => onChange({ pointId })}
             options={[{ label: '-', value: '' }, ...config.points.map((point) => ({ label: point.name, value: point.id }))]}
             value={typeof node.data.pointId === 'string' ? node.data.pointId : ''}
           />
-          <TextInput label="Variable" onChange={(variable) => onChange({ variable })} value={String(node.data.variable ?? '')} />
+          <TextInput label="Переменная" onChange={(variable) => onChange({ variable })} value={String(node.data.variable ?? '')} />
         </>
       ) : null}
 
       {type === 'condition' ? (
         <TextInput
           hint="Например: level < 10"
-          label="Expression"
+          label="Выражение"
           onChange={(expression) => onChange({ expression })}
           value={String(node.data.expression ?? '')}
         />
@@ -404,21 +404,21 @@ function ProcessNodeInspector({
       {type === 'command' ? (
         <>
           <Select
-            label="Actuator"
+            label="Механизм"
             onChange={(actuatorId) => onChange({ actuatorId })}
             options={[{ label: '-', value: '' }, ...config.actuators.map((actuator) => ({ label: actuator.name, value: actuator.id }))]}
             value={typeof node.data.actuatorId === 'string' ? node.data.actuatorId : ''}
           />
           <Select
-            label="Command"
+            label="Команда"
             onChange={(commandType) => onChange({ commandType })}
-            options={commandTypes.map((commandType) => ({ label: commandType, value: commandType }))}
+            options={commandTypes.map((commandType) => ({ label: getCommandTypeLabel(commandType), value: commandType }))}
             value={typeof node.data.commandType === 'string' ? node.data.commandType : 'start'}
           />
-          <TextInput label="Value" onChange={(value) => onChange({ value: parseCommandValue(value) })} value={String(node.data.value ?? '')} />
+          <TextInput label="Значение" onChange={(value) => onChange({ value: parseCommandValue(value) })} value={String(node.data.value ?? '')} />
           <Checkbox
             checked={node.data.confirmed === true}
-            label="Confirmed by process"
+            label="Подтверждено процессом"
             onChange={(confirmed) => onChange({ confirmed })}
           />
         </>
@@ -426,7 +426,7 @@ function ProcessNodeInspector({
 
       {type === 'wait' ? (
         <NumberInput
-          label="Duration, ms"
+          label="Длительность, мс"
           max={5000}
           min={0}
           onChange={(durationMs) => onChange({ durationMs })}
@@ -436,8 +436,8 @@ function ProcessNodeInspector({
 
       {type === 'math' ? (
         <>
-          <TextInput label="Variable" onChange={(variable) => onChange({ variable })} value={String(node.data.variable ?? '')} />
-          <TextInput label="Expression" onChange={(expression) => onChange({ expression })} value={String(node.data.expression ?? '')} />
+          <TextInput label="Переменная" onChange={(variable) => onChange({ variable })} value={String(node.data.variable ?? '')} />
+          <TextInput label="Выражение" onChange={(expression) => onChange({ expression })} value={String(node.data.expression ?? '')} />
         </>
       ) : null}
 
@@ -445,24 +445,24 @@ function ProcessNodeInspector({
         <>
           <TextInput
             hint="Например: level < 10"
-            label="Expression"
+            label="Выражение"
             onChange={(expression) => onChange({ expression })}
             value={String(node.data.expression ?? '')}
           />
-          <TextInput label="Message" onChange={(message) => onChange({ message })} value={String(node.data.message ?? '')} />
+          <TextInput label="Сообщение" onChange={(message) => onChange({ message })} value={String(node.data.message ?? '')} />
         </>
       ) : null}
 
       {type === 'event' ? (
-        <TextInput label="Message" onChange={(message) => onChange({ message })} value={String(node.data.message ?? '')} />
+        <TextInput label="Сообщение" onChange={(message) => onChange({ message })} value={String(node.data.message ?? '')} />
       ) : null}
 
       {type === 'complete' ? (
-        <TextInput label="Result key" onChange={(resultKey) => onChange({ resultKey })} value={String(node.data.resultKey ?? '')} />
+        <TextInput label="Ключ результата" onChange={(resultKey) => onChange({ resultKey })} value={String(node.data.resultKey ?? '')} />
       ) : null}
 
       <Button onClick={onDelete} variant="danger">
-        Delete node
+        Удалить узел
       </Button>
     </div>
   );
@@ -489,8 +489,8 @@ function ProcessGraphNodeView({ data, selected }: NodeProps<ProcessFlowNode>): R
           <Handle className="!top-[34%] !bg-teal-300" id="true" position={Position.Right} type="source" />
           <Handle className="!top-[70%] !bg-rose-300" id="false" position={Position.Right} type="source" />
           <div className="mt-3 flex justify-between text-[11px] text-slate-400">
-            <span>true</span>
-            <span>false</span>
+            <span>да</span>
+            <span>нет</span>
           </div>
         </>
       ) : (
@@ -596,10 +596,10 @@ function createDefaultNodeData(type: ProcessNodeType, config: AppConfig): Record
     return { variable: 'result', expression: 'value' };
   }
   if (type === 'interlock') {
-    return { expression: 'value < 10', message: 'Interlock blocked process' };
+    return { expression: 'value < 10', message: 'Блокировка остановила процесс' };
   }
   if (type === 'event') {
-    return { message: 'Process event' };
+    return { message: 'Событие процесса' };
   }
   if (type === 'complete') {
     return { resultKey: '' };
@@ -619,39 +619,59 @@ function createNodeId(type: ProcessNodeType, nodes: ProcessFlowNode[]): string {
 }
 
 function getDefaultLabel(type: ProcessNodeType): string {
+  return getProcessNodeLabel(type);
+}
+
+function getProcessNodeLabel(type: ProcessNodeType): string {
   const labels: Record<ProcessNodeType, string> = {
-    start: 'Start',
-    complete: 'Complete',
-    input: 'Input',
-    readPoint: 'Read point',
-    captureReading: 'Capture reading',
-    command: 'Command',
-    condition: 'Condition',
-    math: 'Math',
-    wait: 'Wait',
-    interlock: 'Interlock',
-    event: 'Event'
+    start: 'Старт',
+    complete: 'Завершение',
+    input: 'Входной параметр',
+    readPoint: 'Чтение точки',
+    captureReading: 'Снимок значения',
+    command: 'Команда',
+    condition: 'Условие',
+    math: 'Расчет',
+    wait: 'Ожидание',
+    interlock: 'Блокировка',
+    event: 'Событие'
   };
   return labels[type];
 }
 
+function getCommandTypeLabel(type: string): string {
+  const labels: Record<CommandType, string> = {
+    start: 'Пуск',
+    stop: 'Стоп',
+    open: 'Открыть',
+    close: 'Закрыть',
+    turnOn: 'Включить',
+    turnOff: 'Выключить',
+    reset: 'Сброс',
+    setValue: 'Задать значение',
+    custom: 'Своя команда'
+  };
+  return type in labels ? labels[type as CommandType] : type;
+}
+
 function getNodeSubtitle(node: Pick<ProcessGraphNode, 'type' | 'data'>): string {
   if (node.type === 'readPoint' || node.type === 'captureReading') {
-    return String(node.data.pointId ?? 'pointId required');
+    return String(node.data.pointId ?? 'нужна точка');
   }
   if (node.type === 'command') {
-    return `${String(node.data.commandType ?? 'command')} / ${String(node.data.actuatorId ?? 'actuator required')}`;
+    const commandType = typeof node.data.commandType === 'string' ? node.data.commandType : 'custom';
+    return `${getCommandTypeLabel(commandType)} / ${String(node.data.actuatorId ?? 'нужен механизм')}`;
   }
   if (node.type === 'condition') {
-    return String(node.data.expression ?? 'expression required');
+    return String(node.data.expression ?? 'нужно выражение');
   }
   if (node.type === 'wait') {
     return `${String(node.data.durationMs ?? 0)} ms`;
   }
   if (node.type === 'input') {
-    return String(node.data.key ?? 'input');
+    return String(node.data.key ?? 'входной параметр');
   }
-  return 'process node';
+  return 'узел процесса';
 }
 
 function getProcessTone(type: ProcessNodeType): string {
@@ -688,15 +708,15 @@ function getProcessMiniMapColor(type: unknown): string {
 
 function getNodeBadge(type: ProcessNodeType): string {
   if (type === 'condition') {
-    return 'true/false';
+    return 'да/нет';
   }
   if (type === 'wait') {
-    return 'delay';
+    return 'пауза';
   }
   if (type === 'command') {
-    return 'actuator';
+    return 'механизм';
   }
-  return 'flow';
+  return 'поток';
 }
 
 function parseCommandValue(value: string): string | number | boolean | undefined {

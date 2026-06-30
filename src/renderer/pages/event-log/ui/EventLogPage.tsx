@@ -26,7 +26,7 @@ export function EventLogPage(): React.JSX.Element {
   if (eventLog.isLoading && eventLog.events.length === 0) {
     return (
       <section className="mx-auto max-w-7xl">
-        <PageHeader eyebrow="Engineering" title="Журнал событий" />
+        <PageHeader eyebrow="Инженерный раздел" title="Журнал событий" />
         <LoadingState />
       </section>
     );
@@ -35,7 +35,7 @@ export function EventLogPage(): React.JSX.Element {
   if (eventLog.error && eventLog.events.length === 0) {
     return (
       <section className="mx-auto max-w-7xl">
-        <PageHeader eyebrow="Engineering" title="Журнал событий" />
+        <PageHeader eyebrow="Инженерный раздел" title="Журнал событий" />
         <ErrorState message={eventLog.error} onRetry={() => void eventLog.refresh()} />
       </section>
     );
@@ -52,7 +52,7 @@ export function EventLogPage(): React.JSX.Element {
             <ClearEventsButton onClick={() => setIsClearDialogOpen(true)} />
           </>
         }
-        eyebrow="Engineering"
+        eyebrow="Инженерный раздел"
         title="Журнал событий"
         description="События приложения с фильтрами, поиском и live-обновлением."
       />

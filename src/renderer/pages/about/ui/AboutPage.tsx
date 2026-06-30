@@ -16,7 +16,7 @@ export function AboutPage(): React.JSX.Element {
   if (systemInfo.isLoading && !systemInfo.data) {
     return (
       <section className="mx-auto max-w-7xl">
-        <PageHeader eyebrow="Industrial Flow Monitor" title="О приложении" />
+        <PageHeader eyebrow="Промышленный мониторинг" title="О приложении" />
         <LoadingState />
       </section>
     );
@@ -25,7 +25,7 @@ export function AboutPage(): React.JSX.Element {
   if (systemInfo.error && !systemInfo.data) {
     return (
       <section className="mx-auto max-w-7xl">
-        <PageHeader eyebrow="Industrial Flow Monitor" title="О приложении" />
+        <PageHeader eyebrow="Промышленный мониторинг" title="О приложении" />
         <ErrorState message={systemInfo.error} onRetry={() => void systemInfo.refresh()} />
       </section>
     );
@@ -34,7 +34,7 @@ export function AboutPage(): React.JSX.Element {
   if (!systemInfo.data) {
     return (
       <section className="mx-auto max-w-7xl">
-        <PageHeader eyebrow="Industrial Flow Monitor" title="О приложении" />
+        <PageHeader eyebrow="Промышленный мониторинг" title="О приложении" />
         <ErrorState message="System info недоступен" onRetry={() => void systemInfo.refresh()} />
       </section>
     );
@@ -50,7 +50,7 @@ export function AboutPage(): React.JSX.Element {
             onError={(message) => window.alert(message)}
           />
         }
-        eyebrow="Industrial Flow Monitor"
+        eyebrow="Промышленный мониторинг"
         title="О приложении"
         description="Версия, runtime, schema v2 и рабочие пути локального приложения."
       />
@@ -69,8 +69,8 @@ export function AboutPage(): React.JSX.Element {
                   <InfoRow label="Источник" value={`${source.name} (${source.id})`} />
                   <InfoRow label="Тип" value={source.type} />
                   <InfoRow label="Включен" value={source.enabled ? 'да' : 'нет'} />
-                  <InfoRow label="Slave ID" value={slaveId} />
-                  <InfoRow label="Timeout" value={`${source.timeoutMs ?? '—'} ms`} />
+                  <InfoRow label="Адрес Modbus" value={slaveId} />
+                  <InfoRow label="Таймаут" value={`${source.timeoutMs ?? '—'} ms`} />
                   <InfoRow label="Повторы" value={source.retryCount ?? '—'} />
                 </dl>
               );

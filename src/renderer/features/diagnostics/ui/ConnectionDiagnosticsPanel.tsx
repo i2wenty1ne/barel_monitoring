@@ -16,7 +16,7 @@ export function ConnectionDiagnosticsPanel({
   return (
     <Panel className="p-5" title="Подключения">
       <div className="mb-4 grid gap-3 text-sm md:grid-cols-2">
-        <InfoRow label="DataService" value={<StatusBadge status={serviceStatus.connectionStatus} />} />
+        <InfoRow label="Сервис данных" value={<StatusBadge status={serviceStatus.connectionStatus} />} />
         <InfoRow label="Последний успешный опрос" value={formatDateTime(serviceStatus.lastSuccessfulReadAt)} />
         <InfoRow label="Последняя ошибка" value={serviceStatus.lastError ?? '—'} />
       </div>
@@ -27,10 +27,10 @@ export function ConnectionDiagnosticsPanel({
             <dl className="mt-3 grid gap-2 text-sm md:grid-cols-2">
               <InfoRow label="COM-порт" value={device.connection.port} />
               <InfoRow label="Скорость" value={String(device.connection.baudRate)} />
-              <InfoRow label="Data bits" value={String(device.connection.dataBits)} />
-              <InfoRow label="Stop bits" value={String(device.connection.stopBits)} />
-              <InfoRow label="Parity" value={device.connection.parity} />
-              <InfoRow label="Timeout" value={`${device.connection.timeoutMs} ms`} />
+              <InfoRow label="Биты данных" value={String(device.connection.dataBits)} />
+              <InfoRow label="Стоп-биты" value={String(device.connection.stopBits)} />
+              <InfoRow label="Четность" value={device.connection.parity} />
+              <InfoRow label="Таймаут" value={`${device.connection.timeoutMs} ms`} />
               <InfoRow label="Повторы" value={String(device.connection.retries)} />
               <InfoRow label="Опрос" value={`${config.app.pollingIntervalMs} ms`} />
             </dl>

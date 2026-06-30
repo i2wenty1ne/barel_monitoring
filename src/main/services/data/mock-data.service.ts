@@ -1,4 +1,4 @@
-import type { AppConfig, ChannelConfig } from '../../../shared/types/config.types';
+import type { AppConfig, ChannelConfig, Point } from '../../../shared/types/config.types';
 import type {
   BarrelReading,
   ChannelReading,
@@ -25,6 +25,7 @@ export class MockDataService implements DataService {
   private lastSnapshot: MonitoringSnapshot | null = null;
   private lastSuccessfulReadAt: string | null = null;
   private readonly listeners = new Set<MonitoringSnapshotListener>();
+  private mockTruckWeightKg = 12000;
 
   public constructor(config: AppConfig) {
     this.config = config;
@@ -124,10 +125,11 @@ export class MockDataService implements DataService {
           modbusFunction,
           registerAddress,
           success,
+          attempts: success ? 1 : normalizedRequest.attemptsPerRegister,
           registers,
           decodedValue: success ? registers?.[0] : undefined,
-          message: success ? 'Mock register found' : 'Mock timeout',
-          error: success ? undefined : 'Mock scan: no response'
+          message: success ? 'Mock-регистр найден' : 'Mock-таймаут',
+          error: success ? undefined : 'Mock-сканирование: нет ответа'
         });
       }
     });
@@ -201,9 +203,12 @@ export class MockDataService implements DataService {
   }
 
   private createLiveSnapshot(channels: ChannelReading[], updatedAt: string): LiveSnapshot {
-    const readingsByPointId = Object.fromEntries(
-      channels.map((channel) => [channel.channelId, this.channelReadingToPointReading(channel)])
-    );
+    const channelReadings = channels.map((channel) => [channel.channelId, this.channelReadingToPointReading(channel)] as const);
+    const channelPointIds = new Set(channels.map((channel) => channel.channelId));
+    const pointReadings = this.config.points
+      .filter((point) => !channelPointIds.has(point.id))
+      .map((point) => [point.id, this.createPointReading(point, updatedAt)] as const);
+    const readingsByPointId = Object.fromEntries([...channelReadings, ...pointReadings]);
     const dataSourceStatuses = Object.fromEntries(
       this.config.dataSources.map((source): [string, DataSourceStatus] => [
         source.id,
@@ -246,6 +251,59 @@ export class MockDataService implements DataService {
     };
   }
 
+  private createPointReading(point: Point, updatedAt: string): Reading {
+    const rawValue = this.createPointRawValue(point);
+    const displayValue = typeof rawValue === 'number' && point.scaling
+      ? applyScaling(rawValue, point.scaling)
+      : rawValue;
+
+    return {
+      pointId: point.id,
+      assetId: point.assetId,
+      rawValue,
+      displayValue: typeof displayValue === 'number' ? Number(displayValue.toFixed(2)) : displayValue,
+      rawUnit: point.rawUnit,
+      displayUnit: point.displayUnit,
+      status: point.enabled ? 'ok' : 'disabled',
+      quality: point.enabled ? 'good' : 'bad',
+      timestamp: updatedAt
+    };
+  }
+
+  private createPointRawValue(point: Point): number | boolean | string | null {
+    const normalized = `${point.id} ${point.name}`.toLowerCase();
+
+    if (point.kind === 'control') {
+      return null;
+    }
+
+    if (point.valueType === 'boolean') {
+      if (normalized.includes('truck') || normalized.includes('грузовик')) {
+        return true;
+      }
+
+      if (normalized.includes('pump') || normalized.includes('насос')) {
+        return this.isActuatorRunning('pump');
+      }
+
+      if (normalized.includes('led') || normalized.includes('свет')) {
+        return this.isActuatorRunning('led') || this.isActuatorRunning('indicator');
+      }
+
+      return true;
+    }
+
+    if (normalized.includes('weight') || normalized.includes('вес') || normalized.includes('масса')) {
+      if (this.isActuatorRunning('pump')) {
+        this.mockTruckWeightKg += 180 + Math.random() * 80;
+      }
+
+      return this.mockTruckWeightKg;
+    }
+
+    return Math.random() * 100;
+  }
+
   private createRawValue(channel: ChannelConfig): number {
     if (channel.type === 'temperature') {
       return 20 + Math.random() * 10;
@@ -256,6 +314,23 @@ export class MockDataService implements DataService {
     }
 
     return Math.random() * 100;
+  }
+
+  private isActuatorRunning(type: string): boolean {
+    const actuators = this.config.actuators.filter((actuator) => actuator.type === type);
+    if (actuators.length === 0) {
+      return false;
+    }
+
+    return actuators.some((actuator) => {
+      const commands = this.config.commands.filter((command) => command.actuatorId === actuator.id);
+      const lastCommand = commands.at(-1);
+      if (!lastCommand || (lastCommand.status !== 'confirmed' && lastCommand.status !== 'sent')) {
+        return false;
+      }
+
+      return ['start', 'turnOn', 'open', 'setValue'].includes(lastCommand.commandType) && lastCommand.value !== false;
+    });
   }
 
   private getChannelStatus(channel: ChannelConfig, displayValue: number): Status {
@@ -281,6 +356,8 @@ function normalizeRegisterScanRequest(request: RegisterScanRequest): RegisterSca
   const requestedEndAddress = Math.max(startAddress, Math.trunc(request.endAddress));
   const endAddress = Math.min(requestedEndAddress, startAddress + 255);
   const registerCount = Math.min(8, Math.max(1, Math.trunc(request.registerCount)));
+  const attemptsPerRegister = Math.min(10, Math.max(1, Math.trunc(request.attemptsPerRegister ?? 3)));
+  const retryDelayMs = Math.min(5000, Math.max(0, Math.trunc(request.retryDelayMs ?? 80)));
   const modbusFunctions: Array<3 | 4> =
     request.modbusFunctions.length > 0 ? request.modbusFunctions : [3, 4];
 
@@ -289,6 +366,8 @@ function normalizeRegisterScanRequest(request: RegisterScanRequest): RegisterSca
     startAddress,
     endAddress,
     registerCount,
-    modbusFunctions
+    modbusFunctions,
+    attemptsPerRegister,
+    retryDelayMs
   };
 }

@@ -43,19 +43,19 @@ export function ProcessJobsPage(): React.JSX.Element {
   return (
     <section className="mx-auto max-w-7xl">
       <PageHeader
-        eyebrow="Industrial Flow Monitor"
+        eyebrow="Промышленный мониторинг"
         title="Запуски процессов"
-        description="ProcessJob хранит факт запуска, входные данные, context, результат и ошибки исполнения процесса."
+        description="Запуск процесса хранит входные данные, контекст, результат и ошибки исполнения."
       />
       <div className="space-y-5">
         <div className="grid gap-3 md:grid-cols-4">
-          <JobMetric label="Total" value={jobs.length} />
-          <JobMetric label="Completed" value={jobs.filter((job) => job.status === 'completed').length} />
-          <JobMetric label="Failed" value={jobs.filter((job) => job.status === 'failed').length} />
-          <JobMetric label="Running" value={jobs.filter((job) => job.status === 'running').length} />
+          <JobMetric label="Всего" value={jobs.length} />
+          <JobMetric label="Завершено" value={jobs.filter((job) => job.status === 'completed').length} />
+          <JobMetric label="Ошибки" value={jobs.filter((job) => job.status === 'failed').length} />
+          <JobMetric label="Выполняется" value={jobs.filter((job) => job.status === 'running').length} />
         </div>
 
-        <Panel className="p-5" title="Process jobs">
+        <Panel className="p-5" title="Запуски процессов">
           {jobs.length === 0 ? (
             <EmptyState title="Запусков пока нет" description="Запустите процесс: runtime сохранит ProcessJob, context и result." />
           ) : (
@@ -72,11 +72,11 @@ export function ProcessJobsPage(): React.JSX.Element {
             </div>
             <div className="grid gap-4 lg:grid-cols-3">
               <div>
-                <div className="mb-2 text-sm font-medium text-slate-200">Input</div>
+                <div className="mb-2 text-sm font-medium text-slate-200">Входные данные</div>
                 <CodeBlock maxHeightClassName="max-h-72" value={JSON.stringify(latestJob.input, null, 2)} />
               </div>
               <div>
-                <div className="mb-2 text-sm font-medium text-slate-200">Context</div>
+                <div className="mb-2 text-sm font-medium text-slate-200">Контекст</div>
                 <CodeBlock maxHeightClassName="max-h-72" value={JSON.stringify(latestJob.context, null, 2)} />
               </div>
               <div>

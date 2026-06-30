@@ -100,7 +100,7 @@ export function BarrelDetailsPage(): React.JSX.Element {
       <PageHeader
         eyebrow="Детали бочки"
         title={viewModel.barrel.name}
-        description="Live-обновление текущих значений, каналов и состояния бочки."
+        description="Обновление текущих значений, каналов и состояния бочки."
         actions={<BackButton onClick={() => navigate('/monitoring')} />}
       />
 

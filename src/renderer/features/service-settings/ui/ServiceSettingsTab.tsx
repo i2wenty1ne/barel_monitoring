@@ -33,17 +33,17 @@ export function ServiceSettingsTab({
             label="Режим данных"
             onChange={(mode) => onChange({ ...config, app: { ...config.app, mode } })}
             options={[
-              { label: 'mock', value: 'mock' },
-              { label: 'real', value: 'real' }
+              { label: 'Симуляция', value: 'mock' },
+              { label: 'Реальное оборудование', value: 'real' }
             ]}
             value={config.app.mode}
           />
           <div className="rounded-md border border-white/10 bg-slate-950/45 p-3 text-sm text-slate-300">
-            При выборе `real` будет использоваться read-only Modbus RTU сервис.
+            При выборе реального режима будет использоваться Modbus RTU сервис только для чтения.
           </div>
           {config.app.mode === 'real' ? (
             <Alert type="warning">
-              Для real mode требуется подключённый USB-RS485 адаптер и корректные параметры Modbus.
+              Для реального режима требуется подключённый USB-RS485 адаптер и корректные параметры Modbus.
             </Alert>
           ) : null}
         </div>
@@ -53,9 +53,9 @@ export function ServiceSettingsTab({
         <dl className="grid gap-3 text-sm">
           <InfoRow label="Версия" value={systemInfo?.appVersion ?? '—'} />
           <InfoRow label="Платформа" value={systemInfo?.platform ?? '—'} />
-          <InfoRow label="Config" value={systemInfo?.configPath ?? '—'} />
-          <InfoRow label="Events log" value={systemInfo?.logsPath ?? '—'} />
-          <InfoRow label="Текущий mode" value={config.app.mode} />
+          <InfoRow label="Конфиг" value={systemInfo?.configPath ?? '—'} />
+          <InfoRow label="Журнал" value={systemInfo?.logsPath ?? '—'} />
+          <InfoRow label="Текущий режим" value={config.app.mode === 'mock' ? 'Симуляция' : 'Реальное оборудование'} />
         </dl>
         <div className="mt-5 flex flex-wrap gap-2">
           <Button onClick={onOpenConfigFolder} variant="secondary">
@@ -70,7 +70,7 @@ export function ServiceSettingsTab({
         </div>
         <div className="mt-5">
           <DangerZone
-            description="Config.json будет перезаписан дефолтной конфигурацией после подтверждения."
+            description="Файл конфигурации будет перезаписан настройками по умолчанию после подтверждения."
             title="Сброс конфигурации"
           >
             <Button onClick={onRequestResetToDefault} variant="danger">

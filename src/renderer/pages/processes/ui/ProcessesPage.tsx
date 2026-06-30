@@ -160,20 +160,20 @@ export function ProcessesPage(): React.JSX.Element {
   return (
     <section className="mx-auto max-w-7xl">
       <PageHeader
-        eyebrow="Industrial Flow Monitor"
+        eyebrow="Промышленный мониторинг"
         title="Процессы"
-        description="Process и ProcessGraph готовят приложение к сценариям загрузки, перекачки, контроля и автоматизации."
+        description="Процессы и их графы готовят приложение к сценариям перекачки, контроля и автоматизации."
         actions={
           <Button disabled={isSaving} onClick={() => void addProcess()} variant="secondary">
             Создать процесс
           </Button>
         }
       />
-      <Panel className="p-5" title="Processes">
+      <Panel className="p-5" title="Процессы">
         {message ? <div className="mb-4"><Alert type="success">{message}</Alert></div> : null}
         {saveError ? <div className="mb-4"><Alert type="error">{saveError}</Alert></div> : null}
         {currentConfig.processes.length === 0 ? (
-          <EmptyState title="Процессы не созданы" description="Stage 7 добавит React Flow editor, graph validation и запуск ProcessJob." />
+          <EmptyState title="Процессы не созданы" description="Добавьте граф процесса, проверку графа и запуск задания процесса." />
         ) : (
           <DataTable compact columns={columns} getRowKey={(item) => item.id} rows={currentConfig.processes} />
         )}

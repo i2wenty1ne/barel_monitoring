@@ -27,7 +27,9 @@ export function RegisterScanPanel({ config }: RegisterScanPanelProps): React.JSX
     registerCount: config.channels[0]?.registerCount ?? 1,
     modbusFunctions: [3, 4],
     dataType: config.channels[0]?.dataType ?? 'float32',
-    byteOrder: config.channels[0]?.byteOrder ?? 'ABCD'
+    byteOrder: config.channels[0]?.byteOrder ?? 'ABCD',
+    attemptsPerRegister: 3,
+    retryDelayMs: 80
   });
   const [result, setResult] = useState<RegisterScanResult | null>(null);
   const [importMessage, setImportMessage] = useState<string | null>(null);
@@ -38,6 +40,7 @@ export function RegisterScanPanel({ config }: RegisterScanPanelProps): React.JSX
     () => [
       { key: 'fn', title: 'Функция', render: (row) => (row.modbusFunction === 3 ? '3 Holding' : '4 Input') },
       { key: 'register', title: 'Регистр', render: (row) => row.registerAddress },
+      { key: 'attempts', title: 'Попытки', render: (row) => row.attempts ?? 1 },
       {
         key: 'status',
         title: 'Статус',
@@ -47,8 +50,8 @@ export function RegisterScanPanel({ config }: RegisterScanPanelProps): React.JSX
           </span>
         )
       },
-      { key: 'registers', title: 'Registers', render: (row) => row.registers?.join(', ') ?? '—' },
-      { key: 'decoded', title: 'Decoded', render: (row) => formatDecodedValue(row.decodedValue) },
+      { key: 'registers', title: 'Значения регистров', render: (row) => row.registers?.join(', ') ?? '—' },
+      { key: 'decoded', title: 'Расшифровано', render: (row) => formatDecodedValue(row.decodedValue) },
       { key: 'message', title: 'Сообщение', render: (row) => row.error ?? row.message }
     ],
     []
@@ -89,7 +92,7 @@ export function RegisterScanPanel({ config }: RegisterScanPanelProps): React.JSX
         </Alert>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
+      <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-8">
         <Select
           label="Устройство"
           onChange={(deviceId) => setRequest({ ...request, deviceId })}
@@ -138,6 +141,20 @@ export function RegisterScanPanel({ config }: RegisterScanPanelProps): React.JSX
           ]}
           value={request.byteOrder}
         />
+        <NumberInput
+          label="Попыток на регистр"
+          max={10}
+          min={1}
+          onChange={(attemptsPerRegister) => setRequest({ ...request, attemptsPerRegister })}
+          value={request.attemptsPerRegister ?? 3}
+        />
+        <NumberInput
+          label="Пауза, мс"
+          max={5000}
+          min={0}
+          onChange={(retryDelayMs) => setRequest({ ...request, retryDelayMs })}
+          value={request.retryDelayMs ?? 80}
+        />
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-4">
@@ -151,6 +168,12 @@ export function RegisterScanPanel({ config }: RegisterScanPanelProps): React.JSX
           label="4 Input"
           onChange={(checked) => toggleFunction(4, checked)}
         />
+      </div>
+
+      <div className="mt-4">
+        <Alert type="info">
+          Каждый адрес опрашивается до {request.attemptsPerRegister ?? 3} раз. Это снижает ложные ошибки, если устройство отвечает с задержкой.
+        </Alert>
       </div>
 
       {validationError ? (
@@ -239,6 +262,14 @@ function getValidationError(request: RegisterScanRequest): string | null {
 
   if (request.registerCount < 1 || request.registerCount > 8) {
     return 'Количество регистров должно быть от 1 до 8.';
+  }
+
+  if ((request.attemptsPerRegister ?? 1) < 1 || (request.attemptsPerRegister ?? 1) > 10) {
+    return 'Количество попыток на регистр должно быть от 1 до 10.';
+  }
+
+  if ((request.retryDelayMs ?? 0) < 0 || (request.retryDelayMs ?? 0) > 5000) {
+    return 'Пауза между попытками должна быть от 0 до 5000 мс.';
   }
 
   if (request.modbusFunctions.length === 0) {

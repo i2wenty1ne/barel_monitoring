@@ -20,8 +20,8 @@ export function Sidebar(): React.JSX.Element {
   return (
     <aside className="border-b border-white/10 bg-slate-950/85 px-4 py-5 lg:border-b-0 lg:border-r">
       <div className="mb-4 lg:mb-8">
-        <div className="text-lg font-semibold tracking-normal text-white">Industrial Flow Monitor</div>
-        <div className="mt-1 text-xs text-slate-400">Asset / Point / Process platform</div>
+        <div className="text-lg font-semibold tracking-normal text-white">Промышленный мониторинг</div>
+        <div className="mt-1 text-xs text-slate-400">Объекты, точки и процессы</div>
       </div>
 
       <nav className="flex flex-wrap gap-1 lg:block lg:space-y-1" aria-label="Главная навигация">

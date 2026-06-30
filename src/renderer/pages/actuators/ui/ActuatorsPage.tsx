@@ -263,17 +263,23 @@ export function ActuatorsPage(): React.JSX.Element {
   }
 
   async function deleteActuator(actuator: Actuator): Promise<void> {
-    const pointIds = new Set([...actuator.commandPointIds, ...actuator.feedbackPointIds]);
+    const commandPointIds = new Set(actuator.commandPointIds);
+    const removedPointIds = new Set(actuator.commandPointIds);
     await save(
       {
         ...currentConfig,
         actuators: currentConfig.actuators.filter((item) => item.id !== actuator.id),
         interlocks: currentConfig.interlocks.filter((interlock) => interlock.targetActuatorId !== actuator.id),
-        points: currentConfig.points.filter((point) => !pointIds.has(point.id)),
+        commands: currentConfig.commands.filter((command) => command.actuatorId !== actuator.id),
+        points: currentConfig.points.filter((point) => !commandPointIds.has(point.id)),
         assets: currentConfig.assets.map((asset) => ({
           ...asset,
           actuatorIds: asset.actuatorIds.filter((actuatorId) => actuatorId !== actuator.id),
-          pointIds: asset.pointIds.filter((pointId) => !pointIds.has(pointId))
+          pointIds: asset.pointIds.filter((pointId) => !removedPointIds.has(pointId))
+        })),
+        monitoringProfiles: currentConfig.monitoringProfiles.map((profile) => ({
+          ...profile,
+          pointConfigs: profile.pointConfigs.filter((pointConfig) => !removedPointIds.has(pointConfig.pointId))
         }))
       },
       'Исполнительный механизм удален'
@@ -385,9 +391,9 @@ export function ActuatorsPage(): React.JSX.Element {
   return (
     <section className="mx-auto max-w-7xl">
       <PageHeader
-        eyebrow="Industrial Flow Monitor"
+        eyebrow="Промышленный мониторинг"
         title="Исполнительные механизмы"
-        description="Actuator, ControlPoint, безопасные simulation-команды, interlocks и command history."
+        description="Механизмы, точки управления, безопасные команды симуляции, блокировки и история команд."
         actions={
           <Button disabled={isSaving} onClick={() => setDraft(createNewDraft(currentConfig))} variant="secondary">
             Создать actuator
@@ -398,13 +404,13 @@ export function ActuatorsPage(): React.JSX.Element {
         {message ? <Alert type="success">{message}</Alert> : null}
         {saveError ? <Alert type="error">{saveError}</Alert> : null}
         {lastResult ? (
-          <Alert type={lastResult.success ? 'success' : 'error'} title="CommandResult">
+          <Alert type={lastResult.success ? 'success' : 'error'} title="Результат команды">
             commandId: {lastResult.commandId}; feedback: {lastResult.feedbackPointId ?? '-'} = {String(lastResult.feedbackValue ?? '-')}; error: {lastResult.error ?? '-'}
           </Alert>
         ) : null}
 
         <div className="grid gap-5 xl:grid-cols-[1fr_420px]">
-          <Panel className="p-5" title="Actuators">
+          <Panel className="p-5" title="Механизмы">
             {currentConfig.actuators.length === 0 ? (
               <EmptyState title="Механизмы ещё не настроены" description="Создайте actuator: он автоматически получит ControlPoint для simulation command." />
             ) : (
@@ -477,7 +483,7 @@ export function ActuatorsPage(): React.JSX.Element {
         ) : null}
 
         <div className="grid gap-5 xl:grid-cols-[420px_1fr]">
-          <Panel className="p-5" title="Interlocks">
+          <Panel className="p-5" title="Блокировки">
             <div className="space-y-4">
               {currentConfig.actuators.length > 0 && telemetryPoints.length > 0 ? (
                 <Button disabled={isSaving} onClick={() => setInterlockDraft(createDefaultInterlockDraft(currentConfig.actuators, telemetryPoints))} variant="secondary">
@@ -510,7 +516,7 @@ export function ActuatorsPage(): React.JSX.Element {
             </div>
           </Panel>
 
-          <Panel className="p-5" title="Command history">
+          <Panel className="p-5" title="История команд">
             {commandHistory.length === 0 ? (
               <EmptyState title="Команд ещё нет" description="Выполните simulation command, чтобы увидеть CommandResult." />
             ) : (
@@ -580,28 +586,28 @@ function ActuatorForm({
           value={draft.type}
         />
         <Select
-          label="Asset"
+          label="Объект"
           onChange={(assetId) => onChange({ ...draft, assetId })}
           options={[{ label: '-', value: '' }, ...assets.map((asset) => ({ label: asset.name, value: asset.id }))]}
           value={draft.assetId}
         />
         <Select
-          label="DataSource"
+          label="Источник данных"
           onChange={(dataSourceId) => onChange({ ...draft, dataSourceId })}
           options={[{ label: '-', value: '' }, ...dataSources.map((source) => ({ label: source.name, value: source.id }))]}
           value={draft.dataSourceId}
         />
         <Select
-          label="Feedback point"
+          label="Точка обратной связи"
           onChange={(feedbackPointId) => onChange({ ...draft, feedbackPointId })}
           options={[{ label: '-', value: '' }, ...feedbackPoints.map((point) => ({ label: point.name, value: point.id }))]}
           value={draft.feedbackPointId}
         />
-        <TextInput label="ControlPoint ID" onChange={(commandPointId) => onChange({ ...draft, commandPointId })} value={draft.commandPointId} />
-        <NumberInput label="Slave ID" min={1} max={247} onChange={(slaveId) => onChange({ ...draft, slaveId })} value={draft.slaveId} />
-        <NumberInput label="Coil address" min={0} onChange={(coilAddress) => onChange({ ...draft, coilAddress })} value={draft.coilAddress} />
+        <TextInput label="ID точки управления" onChange={(commandPointId) => onChange({ ...draft, commandPointId })} value={draft.commandPointId} />
+        <NumberInput label="Адрес Modbus" min={1} max={247} onChange={(slaveId) => onChange({ ...draft, slaveId })} value={draft.slaveId} />
+        <NumberInput label="Адрес coil" min={0} onChange={(coilAddress) => onChange({ ...draft, coilAddress })} value={draft.coilAddress} />
         <Select
-          label="Safety level"
+          label="Уровень безопасности"
           onChange={(safetyLevel) => onChange({ ...draft, safetyLevel })}
           options={[
             { label: 'normal', value: 'normal' },
@@ -614,18 +620,18 @@ function ActuatorForm({
       <div className="grid gap-2 md:grid-cols-3">
         <Checkbox
           checked={draft.enabled}
-          label="Actuator enabled"
+          label="Механизм включен"
           onChange={(enabled) => onChange({ ...draft, enabled })}
         />
         <Checkbox
           checked={draft.requiresConfirmation}
-          label="Requires confirmation"
+          label="Требует подтверждения"
           onChange={(requiresConfirmation) => onChange({ ...draft, requiresConfirmation })}
         />
         <Checkbox
           checked={controlPoints.some((point) => point.id === draft.commandPointId)}
           disabled
-          label="ControlPoint linked"
+          label="Точка управления связана"
           hint={draft.commandPointId}
           onChange={() => undefined}
         />
@@ -658,39 +664,39 @@ function InterlockForm({
   return (
     <div className="space-y-3">
       <Select
-        label="Actuator"
+        label="Механизм"
         onChange={(targetActuatorId) => onChange({ ...draft, targetActuatorId })}
         options={actuators.map((actuator) => ({ label: actuator.name, value: actuator.id }))}
         value={draft.targetActuatorId}
       />
       <Select
-        label="Command"
+        label="Команда"
         onChange={(targetCommand) => onChange({ ...draft, targetCommand })}
         options={commandTypes.map((commandType) => ({ label: commandType, value: commandType }))}
         value={draft.targetCommand}
       />
       <Select
-        label="Point"
+        label="Точка"
         onChange={(pointId) => onChange({ ...draft, pointId })}
         options={points.map((point) => ({ label: point.name, value: point.id }))}
         value={draft.pointId}
       />
       <div className="grid gap-3 md:grid-cols-3">
         <Select
-          label="Operator"
+          label="Оператор"
           onChange={(operator) => onChange({ ...draft, operator })}
           options={interlockOperators.map((operator) => ({ label: operator, value: operator }))}
           value={draft.operator}
         />
-        <TextInput label="Expected" onChange={(expected) => onChange({ ...draft, expected })} value={draft.expected} />
+        <TextInput label="Ожидаемое значение" onChange={(expected) => onChange({ ...draft, expected })} value={draft.expected} />
         <Select
-          label="Effect"
+          label="Действие"
           onChange={(effect) => onChange({ ...draft, effect })}
           options={[{ label: 'block', value: 'block' }, { label: 'warn', value: 'warn' }]}
           value={draft.effect}
         />
       </div>
-      <TextInput label="Message" onChange={(message) => onChange({ ...draft, message })} value={draft.message} />
+      <TextInput label="Сообщение" onChange={(message) => onChange({ ...draft, message })} value={draft.message} />
     </div>
   );
 }

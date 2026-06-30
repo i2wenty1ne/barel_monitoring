@@ -29,7 +29,7 @@ export function SettingsPage(): React.JSX.Element {
   if (editor.isLoading && !editor.config) {
     return (
       <section className="mx-auto max-w-7xl">
-        <PageHeader eyebrow="Industrial Flow Monitor" title="Настройки" />
+        <PageHeader eyebrow="Промышленный мониторинг" title="Настройки" />
         <LoadingState />
       </section>
     );
@@ -38,7 +38,7 @@ export function SettingsPage(): React.JSX.Element {
   if (editor.error && !editor.config) {
     return (
       <section className="mx-auto max-w-7xl">
-        <PageHeader eyebrow="Industrial Flow Monitor" title="Настройки" />
+        <PageHeader eyebrow="Промышленный мониторинг" title="Настройки" />
         <ErrorState message={editor.error} onRetry={() => void editor.reloadConfig()} />
       </section>
     );
@@ -47,7 +47,7 @@ export function SettingsPage(): React.JSX.Element {
   if (!editor.config) {
     return (
       <section className="mx-auto max-w-7xl">
-        <PageHeader eyebrow="Industrial Flow Monitor" title="Настройки" />
+        <PageHeader eyebrow="Промышленный мониторинг" title="Настройки" />
         <ErrorState message="Config не загружен" onRetry={() => void editor.reloadConfig()} />
       </section>
     );
@@ -58,7 +58,7 @@ export function SettingsPage(): React.JSX.Element {
   return (
     <section className="mx-auto max-w-7xl">
       <PageHeader
-        eyebrow="Industrial Flow Monitor"
+        eyebrow="Промышленный мониторинг"
         title="Настройки"
         description="Редактирование локального schema v2 config.json. Изменения применяются только после сохранения."
       />

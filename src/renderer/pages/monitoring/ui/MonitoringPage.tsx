@@ -37,7 +37,7 @@ export function MonitoringPage(): React.JSX.Element {
   if (isLoading) {
     return (
       <section className="mx-auto max-w-7xl">
-        <PageHeader eyebrow="Industrial Flow Monitor" title="Мониторинг объектов" />
+        <PageHeader eyebrow="Промышленный мониторинг" title="Мониторинг объектов" />
         <LoadingState />
       </section>
     );
@@ -46,7 +46,7 @@ export function MonitoringPage(): React.JSX.Element {
   if (error) {
     return (
       <section className="mx-auto max-w-7xl">
-        <PageHeader eyebrow="Industrial Flow Monitor" title="Мониторинг объектов" />
+        <PageHeader eyebrow="Промышленный мониторинг" title="Мониторинг объектов" />
         <ErrorState message={error} onRetry={handleRetry} />
       </section>
     );
@@ -55,9 +55,9 @@ export function MonitoringPage(): React.JSX.Element {
   return (
     <section className="mx-auto max-w-7xl">
       <PageHeader
-        eyebrow="Industrial Flow Monitor"
+        eyebrow="Промышленный мониторинг"
         title="Мониторинг объектов"
-        description="Live-состояние объектов, построенное поверх Asset и Point."
+        description="Текущее состояние объектов, построенное поверх объектов и точек."
       />
 
       {configState.validationError ? (

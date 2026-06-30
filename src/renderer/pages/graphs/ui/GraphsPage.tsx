@@ -78,48 +78,49 @@ export function GraphsPage(): React.JSX.Element {
   }
 
   return (
-    <section className="mx-auto max-w-7xl">
+    <section className="flex h-[calc(100vh-7rem)] min-h-[640px] flex-col">
       <PageHeader
-        eyebrow="Industrial Flow Monitor"
-        title="Asset graph"
-        description="React Flow graph mode: объекты, точки, источники данных и исполнительные механизмы."
+        eyebrow="Промышленный мониторинг"
+        title="Граф объектов"
+        description="Граф связей: объекты, точки, источники данных и исполнительные механизмы."
         actions={
           <div className="flex flex-wrap gap-2">
             {isEditMode ? (
               <Button onClick={saveLayout} variant="primary">
-                Сохранить layout
+                Сохранить расположение
               </Button>
             ) : null}
             <Button onClick={() => setIsEditMode((value) => !value)} variant="secondary">
-              {isEditMode ? 'Read-only' : 'Edit layout'}
+              {isEditMode ? 'Только просмотр' : 'Редактировать расположение'}
             </Button>
             <Button onClick={resetLayout} variant="ghost">
-              Reset layout
+              Сбросить расположение
             </Button>
           </div>
         }
       />
-      <div className="space-y-5">
+      <div className="flex min-h-0 flex-1 flex-col gap-4">
         <div className="grid gap-3 md:grid-cols-5">
-          <GraphMetric label="Assets" value={config.assets.length} />
-          <GraphMetric label="DataSources" value={config.dataSources.length} />
-          <GraphMetric label="Telemetry" value={config.points.filter((point) => point.kind !== 'control').length} />
-          <GraphMetric label="Control" value={config.points.filter((point) => point.kind === 'control').length} />
-          <GraphMetric label="Actuators" value={config.actuators.length} />
+          <GraphMetric label="Объекты" value={config.assets.length} />
+          <GraphMetric label="Источники данных" value={config.dataSources.length} />
+          <GraphMetric label="Телеметрия" value={config.points.filter((point) => point.kind !== 'control').length} />
+          <GraphMetric label="Управление" value={config.points.filter((point) => point.kind === 'control').length} />
+          <GraphMetric label="Механизмы" value={config.actuators.length} />
         </div>
 
         {graph.nodes.length === 0 ? (
           <Panel className="p-5">
-            <EmptyState title="Граф пуст" description="Добавьте assets, points, dataSources или actuators в config." />
+            <EmptyState title="Граф пуст" description="Добавьте объекты, точки, источники данных или механизмы в config." />
           </Panel>
         ) : (
-          <Panel className="p-3" title="Связи модели">
-            <div className="mb-3 flex flex-wrap items-center gap-2">
-              <Badge tone={isEditMode ? 'warning' : 'success'}>{isEditMode ? 'edit mode' : 'read-only'}</Badge>
-              <span className="text-sm text-slate-500">{nodes.length} nodes / {edges.length} edges</span>
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-md border border-white/10 bg-slate-950">
+            <div className="flex flex-wrap items-center gap-2 border-b border-white/10 px-3 py-2">
+              <Badge tone={isEditMode ? 'warning' : 'success'}>{isEditMode ? 'редактирование' : 'просмотр'}</Badge>
+              <span className="text-sm text-slate-500">{nodes.length} узлов / {edges.length} связей</span>
             </div>
-            <div className="h-[680px] overflow-hidden rounded-md border border-white/10 bg-slate-950">
+            <div className="h-full min-h-0 flex-1">
               <ReactFlow
+                className="h-full w-full"
                 colorMode="dark"
                 defaultEdgeOptions={{ type: 'smoothstep' }}
                 edges={edges}
@@ -144,11 +145,11 @@ export function GraphsPage(): React.JSX.Element {
                 />
               </ReactFlow>
             </div>
-          </Panel>
+          </div>
         )}
 
         <Alert type="info">
-          Asset graph показывает связи Asset {'->'} Points, Asset {'->'} Actuators, Point {'->'} DataSource, Actuator {'->'} ControlPoints и Actuator {'->'} FeedbackPoints.
+          Граф показывает связи объект {'->'} точки, объект {'->'} механизмы, точка {'->'} источник данных, механизм {'->'} команды и механизм {'->'} обратная связь.
         </Alert>
       </div>
     </section>

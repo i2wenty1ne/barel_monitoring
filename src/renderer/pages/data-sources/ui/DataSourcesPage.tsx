@@ -168,9 +168,9 @@ export function DataSourcesPage(): React.JSX.Element {
   return (
     <section className="mx-auto max-w-7xl">
       <PageHeader
-        eyebrow="Industrial Flow Monitor"
+        eyebrow="Промышленный мониторинг"
         title="Источники данных"
-        description="DataSource описывает источник live-значений и команд: Modbus RTU, mock, manual и будущие TCP/HTTP/MQTT."
+        description="Источник данных описывает текущие значения и команды: Modbus RTU, симуляцию, ручной ввод и будущие TCP/HTTP/MQTT."
         actions={
           <div className="flex flex-wrap gap-2">
             <Button disabled={isSaving} onClick={() => void addSource('modbus-rtu')} variant="secondary">
@@ -283,31 +283,31 @@ function DataSourceForm({
             value={modbusConnection.port}
           />
           <NumberInput
-            label="BaudRate"
+            label="Скорость"
             min={1}
             onChange={(baudRate) => onChange({ ...draft, connection: { ...modbusConnection, baudRate } })}
             value={modbusConnection.baudRate}
           />
           <Select<7 | 8>
-            label="Data bits"
+            label="Биты данных"
             onChange={(dataBits) => onChange({ ...draft, connection: { ...modbusConnection, dataBits } })}
             options={[{ label: '7', value: 7 }, { label: '8', value: 8 }]}
             value={modbusConnection.dataBits}
           />
           <Select<1 | 2>
-            label="Stop bits"
+            label="Стоп-биты"
             onChange={(stopBits) => onChange({ ...draft, connection: { ...modbusConnection, stopBits } })}
             options={[{ label: '1', value: 1 }, { label: '2', value: 2 }]}
             value={modbusConnection.stopBits}
           />
           <Select<'none' | 'even' | 'odd'>
-            label="Parity"
+            label="Четность"
             onChange={(parity) => onChange({ ...draft, connection: { ...modbusConnection, parity } })}
             options={[{ label: 'none', value: 'none' }, { label: 'even', value: 'even' }, { label: 'odd', value: 'odd' }]}
             value={modbusConnection.parity}
           />
           <NumberInput
-            label="Slave ID"
+            label="Адрес Modbus"
             max={247}
             min={1}
             onChange={(slaveId) => onChange({ ...draft, metadata: { ...draft.metadata, slaveId } })}

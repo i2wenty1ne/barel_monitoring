@@ -189,9 +189,9 @@ export function PointsPage(): React.JSX.Element {
   return (
     <section className="mx-auto max-w-7xl">
       <PageHeader
-        eyebrow="Industrial Flow Monitor"
+        eyebrow="Промышленный мониторинг"
         title="Точки данных"
-        description="TelemetryPoint и ControlPoint: универсальные читаемые и управляемые точки поверх источников данных."
+        description="Точки телеметрии и управления поверх источников данных."
         actions={
           <Button disabled={isSaving} onClick={() => void addTelemetryPoint()} variant="secondary">
             Добавить telemetry
@@ -199,7 +199,7 @@ export function PointsPage(): React.JSX.Element {
         }
       />
       <div className="space-y-5">
-        <Panel className="p-5" title="Points">
+        <Panel className="p-5" title="Точки">
           {message ? <div className="mb-4"><Alert type="success">{message}</Alert></div> : null}
           {saveError ? <div className="mb-4"><Alert type="error">{saveError}</Alert></div> : null}
           {manualReadResult ? (
@@ -259,25 +259,25 @@ function PointForm({
         <TextInput label="ID" onChange={(id) => onChange({ ...draft, id })} value={draft.id} />
         <TextInput label="Название" onChange={(name) => onChange({ ...draft, name })} value={draft.name} />
         <Select
-          label="Kind"
+          label="Тип точки"
           onChange={(kind) => onChange({ ...draft, kind })}
           options={[{ label: 'telemetry', value: 'telemetry' }, { label: 'control', value: 'control' }, { label: 'calculated', value: 'calculated' }]}
           value={draft.kind}
         />
         <Select
-          label="Asset"
+          label="Объект"
           onChange={(assetId) => onChange({ ...draft, assetId: assetId || undefined })}
           options={[{ label: '—', value: '' }, ...assets.map((asset) => ({ label: asset.name, value: asset.id }))]}
           value={draft.assetId ?? ''}
         />
         <Select
-          label="DataSource"
+          label="Источник данных"
           onChange={(dataSourceId) => onChange({ ...draft, dataSourceId: dataSourceId || undefined })}
           options={[{ label: '—', value: '' }, ...dataSources.map((source) => ({ label: source.name, value: source.id }))]}
           value={draft.dataSourceId ?? ''}
         />
         <Select
-          label="Value type"
+          label="Тип значения"
           onChange={(valueType) => onChange(updateValueType(draft, valueType))}
           options={[
             { label: 'boolean', value: 'boolean' },
@@ -290,17 +290,17 @@ function PointForm({
           ]}
           value={draft.valueType}
         />
-        <TextInput label="Raw unit" onChange={(rawUnit) => onChange({ ...draft, rawUnit })} value={draft.rawUnit ?? ''} />
-        <TextInput label="Display unit" onChange={(displayUnit) => onChange({ ...draft, displayUnit })} value={draft.displayUnit ?? ''} />
+        <TextInput label="Сырая единица" onChange={(rawUnit) => onChange({ ...draft, rawUnit })} value={draft.rawUnit ?? ''} />
+        <TextInput label="Единица отображения" onChange={(displayUnit) => onChange({ ...draft, displayUnit })} value={draft.displayUnit ?? ''} />
         <Checkbox checked={draft.enabled} label="Включена" onChange={(enabled) => onChange({ ...draft, enabled })} />
         <Checkbox checked={draft.recordable} label="Писать в историю" onChange={(recordable) => onChange({ ...draft, recordable })} />
       </div>
 
       {address ? (
         <div className="grid gap-4 rounded-md border border-white/10 bg-slate-950/35 p-4 md:grid-cols-3">
-          <NumberInput label="Slave ID" min={1} max={247} onChange={(slaveId) => onChange({ ...draft, address: { ...address, slaveId } })} value={address.slaveId} />
+          <NumberInput label="Адрес Modbus" min={1} max={247} onChange={(slaveId) => onChange({ ...draft, address: { ...address, slaveId } })} value={address.slaveId} />
           <Select
-            label="Area"
+            label="Область"
             onChange={(area) => onChange({ ...draft, address: { ...address, area, functionCode: area === 'holding-register' ? 3 : area === 'input-register' ? 4 : area === 'coil' ? 1 : 2 } })}
             options={[
               { label: 'holding-register', value: 'holding-register' },
@@ -311,16 +311,16 @@ function PointForm({
             value={address.area}
           />
           <Select<1 | 2 | 3 | 4>
-            label="Function"
+            label="Функция"
             onChange={(functionCode) => onChange({ ...draft, address: { ...address, functionCode } })}
             options={([1, 2, 3, 4] as Array<1 | 2 | 3 | 4>).map((value) => ({ label: String(value), value }))}
             value={address.functionCode === 1 || address.functionCode === 2 || address.functionCode === 3 || address.functionCode === 4 ? address.functionCode : 3}
           />
-          <NumberInput label="Register" min={0} onChange={(registerAddress) => onChange({ ...draft, address: { ...address, registerAddress } })} value={address.registerAddress ?? 0} />
-          <NumberInput label="Coil" min={0} onChange={(coilAddress) => onChange({ ...draft, address: { ...address, coilAddress } })} value={address.coilAddress ?? 0} />
-          <NumberInput label="Count" min={1} max={8} onChange={(registerCount) => onChange({ ...draft, address: { ...address, registerCount } })} value={address.registerCount ?? 1} />
+          <NumberInput label="Регистр" min={0} onChange={(registerAddress) => onChange({ ...draft, address: { ...address, registerAddress } })} value={address.registerAddress ?? 0} />
+          <NumberInput label="Адрес coil" min={0} onChange={(coilAddress) => onChange({ ...draft, address: { ...address, coilAddress } })} value={address.coilAddress ?? 0} />
+          <NumberInput label="Количество" min={1} max={8} onChange={(registerCount) => onChange({ ...draft, address: { ...address, registerCount } })} value={address.registerCount ?? 1} />
           <Select
-            label="Byte order"
+            label="Порядок байтов"
             onChange={(byteOrder) => onChange({ ...draft, address: { ...address, byteOrder } })}
             options={[{ label: 'ABCD', value: 'ABCD' }, { label: 'CDAB', value: 'CDAB' }, { label: 'BADC', value: 'BADC' }, { label: 'DCBA', value: 'DCBA' }]}
             value={address.byteOrder ?? 'ABCD'}
@@ -340,24 +340,24 @@ function ScalingEditor({ draft, onChange }: { draft: Point; onChange: (point: Po
   return (
     <div className="grid gap-4 rounded-md border border-white/10 bg-slate-950/35 p-4 md:grid-cols-3">
       <Select
-        label="Scaling"
+        label="Масштабирование"
         onChange={(type) => onChange({ ...draft, scaling: createScaling(type) })}
         options={[{ label: 'none', value: 'none' }, { label: 'linear', value: 'linear' }, { label: 'factor', value: 'factor' }]}
         value={scaling.type}
       />
       {scaling.type === 'linear' ? (
         <>
-          <NumberInput label="Raw min" onChange={(rawMin) => onChange({ ...draft, scaling: { ...scaling, rawMin } })} value={scaling.rawMin} />
-          <NumberInput label="Raw max" onChange={(rawMax) => onChange({ ...draft, scaling: { ...scaling, rawMax } })} value={scaling.rawMax} />
-          <NumberInput label="Display min" onChange={(displayMin) => onChange({ ...draft, scaling: { ...scaling, displayMin } })} value={scaling.displayMin} />
-          <NumberInput label="Display max" onChange={(displayMax) => onChange({ ...draft, scaling: { ...scaling, displayMax } })} value={scaling.displayMax} />
-          <Checkbox checked={scaling.clamp ?? false} label="Clamp" onChange={(clamp) => onChange({ ...draft, scaling: { ...scaling, clamp } })} />
+          <NumberInput label="Сырой минимум" onChange={(rawMin) => onChange({ ...draft, scaling: { ...scaling, rawMin } })} value={scaling.rawMin} />
+          <NumberInput label="Сырой максимум" onChange={(rawMax) => onChange({ ...draft, scaling: { ...scaling, rawMax } })} value={scaling.rawMax} />
+          <NumberInput label="Минимум отображения" onChange={(displayMin) => onChange({ ...draft, scaling: { ...scaling, displayMin } })} value={scaling.displayMin} />
+          <NumberInput label="Максимум отображения" onChange={(displayMax) => onChange({ ...draft, scaling: { ...scaling, displayMax } })} value={scaling.displayMax} />
+          <Checkbox checked={scaling.clamp ?? false} label="Ограничивать диапазон" onChange={(clamp) => onChange({ ...draft, scaling: { ...scaling, clamp } })} />
         </>
       ) : null}
       {scaling.type === 'factor' ? (
         <>
-          <NumberInput label="Factor" step={0.01} onChange={(factor) => onChange({ ...draft, scaling: { ...scaling, factor } })} value={scaling.factor} />
-          <NumberInput label="Offset" step={0.01} onChange={(offset) => onChange({ ...draft, scaling: { ...scaling, offset } })} value={scaling.offset ?? 0} />
+          <NumberInput label="Коэффициент" step={0.01} onChange={(factor) => onChange({ ...draft, scaling: { ...scaling, factor } })} value={scaling.factor} />
+          <NumberInput label="Смещение" step={0.01} onChange={(offset) => onChange({ ...draft, scaling: { ...scaling, offset } })} value={scaling.offset ?? 0} />
         </>
       ) : null}
     </div>
@@ -369,10 +369,10 @@ function ThresholdEditor({ draft, onChange }: { draft: Point; onChange: (point: 
 
   return (
     <div className="grid gap-4 rounded-md border border-white/10 bg-slate-950/35 p-4 md:grid-cols-4">
-      <NumberInput label="Alarm low" onChange={(alarmLow) => onChange({ ...draft, thresholds: { ...thresholds, alarmLow } })} value={thresholds.alarmLow ?? 0} />
-      <NumberInput label="Warning low" onChange={(warningLow) => onChange({ ...draft, thresholds: { ...thresholds, warningLow } })} value={thresholds.warningLow ?? 0} />
-      <NumberInput label="Warning high" onChange={(warningHigh) => onChange({ ...draft, thresholds: { ...thresholds, warningHigh } })} value={thresholds.warningHigh ?? 100} />
-      <NumberInput label="Alarm high" onChange={(alarmHigh) => onChange({ ...draft, thresholds: { ...thresholds, alarmHigh } })} value={thresholds.alarmHigh ?? 100} />
+      <NumberInput label="Нижняя авария" onChange={(alarmLow) => onChange({ ...draft, thresholds: { ...thresholds, alarmLow } })} value={thresholds.alarmLow ?? 0} />
+      <NumberInput label="Нижнее предупреждение" onChange={(warningLow) => onChange({ ...draft, thresholds: { ...thresholds, warningLow } })} value={thresholds.warningLow ?? 0} />
+      <NumberInput label="Верхнее предупреждение" onChange={(warningHigh) => onChange({ ...draft, thresholds: { ...thresholds, warningHigh } })} value={thresholds.warningHigh ?? 100} />
+      <NumberInput label="Верхняя авария" onChange={(alarmHigh) => onChange({ ...draft, thresholds: { ...thresholds, alarmHigh } })} value={thresholds.alarmHigh ?? 100} />
     </div>
   );
 }

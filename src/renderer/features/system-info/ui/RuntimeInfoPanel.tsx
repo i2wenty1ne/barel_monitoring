@@ -7,7 +7,7 @@ type RuntimeInfoPanelProps = {
 
 export function RuntimeInfoPanel({ info }: RuntimeInfoPanelProps): React.JSX.Element {
   return (
-    <Panel className="p-5" title="Runtime">
+    <Panel className="p-5" title="Среда выполнения">
       <dl className="grid gap-3 text-sm">
         <InfoRow label="Electron" value={info.electronVersion ?? '—'} />
         <InfoRow label="Node" value={info.nodeVersion ?? '—'} />

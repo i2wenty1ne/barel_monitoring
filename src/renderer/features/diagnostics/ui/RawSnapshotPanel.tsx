@@ -11,12 +11,12 @@ type RawSnapshotPanelProps = {
 
 export function RawSnapshotPanel({ snapshot }: RawSnapshotPanelProps): React.JSX.Element {
   return (
-    <Panel className="p-5" title="Сырые данные snapshot">
+    <Panel className="p-5" title="Сырые данные снимка">
       {!snapshot ? (
-        <EmptyState title="Snapshot отсутствует" description="Данные появятся после первого чтения" />
+        <EmptyState title="Снимок отсутствует" description="Данные появятся после первого чтения" />
       ) : (
         <div className="space-y-3">
-          <CopyButton getText={() => stringifyPrettyJson(snapshot)} label="Скопировать snapshot" />
+          <CopyButton getText={() => stringifyPrettyJson(snapshot)} label="Скопировать снимок" />
           <CodeBlock value={stringifyPrettyJson(snapshot)} />
         </div>
       )}

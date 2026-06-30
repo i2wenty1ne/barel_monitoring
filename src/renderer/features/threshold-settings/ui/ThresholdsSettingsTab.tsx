@@ -119,10 +119,10 @@ function ThresholdScale({ values }: { values: ValueThresholdConfig }): React.JSX
   return (
     <div className="mb-5 rounded-md border border-white/10 bg-slate-950/35 p-3">
       <div className="grid grid-cols-4 overflow-hidden rounded-md text-center text-xs font-medium">
-        <div className="bg-rose-500/25 px-2 py-2 text-rose-100">Авария low</div>
-        <div className="bg-amber-400/20 px-2 py-2 text-amber-100">Warning low</div>
+        <div className="bg-rose-500/25 px-2 py-2 text-rose-100">Нижняя авария</div>
+        <div className="bg-amber-400/20 px-2 py-2 text-amber-100">Нижнее предупреждение</div>
         <div className="bg-teal-400/20 px-2 py-2 text-teal-100">Рабочая зона</div>
-        <div className="bg-rose-500/25 px-2 py-2 text-rose-100">Авария high</div>
+        <div className="bg-rose-500/25 px-2 py-2 text-rose-100">Верхняя авария</div>
       </div>
       <div className="mt-2 grid grid-cols-4 text-center text-xs text-slate-400">
         <span>{values.alarmLow}</span>

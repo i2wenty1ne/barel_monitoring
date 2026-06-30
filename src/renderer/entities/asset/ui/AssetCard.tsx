@@ -45,7 +45,7 @@ export function AssetCard({ viewModel, showLastUpdate, onClick }: AssetCardProps
                 value={formatReadingValue(reading.displayValue, reading.displayUnit)}
               />
             ))}
-            {readings.length === 0 ? <Metric label="Live readings" value="нет данных" /> : null}
+            {readings.length === 0 ? <Metric label="Текущие показания" value="нет данных" /> : null}
           </div>
         </div>
       )}

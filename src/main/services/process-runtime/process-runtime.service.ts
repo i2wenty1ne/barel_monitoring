@@ -437,7 +437,7 @@ function evaluateMathExpression(expression: string, context: Record<string, unkn
 }
 
 function evaluateContextCondition(expression: string, context: Record<string, unknown>): boolean {
-  const match = expression.trim().match(/^([\w.-]+)\s*(<=|>=|<|>|==|!=)\s*(-?\d+(?:\.\d+)?|true|false)$/i);
+  const match = expression.trim().match(/^([\w.-]+)\s*(<=|>=|<|>|==|!=)\s*([\w.-]+|-?\d+(?:\.\d+)?|true|false)$/i);
   if (!match) {
     return false;
   }
@@ -448,7 +448,7 @@ function evaluateContextCondition(expression: string, context: Record<string, un
   }
 
   const current = resolveContextValue(key, context);
-  const expected = expectedRaw === 'true' ? true : expectedRaw === 'false' ? false : Number(expectedRaw);
+  const expected = resolveContextValue(expectedRaw, context);
 
   switch (operator) {
     case '<':

@@ -185,6 +185,9 @@ export class ModbusDataService implements DataService {
   }
 
   public async scanRegisters(request: RegisterScanRequest): Promise<RegisterScanResult> {
+    await this.waitUntilIdle();
+    this.isReading = true;
+
     const normalizedRequest = this.normalizeRegisterScanRequest(request);
     const startedAt = new Date().toISOString();
     const rows: RegisterScanRow[] = [];
@@ -199,32 +202,48 @@ export class ModbusDataService implements DataService {
           registerAddress <= normalizedRequest.endAddress;
           registerAddress += 1
         ) {
-          try {
-            const registers = await this.readRegisterValues(
-              client,
-              modbusFunction,
-              registerAddress,
-              normalizedRequest.registerCount
-            );
-            rows.push({
-              modbusFunction,
-              registerAddress,
-              success: true,
-              registers,
-              decodedValue: decodeRegisters(
-                registers,
-                normalizedRequest.dataType,
-                normalizedRequest.byteOrder
-              ),
-              message: 'Read successful'
-            });
-          } catch (error) {
+          const readResult = await this.scanRegisterWithRetries(
+            client,
+            device,
+            modbusFunction,
+            registerAddress,
+            normalizedRequest
+          );
+
+          if (readResult.success) {
+            try {
+              rows.push({
+                modbusFunction,
+                registerAddress,
+                success: true,
+                attempts: readResult.attempts,
+                registers: readResult.registers,
+                decodedValue: decodeRegisters(
+                  readResult.registers,
+                  normalizedRequest.dataType,
+                  normalizedRequest.byteOrder
+                ),
+                message: readResult.attempts === 1 ? 'Чтение успешно' : `Чтение успешно с ${readResult.attempts}-й попытки`
+              });
+            } catch (error) {
+              rows.push({
+                modbusFunction,
+                registerAddress,
+                success: false,
+                attempts: readResult.attempts,
+                registers: readResult.registers,
+                message: 'Регистр прочитан, но значение не удалось расшифровать',
+                error: getTechnicalErrorMessage(error)
+              });
+            }
+          } else {
             rows.push({
               modbusFunction,
               registerAddress,
               success: false,
-              message: mapModbusError(error, device.connection.port),
-              error: getTechnicalErrorMessage(error)
+              attempts: readResult.attempts,
+              message: mapModbusError(readResult.error, device.connection.port),
+              error: getTechnicalErrorMessage(readResult.error)
             });
           }
         }
@@ -250,6 +269,7 @@ export class ModbusDataService implements DataService {
       });
     } finally {
       // Keep persistent clients open for polling.
+      this.isReading = false;
     }
 
     const finishedAt = new Date().toISOString();
@@ -404,6 +424,8 @@ export class ModbusDataService implements DataService {
     const requestedEndAddress = Math.max(startAddress, Math.trunc(request.endAddress));
     const endAddress = Math.min(requestedEndAddress, startAddress + 255);
     const registerCount = Math.min(8, Math.max(1, Math.trunc(request.registerCount)));
+    const attemptsPerRegister = Math.min(10, Math.max(1, Math.trunc(request.attemptsPerRegister ?? 3)));
+    const retryDelayMs = Math.min(5000, Math.max(0, Math.trunc(request.retryDelayMs ?? 80)));
     const modbusFunctions: Array<3 | 4> =
       request.modbusFunctions.length > 0 ? request.modbusFunctions : [3, 4];
 
@@ -412,8 +434,53 @@ export class ModbusDataService implements DataService {
       startAddress,
       endAddress,
       registerCount,
-      modbusFunctions
+      modbusFunctions,
+      attemptsPerRegister,
+      retryDelayMs
     };
+  }
+
+  private async scanRegisterWithRetries(
+    client: ModbusRTU,
+    device: DeviceConfig,
+    modbusFunction: 3 | 4,
+    registerAddress: number,
+    request: RegisterScanRequest
+  ): Promise<{ success: true; attempts: number; registers: number[] } | { success: false; attempts: number; error: unknown }> {
+    let lastError: unknown = new Error('Register scan did not run');
+    const attemptsPerRegister = request.attemptsPerRegister ?? 1;
+    const retryDelayMs = request.retryDelayMs ?? 0;
+
+    for (let attempt = 1; attempt <= attemptsPerRegister; attempt += 1) {
+      try {
+        client.setID(device.modbusAddress);
+        const registers = await this.readRegisterValues(
+          client,
+          modbusFunction,
+          registerAddress,
+          request.registerCount
+        );
+        return { success: true, attempts: attempt, registers };
+      } catch (error) {
+        lastError = error;
+        if (attempt < attemptsPerRegister && retryDelayMs > 0) {
+          await sleep(retryDelayMs);
+        }
+      }
+    }
+
+    return { success: false, attempts: attemptsPerRegister, error: lastError };
+  }
+
+  private async waitUntilIdle(): Promise<void> {
+    const startedAt = Date.now();
+    while (this.isReading && Date.now() - startedAt < 5000) {
+      await sleep(50);
+    }
+
+    if (this.isReading) {
+      throw new Error('Modbus read is already running');
+    }
   }
 
   private async closeClient(): Promise<void> {
@@ -727,4 +794,10 @@ export class ModbusDataService implements DataService {
     this.lastLoggedAtByKey.set(key, now);
     await this.logEvent(level, message, details);
   }
+}
+
+function sleep(delayMs: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, delayMs);
+  });
 }

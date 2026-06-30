@@ -140,6 +140,9 @@ export class CommandService {
     };
 
     await this.persistCommand(command);
+    if (isSimulation) {
+      await this.dataServiceManager.restart(this.configService.getCurrentConfig());
+    }
     await this.eventLogService.addEvent({
       level: isSimulation ? 'info' : 'warning',
       source: 'command',

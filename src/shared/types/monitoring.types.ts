@@ -102,12 +102,15 @@ export type RegisterScanRequest = {
   modbusFunctions: Array<3 | 4>;
   dataType: ChannelDataType;
   byteOrder: ChannelConfig['byteOrder'];
+  attemptsPerRegister?: number;
+  retryDelayMs?: number;
 };
 
 export type RegisterScanRow = {
   modbusFunction: 3 | 4;
   registerAddress: number;
   success: boolean;
+  attempts?: number;
   registers?: number[];
   decodedValue?: number;
   message: string;

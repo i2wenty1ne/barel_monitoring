@@ -16,11 +16,13 @@ import { ModbusDataService } from './modbus-data.service';
 export class DataServiceManager implements DataService {
   private readonly eventLogService: EventLogService;
   private service: DataService;
+  private mode: AppConfig['app']['mode'];
   private readonly listeners = new Set<MonitoringSnapshotListener>();
   private unsubscribeFromService: (() => void) | null = null;
 
   public constructor(config: AppConfig, eventLogService: EventLogService) {
     this.eventLogService = eventLogService;
+    this.mode = config.app.mode;
     this.service = this.createService(config);
     this.bindService();
   }
@@ -36,7 +38,13 @@ export class DataServiceManager implements DataService {
   }
 
   public async restart(config: AppConfig): Promise<void> {
+    if (config.app.mode === this.mode) {
+      await this.service.restart(config);
+      return;
+    }
+
     await this.stop();
+    this.mode = config.app.mode;
     this.service = this.createService(config);
     this.bindService();
     await this.start();
