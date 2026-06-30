@@ -9,10 +9,14 @@ export function applyScaling(rawValue: number, scaling: ScalingConfig): number {
     return rawValue;
   }
 
+  if (scaling.type === 'factor') {
+    return rawValue * scaling.factor + (scaling.offset ?? 0);
+  }
+
   const displayValue =
     scaling.displayMin +
     ((rawValue - scaling.rawMin) / (scaling.rawMax - scaling.rawMin)) *
       (scaling.displayMax - scaling.displayMin);
 
-  return clamp(displayValue, scaling.displayMin, scaling.displayMax);
+  return scaling.clamp ? clamp(displayValue, scaling.displayMin, scaling.displayMax) : displayValue;
 }

@@ -254,5 +254,9 @@ function formatScaling(scaling: ScalingConfig): string {
     return 'none';
   }
 
+  if (scaling.type === 'factor') {
+    return `factor: x${scaling.factor}${scaling.offset ? ` + ${scaling.offset}` : ''}`;
+  }
+
   return `linear: ${scaling.rawMin}-${scaling.rawMax} -> ${scaling.displayMin}-${scaling.displayMax}`;
 }

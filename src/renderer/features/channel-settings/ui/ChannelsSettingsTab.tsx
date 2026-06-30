@@ -457,6 +457,10 @@ function formatScaling(scaling: ScalingConfig): string {
     return 'нет';
   }
 
+  if (scaling.type === 'factor') {
+    return `factor: x${scaling.factor}${scaling.offset ? ` + ${scaling.offset}` : ''}`;
+  }
+
   return `${scaling.rawMin}-${scaling.rawMax} -> ${scaling.displayMin}-${scaling.displayMax}`;
 }
 

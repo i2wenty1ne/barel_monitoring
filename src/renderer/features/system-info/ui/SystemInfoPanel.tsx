@@ -13,11 +13,9 @@ export function SystemInfoPanel({ info }: SystemInfoPanelProps): React.JSX.Eleme
         <InfoRow label="Версия" value={info.appVersion} />
         <InfoRow label="Режим сборки" value={info.buildMode === 'production' ? 'production' : 'development'} />
         <InfoRow label="Режим" value={info.appMode ?? '—'} />
-        <InfoRow label="Устройств" value={String(info.devices.length)} />
-        <InfoRow
-          label="Активные"
-          value={String(info.devices.filter((device) => device.active).length)}
-        />
+        <InfoRow label="Источников" value={String(info.dataSources.length)} />
+        <InfoRow label="Объектов" value={String(info.assets.length)} />
+        <InfoRow label="Точек" value={String(info.points.length)} />
       </dl>
     </Panel>
   );

@@ -9,7 +9,7 @@ type PlaceholderPageProps = {
 export function PlaceholderPage({ title, message }: PlaceholderPageProps): React.JSX.Element {
   return (
     <section className="mx-auto max-w-5xl">
-      <PageHeader eyebrow="Barrel Monitor" title={title} />
+      <PageHeader eyebrow="Industrial Flow Monitor" title={title} />
       <Panel className="p-8">
         <p className="text-slate-300">{message}</p>
       </Panel>

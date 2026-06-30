@@ -9,9 +9,9 @@ export type SettingsTabId =
   | 'service';
 
 export const settingsTabs: TabItem<SettingsTabId>[] = [
-  { id: 'device', label: 'Устройства' },
-  { id: 'channels', label: 'Каналы' },
-  { id: 'barrels', label: 'Бочки' },
+  { id: 'device', label: 'Источники' },
+  { id: 'channels', label: 'Точки' },
+  { id: 'barrels', label: 'Объекты' },
   { id: 'thresholds', label: 'Пороги' },
   { id: 'interface', label: 'Интерфейс' },
   { id: 'service', label: 'Сервис' }

@@ -37,7 +37,7 @@ export function MonitoringPage(): React.JSX.Element {
   if (isLoading) {
     return (
       <section className="mx-auto max-w-7xl">
-        <PageHeader eyebrow="Barrel Monitor" title="Мониторинг бочек" />
+        <PageHeader eyebrow="Industrial Flow Monitor" title="Мониторинг объектов" />
         <LoadingState />
       </section>
     );
@@ -46,7 +46,7 @@ export function MonitoringPage(): React.JSX.Element {
   if (error) {
     return (
       <section className="mx-auto max-w-7xl">
-        <PageHeader eyebrow="Barrel Monitor" title="Мониторинг бочек" />
+        <PageHeader eyebrow="Industrial Flow Monitor" title="Мониторинг объектов" />
         <ErrorState message={error} onRetry={handleRetry} />
       </section>
     );
@@ -55,9 +55,9 @@ export function MonitoringPage(): React.JSX.Element {
   return (
     <section className="mx-auto max-w-7xl">
       <PageHeader
-        eyebrow="Barrel Monitor"
-        title="Мониторинг бочек"
-        description="Текущий уровень, температура и состояние бочек."
+        eyebrow="Industrial Flow Monitor"
+        title="Мониторинг объектов"
+        description="Live-состояние объектов, построенное поверх Asset и Point."
       />
 
       {configState.validationError ? (
@@ -90,8 +90,8 @@ export function MonitoringPage(): React.JSX.Element {
 
       {barrelCards.length === 0 ? (
         <EmptyState
-          title="Бочки не настроены"
-          description="Добавление бочек будет доступно на этапе настроек"
+          title="Объекты не настроены"
+          description="Создайте Asset и привяжите к нему telemetry points."
         />
       ) : (
         <div className={gridClassName}>

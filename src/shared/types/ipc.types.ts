@@ -1,5 +1,5 @@
 import type { AppConfig } from './config.types';
-import type { DeviceConfig } from './config.types';
+import type { Asset, DataSource, DeviceConfig, Point } from './config.types';
 import type { EventLogEntry, EventLogFilter } from './event.types';
 import type {
   DataServiceStatus,
@@ -33,6 +33,9 @@ export type SystemInfo = {
   configPath: string;
   logsPath: string;
   devices: DeviceConfig[];
+  dataSources: DataSource[];
+  assets: Asset[];
+  points: Point[];
 };
 
 export type IpcActionResult = {

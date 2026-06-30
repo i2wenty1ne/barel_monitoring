@@ -3,10 +3,13 @@ import type { AppConfig, ChannelConfig, DeviceConfig } from '../../../shared/typ
 import {
   BarrelReading,
   ChannelReading,
+  DataSourceStatus,
   DataServiceStatus,
+  LiveSnapshot,
   ManualReadRequest,
   ManualReadResult,
   MonitoringSnapshot,
+  Reading,
   RegisterScanRequest,
   RegisterScanResult,
   RegisterScanRow,
@@ -550,6 +553,7 @@ export class ModbusDataService implements DataService {
       status,
       mode: this.config.app.mode,
       updatedAt,
+      live: this.createLiveSnapshot(channels, updatedAt),
       channels,
       barrels,
       activeWarningsCount: barrels.filter((barrel) => barrel.status === 'warning').length,
@@ -584,6 +588,57 @@ export class ModbusDataService implements DataService {
       status: 'connection-error',
       updatedAt,
       error: message
+    };
+  }
+
+  private createLiveSnapshot(channels: ChannelReading[], updatedAt: string): LiveSnapshot {
+    const readingsByPointId = Object.fromEntries(
+      channels.map((channel) => [channel.channelId, this.channelReadingToPointReading(channel)])
+    );
+    const dataSourceStatuses = Object.fromEntries(
+      this.config.dataSources.map((source): [string, DataSourceStatus] => {
+        const state = this.connectionStates.get(source.id);
+        const status = source.enabled === false ? 'disabled' : state === 'error' ? 'error' : 'ok';
+        return [
+          source.id,
+          {
+            dataSourceId: source.id,
+            status,
+            message: state ? `serial connection: ${state}` : undefined,
+            updatedAt
+          }
+        ];
+      })
+    );
+
+    return {
+      timestamp: updatedAt,
+      readingsByPointId,
+      dataSourceStatuses,
+      errors: channels
+        .filter((channel) => channel.error)
+        .map((channel) => ({
+          source: channel.channelId,
+          message: channel.error ?? 'Modbus reading error',
+          timestamp: updatedAt
+        }))
+    };
+  }
+
+  private channelReadingToPointReading(channel: ChannelReading): Reading {
+    const point = this.config.points.find((item) => item.id === channel.channelId);
+
+    return {
+      pointId: channel.channelId,
+      assetId: point?.assetId,
+      rawValue: channel.rawValue,
+      displayValue: channel.displayValue,
+      rawUnit: channel.rawUnit,
+      displayUnit: channel.displayUnit,
+      status: channel.status === 'connection-error' ? 'error' : channel.status === 'no-data' ? 'stale' : channel.status,
+      quality: channel.status === 'ok' || channel.status === 'warning' || channel.status === 'alarm' ? 'good' : 'bad',
+      timestamp: channel.updatedAt,
+      error: channel.error
     };
   }
 

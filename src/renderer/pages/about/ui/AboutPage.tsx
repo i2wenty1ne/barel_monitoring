@@ -16,7 +16,7 @@ export function AboutPage(): React.JSX.Element {
   if (systemInfo.isLoading && !systemInfo.data) {
     return (
       <section className="mx-auto max-w-7xl">
-        <PageHeader eyebrow="Barrel Monitor" title="О приложении" />
+        <PageHeader eyebrow="Industrial Flow Monitor" title="О приложении" />
         <LoadingState />
       </section>
     );
@@ -25,7 +25,7 @@ export function AboutPage(): React.JSX.Element {
   if (systemInfo.error && !systemInfo.data) {
     return (
       <section className="mx-auto max-w-7xl">
-        <PageHeader eyebrow="Barrel Monitor" title="О приложении" />
+        <PageHeader eyebrow="Industrial Flow Monitor" title="О приложении" />
         <ErrorState message={systemInfo.error} onRetry={() => void systemInfo.refresh()} />
       </section>
     );
@@ -34,7 +34,7 @@ export function AboutPage(): React.JSX.Element {
   if (!systemInfo.data) {
     return (
       <section className="mx-auto max-w-7xl">
-        <PageHeader eyebrow="Barrel Monitor" title="О приложении" />
+        <PageHeader eyebrow="Industrial Flow Monitor" title="О приложении" />
         <ErrorState message="System info недоступен" onRetry={() => void systemInfo.refresh()} />
       </section>
     );
@@ -50,9 +50,9 @@ export function AboutPage(): React.JSX.Element {
             onError={(message) => window.alert(message)}
           />
         }
-        eyebrow="Barrel Monitor"
+        eyebrow="Industrial Flow Monitor"
         title="О приложении"
-        description="Версия, runtime и рабочие пути локального приложения."
+        description="Версия, runtime, schema v2 и рабочие пути локального приложения."
       />
       <div className="space-y-5">
         {systemInfo.error ? <Alert type="error">{systemInfo.error}</Alert> : null}
@@ -60,18 +60,21 @@ export function AboutPage(): React.JSX.Element {
           <SystemInfoPanel info={systemInfo.data} />
           <RuntimeInfoPanel info={systemInfo.data} />
         </div>
-        <Panel className="p-5" title="Устройства и подключения">
+        <Panel className="p-5" title="Источники данных и подключения">
           <div className="grid gap-4">
-            {systemInfo.data.devices.map((device) => (
-              <dl className="grid gap-3 rounded-md border border-white/10 bg-slate-950/35 p-4 text-sm md:grid-cols-2" key={device.id}>
-                <InfoRow label="Устройство" value={`${device.name} (${device.id})`} />
-                <InfoRow label="Модель" value={device.model} />
-                <InfoRow label="Адрес Modbus" value={device.modbusAddress} />
-                <InfoRow label="Порт" value={device.connection.port} />
-                <InfoRow label="Скорость" value={device.connection.baudRate} />
-                <InfoRow label="Parity" value={device.connection.parity} />
-              </dl>
-            ))}
+            {systemInfo.data.dataSources.map((source) => {
+              const slaveId = typeof source.metadata?.slaveId === 'number' ? source.metadata.slaveId : '—';
+              return (
+                <dl className="grid gap-3 rounded-md border border-white/10 bg-slate-950/35 p-4 text-sm md:grid-cols-2" key={source.id}>
+                  <InfoRow label="Источник" value={`${source.name} (${source.id})`} />
+                  <InfoRow label="Тип" value={source.type} />
+                  <InfoRow label="Включен" value={source.enabled ? 'да' : 'нет'} />
+                  <InfoRow label="Slave ID" value={slaveId} />
+                  <InfoRow label="Timeout" value={`${source.timeoutMs ?? '—'} ms`} />
+                  <InfoRow label="Повторы" value={source.retryCount ?? '—'} />
+                </dl>
+              );
+            })}
           </div>
         </Panel>
         <PathsPanel

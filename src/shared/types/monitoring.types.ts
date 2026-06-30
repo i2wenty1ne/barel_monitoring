@@ -1,7 +1,38 @@
-import type { AppMode } from './config.types';
+import type { AppMode, PointStatus } from './config.types';
 import type { ChannelDataType, ChannelConfig } from './config.types';
 
 export type Status = 'ok' | 'warning' | 'alarm' | 'no-data' | 'connection-error';
+
+export type Reading = {
+  pointId: string;
+  assetId?: string;
+  rawValue: number | boolean | string | null;
+  displayValue: number | boolean | string | null;
+  rawUnit?: string;
+  displayUnit?: string;
+  status: PointStatus;
+  quality: 'good' | 'bad' | 'uncertain' | 'stale';
+  timestamp: string;
+  error?: string;
+};
+
+export type DataSourceStatus = {
+  dataSourceId: string;
+  status: PointStatus;
+  message?: string;
+  updatedAt: string;
+};
+
+export type LiveSnapshot = {
+  timestamp: string;
+  readingsByPointId: Record<string, Reading>;
+  dataSourceStatuses: Record<string, DataSourceStatus>;
+  errors: Array<{
+    source: string;
+    message: string;
+    timestamp: string;
+  }>;
+};
 
 export type ChannelReading = {
   channelId: string;
@@ -26,6 +57,7 @@ export type MonitoringSnapshot = {
   status: Status;
   mode: AppMode;
   updatedAt: string;
+  live: LiveSnapshot;
   channels: ChannelReading[];
   barrels: BarrelReading[];
   activeWarningsCount: number;

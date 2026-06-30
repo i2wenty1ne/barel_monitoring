@@ -55,6 +55,15 @@ async function bootstrap(): Promise<void> {
     });
   }
 
+  if (configResult.migration) {
+    await eventLogService.addEvent({
+      level: 'info',
+      source: 'config',
+      message: 'Config migrated to schema v2',
+      details: configResult.migration
+    });
+  }
+
   dataServiceManager = new DataServiceManager(configResult.config, eventLogService);
   mainWindow = await createMainWindow(configResult.config);
 
