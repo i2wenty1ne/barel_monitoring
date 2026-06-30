@@ -242,6 +242,38 @@ const interlockSchema = z.object({
   updatedAt: z.string().min(1)
 });
 
+const commandSchema = z.object({
+  id: z.string().min(1),
+  actuatorId: z.string().min(1),
+  commandType: z.enum(['start', 'stop', 'open', 'close', 'turnOn', 'turnOff', 'reset', 'setValue', 'custom']),
+  value: z.union([z.boolean(), z.number(), z.string()]).optional(),
+  requestedBy: z.string().optional(),
+  requestedAt: z.string().min(1),
+  status: z.enum([
+    'created',
+    'pendingConfirmation',
+    'rejected',
+    'blocked',
+    'sent',
+    'confirmed',
+    'failed',
+    'timeout'
+  ]),
+  result: z
+    .object({
+      commandId: z.string().min(1),
+      success: z.boolean(),
+      sentAt: z.string().optional(),
+      confirmedAt: z.string().optional(),
+      feedbackPointId: z.string().optional(),
+      feedbackValue: z.union([z.boolean(), z.number(), z.string()]).optional(),
+      error: z.string().optional()
+    })
+    .optional(),
+  error: z.string().optional()
+});
+
+
 const processSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
@@ -382,6 +414,7 @@ export const appConfigSchema = z
     points: z.array(pointSchema),
     actuators: z.array(actuatorSchema),
     interlocks: z.array(interlockSchema),
+    commands: z.array(commandSchema),
     monitoringProfiles: z.array(monitoringProfileSchema),
     monitoringSessions: z.array(
       z.object({

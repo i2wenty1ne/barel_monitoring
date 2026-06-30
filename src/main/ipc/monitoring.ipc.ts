@@ -77,8 +77,8 @@ export function registerMonitoringIpc(
 
   ipcMain.handle(
     IPC_CHANNELS.monitoring.testConnection,
-    async (_event): Promise<TestConnectionResult> => {
-      const result = await dataServiceManager.testConnection();
+    async (_event, dataSourceId?: string): Promise<TestConnectionResult> => {
+      const result = await dataServiceManager.testConnection(dataSourceId);
       await eventLogService.addEvent({
         level: result.success ? 'info' : 'warning',
         source: 'settings',

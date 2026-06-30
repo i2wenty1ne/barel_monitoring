@@ -37,7 +37,10 @@ export function ActuatorsPage(): React.JSX.Element {
       key: 'actions',
       title: '',
       render: (item) => (
-        <div className="flex justify-end">
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button disabled={isSaving} onClick={() => void executeSimulationCommand(item)} variant="ghost">
+            Тест start
+          </Button>
           <Button disabled={isSaving} onClick={() => void deleteActuator(item)} variant="danger">
             Удалить
           </Button>
@@ -138,6 +141,30 @@ export function ActuatorsPage(): React.JSX.Element {
       },
       'Исполнительный механизм удален'
     );
+  }
+
+  async function executeSimulationCommand(actuator: Actuator): Promise<void> {
+    setIsSaving(true);
+    setMessage(null);
+    setSaveError(null);
+    try {
+      const result = await window.barrelMonitor.commands.execute({
+        actuatorId: actuator.id,
+        commandType: actuator.supportedCommands.includes('start') ? 'start' : actuator.supportedCommands[0] ?? 'custom',
+        value: true,
+        confirmed: true,
+        requestedBy: 'operator'
+      });
+      if (!result.success) {
+        throw new Error(result.error ?? 'Команда не выполнена');
+      }
+      setMessage('Simulation command выполнена и записана в журнал команд');
+      await refresh();
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'Ошибка выполнения команды');
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   return (

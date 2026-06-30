@@ -54,8 +54,8 @@ export class DataServiceManager implements DataService {
     return this.service.scanRegisters(request);
   }
 
-  public async testConnection(): Promise<TestConnectionResult> {
-    return this.service.testConnection();
+  public async testConnection(dataSourceId?: string): Promise<TestConnectionResult> {
+    return this.service.testConnection(dataSourceId);
   }
 
   public getStatus(): DataServiceStatus {

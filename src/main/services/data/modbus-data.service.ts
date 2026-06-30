@@ -266,8 +266,8 @@ export class ModbusDataService implements DataService {
     };
   }
 
-  public async testConnection(): Promise<TestConnectionResult> {
-    const device = this.getDefaultDevice();
+  public async testConnection(dataSourceId?: string): Promise<TestConnectionResult> {
+    const device = dataSourceId ? this.getDeviceByIdOrNull(dataSourceId) : this.getDefaultDevice();
     const firstChannel = device
       ? this.config.channels.find((channel) => channel.deviceId === device.id)
       : null;

@@ -19,6 +19,15 @@ export const IPC_CHANNELS = {
     clear: 'events:clear',
     entryCreated: 'events:entry-created'
   },
+  commands: {
+    execute: 'commands:execute',
+    getHistory: 'commands:get-history'
+  },
+  processes: {
+    validateGraph: 'processes:validate-graph',
+    startJob: 'processes:start-job',
+    getJob: 'processes:get-job'
+  },
   system: {
     getInfo: 'system:get-info',
     listSerialPorts: 'system:list-serial-ports',

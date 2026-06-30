@@ -18,7 +18,7 @@ export type DataService = {
   readAllChannels: () => Promise<MonitoringSnapshot>;
   readRegisters: (request: ManualReadRequest) => Promise<ManualReadResult>;
   scanRegisters: (request: RegisterScanRequest) => Promise<RegisterScanResult>;
-  testConnection: () => Promise<TestConnectionResult>;
+  testConnection: (dataSourceId?: string) => Promise<TestConnectionResult>;
   getStatus: () => DataServiceStatus;
   subscribe: (listener: MonitoringSnapshotListener) => () => void;
 };

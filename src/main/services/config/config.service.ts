@@ -364,6 +364,7 @@ function withDomainFromCompatibility(config: AppConfig, now: string): AppConfig 
     points,
     actuators: config.actuators ?? [],
     interlocks: config.interlocks ?? [],
+    commands: config.commands ?? [],
     monitoringProfiles: config.monitoringProfiles?.length > 0
       ? config.monitoringProfiles
       : assets.map((asset) => ({

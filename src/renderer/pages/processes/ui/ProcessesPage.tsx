@@ -36,7 +36,13 @@ export function ProcessesPage(): React.JSX.Element {
       key: 'actions',
       title: '',
       render: (item) => (
-        <div className="flex justify-end">
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button disabled={isSaving} onClick={() => void validateProcess(item)} variant="ghost">
+            Проверить
+          </Button>
+          <Button disabled={isSaving} onClick={() => void runProcess(item)} variant="secondary">
+            Запустить
+          </Button>
           <Button disabled={isSaving} onClick={() => void deleteProcess(item)} variant="danger">
             Удалить
           </Button>
@@ -108,6 +114,41 @@ export function ProcessesPage(): React.JSX.Element {
       },
       'Процесс удален'
     );
+  }
+
+  async function validateProcess(process: Process): Promise<void> {
+    const graph = currentConfig.processGraphs.find((item) => item.processId === process.id || item.id === process.graphId);
+    if (!graph) {
+      setSaveError('Граф процесса не найден');
+      return;
+    }
+
+    const result = await window.barrelMonitor.processes.validateGraph(graph);
+    if (result.valid) {
+      setMessage('Граф валиден');
+      setSaveError(null);
+    } else {
+      setMessage(null);
+      setSaveError(result.errors.map((error) => error.message).join('; '));
+    }
+  }
+
+  async function runProcess(process: Process): Promise<void> {
+    setIsSaving(true);
+    setMessage(null);
+    setSaveError(null);
+    try {
+      const job = await window.barrelMonitor.processes.startJob(process.id, {});
+      if (job.status !== 'completed') {
+        throw new Error(job.error ?? `Job завершился со статусом ${job.status}`);
+      }
+      setMessage(`ProcessJob ${job.id} завершён`);
+      await refresh();
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'Ошибка запуска процесса');
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   return (

@@ -198,6 +198,15 @@ export type ControlPoint = Point & {
 
 export type ActuatorType = 'pump' | 'valve' | 'relay' | 'led' | 'motor' | 'heater' | 'fan' | 'alarm' | 'custom';
 export type CommandType = 'start' | 'stop' | 'open' | 'close' | 'turnOn' | 'turnOff' | 'reset' | 'setValue' | 'custom';
+export type CommandStatus =
+  | 'created'
+  | 'pendingConfirmation'
+  | 'rejected'
+  | 'blocked'
+  | 'sent'
+  | 'confirmed'
+  | 'failed'
+  | 'timeout';
 
 export type Actuator = {
   id: string;
@@ -223,6 +232,50 @@ export type Interlock = {
   message: string;
   createdAt: string;
   updatedAt: string;
+};
+
+export type CommandResult = {
+  commandId: string;
+  success: boolean;
+  sentAt?: string;
+  confirmedAt?: string;
+  feedbackPointId?: string;
+  feedbackValue?: number | boolean | string;
+  error?: string;
+};
+
+export type Command = {
+  id: string;
+  actuatorId: string;
+  commandType: CommandType;
+  value?: boolean | number | string;
+  requestedBy?: string;
+  requestedAt: string;
+  status: CommandStatus;
+  result?: CommandResult;
+  error?: string;
+};
+
+export type ExecuteCommandRequest = {
+  actuatorId: string;
+  commandType: CommandType;
+  value?: boolean | number | string;
+  confirmed?: boolean;
+  requestedBy?: string;
+};
+
+export type CommandHistoryQuery = {
+  actuatorId?: string;
+  limit?: number;
+};
+
+export type GraphValidationResult = {
+  valid: boolean;
+  errors: Array<{
+    nodeId?: string;
+    edgeId?: string;
+    message: string;
+  }>;
 };
 
 export type MonitoringPointConfig = {
@@ -402,6 +455,7 @@ export type AppConfig = {
   points: Point[];
   actuators: Actuator[];
   interlocks: Interlock[];
+  commands: Command[];
   monitoringProfiles: MonitoringProfile[];
   monitoringSessions: MonitoringSession[];
   processes: Process[];

@@ -1,5 +1,17 @@
 import type { AppConfig } from './config.types';
-import type { Asset, DataSource, DeviceConfig, Point } from './config.types';
+import type {
+  Asset,
+  Command,
+  CommandHistoryQuery,
+  CommandResult,
+  DataSource,
+  DeviceConfig,
+  ExecuteCommandRequest,
+  GraphValidationResult,
+  Point,
+  ProcessGraph,
+  ProcessJob
+} from './config.types';
 import type { EventLogEntry, EventLogFilter } from './event.types';
 import type {
   DataServiceStatus,
@@ -70,7 +82,7 @@ export type BarrelMonitorApi = {
     readAllNow: () => Promise<MonitoringSnapshot>;
     readRegisters: (request: ManualReadRequest) => Promise<ManualReadResult>;
     scanRegisters: (request: RegisterScanRequest) => Promise<RegisterScanResult>;
-    testConnection: () => Promise<TestConnectionResult>;
+    testConnection: (dataSourceId?: string) => Promise<TestConnectionResult>;
     getStatus: () => Promise<DataServiceStatus>;
     subscribe: (callback: (snapshot: MonitoringSnapshot) => void) => () => void;
   };
@@ -78,6 +90,15 @@ export type BarrelMonitorApi = {
     list: (filter?: EventLogFilter) => Promise<EventLogEntry[]>;
     clear: () => Promise<IpcActionResult>;
     subscribe: (callback: (entry: EventLogEntry) => void) => () => void;
+  };
+  commands: {
+    execute: (request: ExecuteCommandRequest) => Promise<CommandResult>;
+    getHistory: (query?: CommandHistoryQuery) => Promise<Command[]>;
+  };
+  processes: {
+    validateGraph: (graph: ProcessGraph) => Promise<GraphValidationResult>;
+    startJob: (processId: string, input?: Record<string, unknown>) => Promise<ProcessJob>;
+    getJob: (jobId: string) => Promise<ProcessJob | null>;
   };
   system: {
     getInfo: () => Promise<SystemInfo>;

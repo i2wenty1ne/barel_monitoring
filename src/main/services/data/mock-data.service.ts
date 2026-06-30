@@ -146,12 +146,18 @@ export class MockDataService implements DataService {
     };
   }
 
-  public async testConnection(): Promise<TestConnectionResult> {
+  public async testConnection(dataSourceId?: string): Promise<TestConnectionResult> {
+    const source = dataSourceId
+      ? this.config.dataSources.find((item) => item.id === dataSourceId)
+      : this.config.dataSources[0];
+
     return {
       success: true,
       message: 'Mock connection is active',
       details: {
         mode: this.config.app.mode,
+        dataSourceId: source?.id,
+        dataSourceName: source?.name,
         channels: this.config.channels.length,
         barrels: this.config.barrels.length
       }

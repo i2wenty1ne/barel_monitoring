@@ -125,6 +125,7 @@ export const defaultConfig: AppConfig = {
   ],
   actuators: [],
   interlocks: [],
+  commands: [],
   monitoringProfiles: [
     {
       id: 'barrel-1-monitoring-profile',

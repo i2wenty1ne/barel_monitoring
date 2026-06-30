@@ -1,5 +1,14 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type { AppConfig } from '../shared/types/config.types';
+import type {
+  Command,
+  CommandHistoryQuery,
+  CommandResult,
+  ExecuteCommandRequest,
+  GraphValidationResult,
+  ProcessGraph,
+  ProcessJob
+} from '../shared/types/config.types';
 import type { EventLogEntry, EventLogFilter } from '../shared/types/event.types';
 import type {
   BarrelMonitorApi,
@@ -37,8 +46,8 @@ const api: BarrelMonitorApi = {
       ipcRenderer.invoke(IPC_CHANNELS.monitoring.readRegisters, request) as Promise<ManualReadResult>,
     scanRegisters: (request: RegisterScanRequest) =>
       ipcRenderer.invoke(IPC_CHANNELS.monitoring.scanRegisters, request) as Promise<RegisterScanResult>,
-    testConnection: () =>
-      ipcRenderer.invoke(IPC_CHANNELS.monitoring.testConnection) as Promise<TestConnectionResult>,
+    testConnection: (dataSourceId?: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.monitoring.testConnection, dataSourceId) as Promise<TestConnectionResult>,
     getStatus: () =>
       ipcRenderer.invoke(IPC_CHANNELS.monitoring.getStatus) as Promise<DataServiceStatus>,
     subscribe: (callback: (snapshot: MonitoringSnapshot) => void) => {
@@ -68,6 +77,20 @@ const api: BarrelMonitorApi = {
         ipcRenderer.removeListener(IPC_CHANNELS.events.entryCreated, listener);
       };
     }
+  },
+  commands: {
+    execute: (request: ExecuteCommandRequest) =>
+      ipcRenderer.invoke(IPC_CHANNELS.commands.execute, request) as Promise<CommandResult>,
+    getHistory: (query?: CommandHistoryQuery) =>
+      ipcRenderer.invoke(IPC_CHANNELS.commands.getHistory, query) as Promise<Command[]>
+  },
+  processes: {
+    validateGraph: (graph: ProcessGraph) =>
+      ipcRenderer.invoke(IPC_CHANNELS.processes.validateGraph, graph) as Promise<GraphValidationResult>,
+    startJob: (processId: string, input?: Record<string, unknown>) =>
+      ipcRenderer.invoke(IPC_CHANNELS.processes.startJob, processId, input ?? {}) as Promise<ProcessJob>,
+    getJob: (jobId: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.processes.getJob, jobId) as Promise<ProcessJob | null>
   },
   system: {
     getInfo: () => ipcRenderer.invoke(IPC_CHANNELS.system.getInfo) as Promise<SystemInfo>,

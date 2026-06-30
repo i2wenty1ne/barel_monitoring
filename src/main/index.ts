@@ -2,8 +2,10 @@ import { app, BrowserWindow } from 'electron';
 import { join } from 'node:path';
 import { registerIpcHandlers } from './ipc';
 import { ConfigService } from './services/config/config.service';
+import { CommandService } from './services/command/command.service';
 import { DataServiceManager } from './services/data/data-service-manager';
 import { EventLogService } from './services/event-log/event-log.service';
+import { ProcessRuntimeService } from './services/process-runtime/process-runtime.service';
 import type { AppConfig } from '../shared/types/config.types';
 
 let mainWindow: BrowserWindow | null = null;
@@ -65,13 +67,22 @@ async function bootstrap(): Promise<void> {
   }
 
   dataServiceManager = new DataServiceManager(configResult.config, eventLogService);
+  const commandService = new CommandService(configService, dataServiceManager, eventLogService);
+  const processRuntimeService = new ProcessRuntimeService(
+    configService,
+    dataServiceManager,
+    commandService,
+    eventLogService
+  );
   mainWindow = await createMainWindow(configResult.config);
 
   registerIpcHandlers({
     mainWindow,
     configService,
     eventLogService,
-    dataServiceManager
+    dataServiceManager,
+    commandService,
+    processRuntimeService
   });
 
   await dataServiceManager.start();
