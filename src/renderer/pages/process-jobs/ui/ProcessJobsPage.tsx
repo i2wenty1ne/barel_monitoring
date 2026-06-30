@@ -1,6 +1,7 @@
 import type { ProcessJob } from '../../../../shared/types/config.types';
 import { useAppConfig } from '../../../entities/config/model/useAppConfig';
 import { Badge } from '../../../shared/ui/Badge';
+import { CodeBlock } from '../../../shared/ui/CodeBlock';
 import { DataTable, type DataTableColumn } from '../../../shared/ui/DataTable';
 import { EmptyState } from '../../../shared/ui/EmptyState';
 import { ErrorState } from '../../../shared/ui/ErrorState';
@@ -19,6 +20,12 @@ export function ProcessJobsPage(): React.JSX.Element {
     return <ErrorState message={error} onRetry={() => void refresh()} />;
   }
 
+  const jobs = [...config.processJobs].sort((left, right) => {
+    const leftTime = new Date(left.startedAt ?? left.completedAt ?? 0).getTime();
+    const rightTime = new Date(right.startedAt ?? right.completedAt ?? 0).getTime();
+    return rightTime - leftTime;
+  });
+  const latestJob = jobs[0] ?? null;
   const columns: DataTableColumn<ProcessJob>[] = [
     { key: 'id', title: 'Job', render: (job) => <span className="font-mono text-xs">{job.id}</span> },
     {
@@ -29,6 +36,7 @@ export function ProcessJobsPage(): React.JSX.Element {
     { key: 'status', title: 'Статус', render: (job) => <Badge tone={getStatusTone(job.status)}>{job.status}</Badge> },
     { key: 'started', title: 'Старт', render: (job) => job.startedAt ? new Date(job.startedAt).toLocaleString('ru-RU') : '—' },
     { key: 'completed', title: 'Финиш', render: (job) => job.completedAt ? new Date(job.completedAt).toLocaleString('ru-RU') : '—' },
+    { key: 'result', title: 'Result', render: (job) => job.result ? Object.keys(job.result).join(', ') || 'context' : '—' },
     { key: 'error', title: 'Ошибка', render: (job) => job.error ?? '—' }
   ];
 
@@ -39,14 +47,59 @@ export function ProcessJobsPage(): React.JSX.Element {
         title="Запуски процессов"
         description="ProcessJob хранит факт запуска, входные данные, context, результат и ошибки исполнения процесса."
       />
-      <Panel className="p-5" title="Process jobs">
-        {config.processJobs.length === 0 ? (
-          <EmptyState title="Запусков пока нет" description="ProcessRuntime будет создавать jobs при старте процессов." />
-        ) : (
-          <DataTable compact columns={columns} getRowKey={(job) => job.id} rows={config.processJobs} />
-        )}
-      </Panel>
+      <div className="space-y-5">
+        <div className="grid gap-3 md:grid-cols-4">
+          <JobMetric label="Total" value={jobs.length} />
+          <JobMetric label="Completed" value={jobs.filter((job) => job.status === 'completed').length} />
+          <JobMetric label="Failed" value={jobs.filter((job) => job.status === 'failed').length} />
+          <JobMetric label="Running" value={jobs.filter((job) => job.status === 'running').length} />
+        </div>
+
+        <Panel className="p-5" title="Process jobs">
+          {jobs.length === 0 ? (
+            <EmptyState title="Запусков пока нет" description="Запустите процесс: runtime сохранит ProcessJob, context и result." />
+          ) : (
+            <DataTable compact columns={columns} getRowKey={(job) => job.id} rows={jobs} />
+          )}
+        </Panel>
+
+        {latestJob ? (
+          <Panel className="p-5" title="Последний ProcessJob">
+            <div className="mb-4 flex flex-wrap gap-2">
+              <Badge tone={getStatusTone(latestJob.status)}>{latestJob.status}</Badge>
+              <Badge tone="info">{latestJob.id}</Badge>
+              <Badge tone="neutral">{config.processes.find((process) => process.id === latestJob.processId)?.name ?? latestJob.processId}</Badge>
+            </div>
+            <div className="grid gap-4 lg:grid-cols-3">
+              <div>
+                <div className="mb-2 text-sm font-medium text-slate-200">Input</div>
+                <CodeBlock maxHeightClassName="max-h-72" value={JSON.stringify(latestJob.input, null, 2)} />
+              </div>
+              <div>
+                <div className="mb-2 text-sm font-medium text-slate-200">Context</div>
+                <CodeBlock maxHeightClassName="max-h-72" value={JSON.stringify(latestJob.context, null, 2)} />
+              </div>
+              <div>
+                <div className="mb-2 text-sm font-medium text-slate-200">Result / Error</div>
+                <CodeBlock
+                  maxHeightClassName="max-h-72"
+                  value={JSON.stringify({ result: latestJob.result ?? null, error: latestJob.error ?? null }, null, 2)}
+                />
+              </div>
+            </div>
+          </Panel>
+        ) : null}
+      </div>
     </section>
+  );
+}
+
+function JobMetric({ label, value }: { label: string; value: number }): React.JSX.Element {
+  return (
+    <div className="rounded-md border border-white/10 bg-slate-950/35 p-3">
+      <div className="text-xs text-slate-500">{label}</div>
+      <div className="mt-1 text-2xl font-semibold text-slate-100">{value}</div>
+    </div>
   );
 }
 

@@ -441,7 +441,19 @@ function ProcessNodeInspector({
         </>
       ) : null}
 
-      {type === 'interlock' || type === 'event' ? (
+      {type === 'interlock' ? (
+        <>
+          <TextInput
+            hint="Например: level < 10"
+            label="Expression"
+            onChange={(expression) => onChange({ expression })}
+            value={String(node.data.expression ?? '')}
+          />
+          <TextInput label="Message" onChange={(message) => onChange({ message })} value={String(node.data.message ?? '')} />
+        </>
+      ) : null}
+
+      {type === 'event' ? (
         <TextInput label="Message" onChange={(message) => onChange({ message })} value={String(node.data.message ?? '')} />
       ) : null}
 
@@ -584,7 +596,7 @@ function createDefaultNodeData(type: ProcessNodeType, config: AppConfig): Record
     return { variable: 'result', expression: 'value' };
   }
   if (type === 'interlock') {
-    return { message: 'Interlock check' };
+    return { expression: 'value < 10', message: 'Interlock blocked process' };
   }
   if (type === 'event') {
     return { message: 'Process event' };

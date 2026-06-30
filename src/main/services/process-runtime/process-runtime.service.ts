@@ -40,19 +40,55 @@ export class ProcessRuntimeService {
     });
 
     graph.nodes.forEach((node) => {
-      if ((node.type === 'readPoint' || node.type === 'captureReading') && !isKnownPoint(config.points, node.data.pointId)) {
-        errors.push({ nodeId: node.id, message: 'Node ссылается на несуществующий pointId' });
+      if (node.type === 'input') {
+        if (!isNonEmptyString(node.data.key)) {
+          errors.push({ nodeId: node.id, message: 'Input node должен иметь key' });
+        }
       }
 
-      if (node.type === 'command' && !isKnownActuator(config.actuators, node.data.actuatorId)) {
-        errors.push({ nodeId: node.id, message: 'Command node ссылается на несуществующий actuatorId' });
+      if (node.type === 'readPoint' || node.type === 'captureReading') {
+        if (!isKnownPoint(config.points, node.data.pointId)) {
+          errors.push({ nodeId: node.id, message: 'Node ссылается на несуществующий pointId' });
+        }
+
+        if (!isNonEmptyString(node.data.variable)) {
+          errors.push({ nodeId: node.id, message: 'ReadPoint/CaptureReading node должен иметь variable' });
+        }
+      }
+
+      if (node.type === 'command') {
+        const actuator = config.actuators.find((item) => item.id === node.data.actuatorId);
+        if (!actuator) {
+          errors.push({ nodeId: node.id, message: 'Command node ссылается на несуществующий actuatorId' });
+        } else if (!isNonEmptyString(node.data.commandType) || !actuator.supportedCommands.includes(node.data.commandType as CommandType)) {
+          errors.push({ nodeId: node.id, message: 'Command node содержит неподдерживаемый commandType' });
+        }
       }
 
       if (node.type === 'condition') {
+        if (!isNonEmptyString(node.data.expression)) {
+          errors.push({ nodeId: node.id, message: 'Condition node должен иметь expression' });
+        }
         const outgoing = graph.edges.filter((edge) => edge.source === node.id);
         if (!outgoing.some((edge) => edge.sourceHandle === 'true') || !outgoing.some((edge) => edge.sourceHandle === 'false')) {
           errors.push({ nodeId: node.id, message: 'Condition node должен иметь true/false ветки' });
         }
+      }
+
+      if (node.type === 'wait') {
+        if (typeof node.data.durationMs !== 'number' || node.data.durationMs < 0) {
+          errors.push({ nodeId: node.id, message: 'Wait node должен иметь durationMs >= 0' });
+        }
+      }
+
+      if (node.type === 'math') {
+        if (!isNonEmptyString(node.data.variable) || !isNonEmptyString(node.data.expression)) {
+          errors.push({ nodeId: node.id, message: 'Math node должен иметь variable и expression' });
+        }
+      }
+
+      if (node.type === 'interlock' && !isNonEmptyString(node.data.expression)) {
+        errors.push({ nodeId: node.id, message: 'Interlock node должен иметь expression' });
       }
     });
 
@@ -136,6 +172,13 @@ export class ProcessRuntimeService {
         error: error instanceof Error ? error.message : 'Unknown process runtime error'
       };
       await this.persistJob(failedJob);
+      await this.eventLogService.addEvent({
+        level: 'error',
+        source: 'process',
+        entityId: processId,
+        message: 'Process job failed',
+        details: { job: failedJob }
+      });
       return failedJob;
     }
   }
@@ -152,15 +195,20 @@ export class ProcessRuntimeService {
 
     while (current && steps < 100) {
       steps += 1;
+      context.__currentNodeId = current.id;
+      context.__stepCount = steps;
       await this.executeNode(current, context);
 
       if (current.type === 'complete') {
+        const resultKey = typeof current.data.resultKey === 'string' && current.data.resultKey
+          ? current.data.resultKey
+          : null;
         return {
           ...job,
           status: 'completed',
           context,
           completedAt: new Date().toISOString(),
-          result: isRecord(current.data.result) ? current.data.result : context
+          result: resultKey ? { [resultKey]: context[resultKey] ?? null } : isRecord(current.data.result) ? current.data.result : context
         };
       }
 
@@ -186,7 +234,27 @@ export class ProcessRuntimeService {
       }
 
       const snapshot = await this.dataServiceManager.readAllChannels();
-      context[variable] = snapshot.live.readingsByPointId[pointId]?.displayValue ?? null;
+      const reading = snapshot.live.readingsByPointId[pointId] ?? null;
+      context[variable] = reading?.displayValue ?? reading?.rawValue ?? null;
+      context[`${variable}.quality`] = reading?.quality ?? 'bad';
+      context[`${variable}.timestamp`] = reading?.timestamp ?? new Date().toISOString();
+      return;
+    }
+
+    if (node.type === 'input') {
+      const key = typeof node.data.key === 'string' ? node.data.key : null;
+      if (!key) {
+        throw new Error(`Node ${node.id} requires input key`);
+      }
+
+      const currentValue = context[key];
+      if (currentValue === undefined) {
+        if (node.data.defaultValue !== undefined) {
+          context[key] = node.data.defaultValue;
+        } else if (node.data.required === true) {
+          throw new Error(`Required input ${key} is missing`);
+        }
+      }
       return;
     }
 
@@ -205,6 +273,9 @@ export class ProcessRuntimeService {
         requestedBy: 'process-runtime'
       });
       context[`${node.id}.success`] = result.success;
+      context[`${node.id}.commandId`] = result.commandId;
+      context[`${node.id}.feedbackPointId`] = result.feedbackPointId ?? null;
+      context[`${node.id}.feedbackValue`] = result.feedbackValue ?? null;
       if (!result.success) {
         throw new Error(result.error ?? 'Command failed');
       }
@@ -214,6 +285,40 @@ export class ProcessRuntimeService {
     if (node.type === 'wait') {
       const durationMs = typeof node.data.durationMs === 'number' ? Math.min(node.data.durationMs, 5000) : 0;
       await new Promise((resolve) => setTimeout(resolve, durationMs));
+      context[`${node.id}.waitedMs`] = durationMs;
+      return;
+    }
+
+    if (node.type === 'math') {
+      const variable = typeof node.data.variable === 'string' ? node.data.variable : null;
+      const expression = typeof node.data.expression === 'string' ? node.data.expression : null;
+      if (!variable || !expression) {
+        throw new Error(`Node ${node.id} requires variable and expression`);
+      }
+
+      context[variable] = evaluateMathExpression(expression, context);
+      return;
+    }
+
+    if (node.type === 'interlock') {
+      const expression = typeof node.data.expression === 'string' ? node.data.expression : '';
+      const blocked = evaluateContextCondition(expression, context);
+      context[`${node.id}.blocked`] = blocked;
+      if (blocked) {
+        throw new Error(typeof node.data.message === 'string' ? node.data.message : `Interlock ${node.id} blocked process`);
+      }
+      return;
+    }
+
+    if (node.type === 'event') {
+      const message = typeof node.data.message === 'string' ? node.data.message : `Process event ${node.id}`;
+      await this.eventLogService.addEvent({
+        level: 'info',
+        source: 'process',
+        message,
+        details: { nodeId: node.id, context }
+      });
+      context[`${node.id}.eventLogged`] = true;
     }
   }
 
@@ -242,8 +347,8 @@ function isKnownPoint(points: Array<{ id: string }>, value: unknown): boolean {
   return typeof value === 'string' && points.some((point) => point.id === value);
 }
 
-function isKnownActuator(actuators: Array<{ id: string }>, value: unknown): boolean {
-  return typeof value === 'string' && actuators.some((actuator) => actuator.id === value);
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
 }
 
 function getReachableNodeIds(graph: ProcessGraph, startNodeId: string): Set<string> {
@@ -301,6 +406,36 @@ function normalizeCommandValue(value: unknown): boolean | number | string | unde
   return typeof value === 'boolean' || typeof value === 'number' || typeof value === 'string' ? value : undefined;
 }
 
+function evaluateMathExpression(expression: string, context: Record<string, unknown>): number | string | boolean | null {
+  const trimmed = expression.trim();
+  const binary = trimmed.match(/^([\w.-]+|-?\d+(?:\.\d+)?)\s*([+\-*/])\s*([\w.-]+|-?\d+(?:\.\d+)?)$/);
+  if (binary) {
+    const [, leftRaw, operator, rightRaw] = binary;
+    const left = Number(resolveContextValue(leftRaw ?? '', context));
+    const right = Number(resolveContextValue(rightRaw ?? '', context));
+
+    if (!Number.isFinite(left) || !Number.isFinite(right)) {
+      return null;
+    }
+
+    switch (operator) {
+      case '+':
+        return left + right;
+      case '-':
+        return left - right;
+      case '*':
+        return left * right;
+      case '/':
+        return right === 0 ? null : left / right;
+      default:
+        return null;
+    }
+  }
+
+  const resolved = resolveContextValue(trimmed, context);
+  return typeof resolved === 'number' || typeof resolved === 'string' || typeof resolved === 'boolean' ? resolved : null;
+}
+
 function evaluateContextCondition(expression: string, context: Record<string, unknown>): boolean {
   const match = expression.trim().match(/^([\w.-]+)\s*(<=|>=|<|>|==|!=)\s*(-?\d+(?:\.\d+)?|true|false)$/i);
   if (!match) {
@@ -312,7 +447,7 @@ function evaluateContextCondition(expression: string, context: Record<string, un
     return false;
   }
 
-  const current = context[key];
+  const current = resolveContextValue(key, context);
   const expected = expectedRaw === 'true' ? true : expectedRaw === 'false' ? false : Number(expectedRaw);
 
   switch (operator) {
@@ -331,6 +466,20 @@ function evaluateContextCondition(expression: string, context: Record<string, un
     default:
       return false;
   }
+}
+
+function resolveContextValue(raw: string, context: Record<string, unknown>): unknown {
+  const trimmed = raw.trim();
+  if (/^-?\d+(?:\.\d+)?$/.test(trimmed)) {
+    return Number(trimmed);
+  }
+  if (trimmed === 'true') {
+    return true;
+  }
+  if (trimmed === 'false') {
+    return false;
+  }
+  return context[trimmed];
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
