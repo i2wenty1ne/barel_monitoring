@@ -98,6 +98,7 @@ const dataAddressSchema = z.discriminatedUnion('protocol', [
     ]),
     registerAddress: z.number().int().min(0).optional(),
     coilAddress: z.number().int().min(0).optional(),
+    bitIndex: z.number().int().min(0).max(15).optional(),
     registerCount: z.number().int().positive().optional(),
     valueType: z.enum(['boolean', 'uint16', 'int16', 'uint32', 'int32', 'float32']),
     byteOrder: z.enum(['ABCD', 'BADC', 'CDAB', 'DCBA']).optional()
@@ -194,6 +195,32 @@ const pointSchema = z
 
     if (value.kind === 'control' && !value.writeAddress) {
       context.addIssue({ code: 'custom', path: ['writeAddress'], message: 'ControlPoint должен иметь writeAddress' });
+    }
+
+    if (value.kind === 'control' && value.writeAddress?.protocol === 'modbus') {
+      if (value.writeAddress.functionCode === 5) {
+        if (value.writeAddress.area !== 'coil') {
+          context.addIssue({ code: 'custom', path: ['writeAddress', 'area'], message: 'FC5 должен использовать area coil' });
+        }
+
+        if (value.writeAddress.coilAddress === undefined) {
+          context.addIssue({ code: 'custom', path: ['writeAddress', 'coilAddress'], message: 'FC5 должен иметь coilAddress' });
+        }
+      }
+
+      if (value.writeAddress.functionCode === 16) {
+        if (value.writeAddress.area !== 'holding-register') {
+          context.addIssue({ code: 'custom', path: ['writeAddress', 'area'], message: 'FC16 должен использовать holding-register' });
+        }
+
+        if (value.writeAddress.registerAddress === undefined) {
+          context.addIssue({ code: 'custom', path: ['writeAddress', 'registerAddress'], message: 'FC16 должен иметь registerAddress' });
+        }
+
+        if (value.writeAddress.bitIndex === undefined) {
+          context.addIssue({ code: 'custom', path: ['writeAddress', 'bitIndex'], message: 'FC16 должен иметь bitIndex' });
+        }
+      }
     }
   });
 

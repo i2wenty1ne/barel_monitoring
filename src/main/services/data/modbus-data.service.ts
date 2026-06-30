@@ -39,6 +39,7 @@ export class ModbusDataService implements DataService {
   private readonly lastLoggedAtByKey = new Map<string, number>();
   private readonly clients = new Map<string, ModbusRTU>();
   private readonly connectionStates = new Map<string, ConnectionState>();
+  private readonly writeLocks = new Map<string, Promise<void>>();
   private intervalId: ReturnType<typeof setInterval> | null = null;
   private isReading = false;
   private lastSuccessfulReadAt: string | null = null;
@@ -212,25 +213,69 @@ export class ModbusDataService implements DataService {
         throw new Error(`ControlPoint '${point.id}' writeAddress protocol '${address.protocol}' is not supported`);
       }
 
-      if (address.area !== 'coil' || address.functionCode !== 5 || address.coilAddress === undefined) {
-        throw new Error('Only Modbus single coil writes (function 5) are supported');
-      }
-
       const source = this.getDataSourceById(point.dataSourceId);
       if (!source.enabled) {
         throw new Error(`DataSource '${source.id}' is disabled`);
       }
 
+      await this.waitUntilIdle();
       const client = await this.ensureConnected(source);
       const slaveId = getSlaveId(source, address);
       client.setID(slaveId);
-      await client.writeCoil(address.coilAddress, Boolean(value));
-      await this.logEvent('warning', 'control point coil write completed', {
+
+      if (isSingleCoilWriteAddress(address)) {
+        await client.writeCoil(address.coilAddress, Boolean(value));
+        await this.logEvent('warning', 'control point coil write completed', {
+          pointId: point.id,
+          dataSourceId: source.id,
+          slaveId,
+          coilAddress: address.coilAddress,
+          value: Boolean(value)
+        });
+
+        return {
+          success: true,
+          pointId: point.id,
+          dataSourceId: source.id,
+          value: Boolean(value),
+          message: 'Modbus coil write completed',
+          details: {
+            slaveId,
+            coilAddress: address.coilAddress,
+            functionCode: address.functionCode
+          }
+        };
+      }
+
+      if (!isRegisterMaskWriteAddress(address)) {
+        throw new Error('Only Modbus single coil writes (function 5) and register mask writes (function 16) are supported');
+      }
+
+      const lockKey = `${source.id}:${slaveId}:${address.registerAddress}`;
+      const maskResult = await this.runSerializedWrite(lockKey, async () => {
+        client.setID(slaveId);
+        const [previousMask = 0] = await this.readRegisterValues(client, 3, address.registerAddress, 1);
+        const bitMask = 1 << address.bitIndex;
+        const nextMask = Boolean(value)
+          ? (previousMask | bitMask)
+          : (previousMask & ~bitMask);
+
+        await client.writeRegisters(address.registerAddress, [nextMask]);
+        return {
+          previousMask,
+          nextMask,
+          bitIndex: address.bitIndex,
+          outputNumber: address.bitIndex + 1
+        };
+      });
+
+      await this.logEvent('warning', 'control point register mask write completed', {
         pointId: point.id,
         dataSourceId: source.id,
         slaveId,
-        coilAddress: address.coilAddress,
-        value: Boolean(value)
+        registerAddress: address.registerAddress,
+        value: Boolean(value),
+        ...maskResult
       });
 
       return {
@@ -238,17 +283,18 @@ export class ModbusDataService implements DataService {
         pointId: point.id,
         dataSourceId: source.id,
         value: Boolean(value),
-        message: 'Modbus coil write completed',
+        message: 'Modbus register mask write completed',
         details: {
           slaveId,
-          coilAddress: address.coilAddress,
-          functionCode: address.functionCode
+          registerAddress: address.registerAddress,
+          functionCode: address.functionCode,
+          ...maskResult
         }
       };
     } catch (error) {
       const source = point.dataSourceId ? this.getDataSourceByIdOrNull(point.dataSourceId) : null;
       const message = mapModbusError(error, source?.connection.port ?? '');
-      await this.logEvent('error', 'control point coil write failed', {
+      await this.logEvent('error', 'control point write failed', {
         pointId: point.id,
         dataSourceId: point.dataSourceId,
         error: message,
@@ -701,6 +747,26 @@ export class ModbusDataService implements DataService {
     return result.data;
   }
 
+  private async runSerializedWrite<T>(key: string, task: () => Promise<T>): Promise<T> {
+    const previous = this.writeLocks.get(key) ?? Promise.resolve();
+    let release: () => void = () => undefined;
+    const current = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const queued = previous.catch(() => undefined).then(() => current);
+    this.writeLocks.set(key, queued);
+
+    await previous.catch(() => undefined);
+    try {
+      return await task();
+    } finally {
+      release();
+      if (this.writeLocks.get(key) === queued) {
+        this.writeLocks.delete(key);
+      }
+    }
+  }
+
   private createSnapshot(readings: Reading[], updatedAt: string): MonitoringSnapshot {
     const status = getWorstStatus(readings.map((reading) => pointStatusToStatus(reading.status)));
 
@@ -872,6 +938,19 @@ function isReadableModbusPoint(point: Point): point is Point & { address: Modbus
     (point.address.functionCode === 3 || point.address.functionCode === 4) &&
     point.valueType !== 'boolean' &&
     point.valueType !== 'string'
+  );
+}
+
+function isSingleCoilWriteAddress(address: ModbusDataAddress): address is ModbusDataAddress & { coilAddress: number } {
+  return address.area === 'coil' && address.functionCode === 5 && address.coilAddress !== undefined;
+}
+
+function isRegisterMaskWriteAddress(address: ModbusDataAddress): address is ModbusDataAddress & { registerAddress: number; bitIndex: number } {
+  return (
+    address.area === 'holding-register' &&
+    address.functionCode === 16 &&
+    address.registerAddress !== undefined &&
+    address.bitIndex !== undefined
   );
 }
 

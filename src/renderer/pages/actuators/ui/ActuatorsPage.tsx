@@ -36,7 +36,10 @@ type ActuatorDraft = {
   commandPointId: string;
   feedbackPointId: string;
   supportedCommands: CommandType[];
+  writeMode: WriteMode;
   coilAddress: number;
+  outputNumber: number;
+  maskRegisterAddress: number;
   slaveId: number;
   requiresConfirmation: boolean;
   safetyLevel: ControlPoint['safetyLevel'];
@@ -61,9 +64,15 @@ type InterlockDraft = {
   message: string;
 };
 
+type WriteMode = 'mu110-mask-fc16' | 'coil-fc5';
+
 const actuatorTypes: ActuatorType[] = ['pump', 'valve', 'relay', 'led', 'motor', 'heater', 'fan', 'alarm', 'custom'];
 const commandTypes: CommandType[] = ['start', 'stop', 'open', 'close', 'turnOn', 'turnOff', 'reset', 'setValue', 'custom'];
 const interlockOperators: InterlockDraft['operator'][] = ['<', '<=', '>', '>=', '==', '!='];
+const writeModeOptions: Array<{ label: string; value: WriteMode }> = [
+  { label: 'МУ110: регистр маски выходов (FC16)', value: 'mu110-mask-fc16' },
+  { label: 'Coil (FC5)', value: 'coil-fc5' }
+];
 const defaultCommandsByType: Record<ActuatorType, CommandType[]> = {
   pump: ['start', 'stop'],
   valve: ['open', 'close'],
@@ -241,7 +250,7 @@ export function ActuatorsPage(): React.JSX.Element {
         ],
         assets: currentConfig.assets.map((asset) => {
           const withoutActuator = asset.actuatorIds.filter((actuatorId) => actuatorId !== actuator.id);
-          const withoutCommandPoint = asset.pointIds.filter((pointId) => pointId !== commandPoint.id);
+          const withoutCommandPoint = asset.pointIds.filter((pointId) => !pointIdsToReplace.has(pointId));
           return asset.id === actuator.assetId
             ? {
                 ...asset,
@@ -604,8 +613,34 @@ function ActuatorForm({
           value={draft.feedbackPointId}
         />
         <TextInput label="ID точки управления" onChange={(commandPointId) => onChange({ ...draft, commandPointId })} value={draft.commandPointId} />
+        <Select
+          label="Режим записи"
+          onChange={(writeMode) => onChange({ ...draft, writeMode })}
+          options={writeModeOptions}
+          value={draft.writeMode}
+        />
         <NumberInput label="Адрес Modbus" min={1} max={247} onChange={(slaveId) => onChange({ ...draft, slaveId })} value={draft.slaveId} />
-        <NumberInput label="Адрес coil" min={0} onChange={(coilAddress) => onChange({ ...draft, coilAddress })} value={draft.coilAddress} />
+        {draft.writeMode === 'mu110-mask-fc16' ? (
+          <>
+            <NumberInput
+              hint="DO1 = bitIndex 0, DO16 = bitIndex 15"
+              label="Выход DO"
+              min={1}
+              max={16}
+              onChange={(outputNumber) => onChange({ ...draft, outputNumber })}
+              value={draft.outputNumber}
+            />
+            <NumberInput
+              hint="Для МУ110-224.16Р по документации: 50 / 0x0032"
+              label="Регистр маски"
+              min={0}
+              onChange={(maskRegisterAddress) => onChange({ ...draft, maskRegisterAddress })}
+              value={draft.maskRegisterAddress}
+            />
+          </>
+        ) : (
+          <NumberInput label="Адрес coil" min={0} onChange={(coilAddress) => onChange({ ...draft, coilAddress })} value={draft.coilAddress} />
+        )}
         <Select
           label="Уровень безопасности"
           onChange={(safetyLevel) => onChange({ ...draft, safetyLevel })}
@@ -717,14 +752,17 @@ function createNewDraft(config: { actuators: Actuator[]; assets: Array<{ id: str
   const dataSource = config.dataSources.find((source) => source.enabled) ?? config.dataSources[0];
   return {
     id,
-    name: 'Насос',
-    type: 'pump',
+    name: 'Реле',
+    type: 'relay',
     assetId: config.assets[0]?.id ?? '',
     dataSourceId: dataSource?.id ?? '',
     commandPointId: `${id}-run-command`,
     feedbackPointId: '',
-    supportedCommands: ['start', 'stop'],
+    supportedCommands: ['turnOn', 'turnOff'],
+    writeMode: 'mu110-mask-fc16',
     coilAddress: 0,
+    outputNumber: 1,
+    maskRegisterAddress: 50,
     slaveId: getDefaultSlaveId(dataSource),
     requiresConfirmation: true,
     safetyLevel: 'dangerous',
@@ -736,6 +774,7 @@ function createNewDraft(config: { actuators: Actuator[]; assets: Array<{ id: str
 function createDraftFromActuator(actuator: Actuator, points: Point[]): ActuatorDraft {
   const commandPoint = points.find((point): point is ControlPoint => point.id === actuator.commandPointIds[0] && point.kind === 'control');
   const writeAddress = commandPoint?.writeAddress?.protocol === 'modbus' ? commandPoint.writeAddress : null;
+  const writeMode: WriteMode = writeAddress?.functionCode === 16 ? 'mu110-mask-fc16' : 'coil-fc5';
   return {
     id: actuator.id,
     name: actuator.name,
@@ -745,7 +784,10 @@ function createDraftFromActuator(actuator: Actuator, points: Point[]): ActuatorD
     commandPointId: commandPoint?.id ?? `${actuator.id}-run-command`,
     feedbackPointId: actuator.feedbackPointIds[0] ?? '',
     supportedCommands: actuator.supportedCommands,
+    writeMode,
     coilAddress: writeAddress?.coilAddress ?? 0,
+    outputNumber: writeAddress?.bitIndex !== undefined ? writeAddress.bitIndex + 1 : 1,
+    maskRegisterAddress: writeAddress?.registerAddress ?? 50,
     slaveId: writeAddress?.slaveId ?? 1,
     requiresConfirmation: commandPoint?.requiresConfirmation ?? true,
     safetyLevel: commandPoint?.safetyLevel ?? 'dangerous',
@@ -755,6 +797,27 @@ function createDraftFromActuator(actuator: Actuator, points: Point[]): ActuatorD
 }
 
 function createControlPointFromDraft(draft: ActuatorDraft, dataSources: DataSource[], now: string): ControlPoint {
+  const slaveId = draft.slaveId || getDefaultSlaveId(dataSources.find((source) => source.id === draft.dataSourceId));
+  const writeAddress = draft.writeMode === 'mu110-mask-fc16'
+    ? {
+        protocol: 'modbus' as const,
+        slaveId,
+        area: 'holding-register' as const,
+        functionCode: 16 as const,
+        registerAddress: clampInteger(draft.maskRegisterAddress, 0, Number.MAX_SAFE_INTEGER),
+        registerCount: 1,
+        valueType: 'uint16' as const,
+        bitIndex: clampInteger(draft.outputNumber - 1, 0, 15)
+      }
+    : {
+        protocol: 'modbus' as const,
+        slaveId,
+        area: 'coil' as const,
+        functionCode: 5 as const,
+        coilAddress: clampInteger(draft.coilAddress, 0, Number.MAX_SAFE_INTEGER),
+        valueType: 'boolean' as const
+      };
+
   return {
     id: draft.commandPointId,
     name: `${draft.name} command`,
@@ -767,14 +830,7 @@ function createControlPointFromDraft(draft: ActuatorDraft, dataSources: DataSour
     allowedValues: [true, false],
     requiresConfirmation: draft.requiresConfirmation,
     safetyLevel: draft.safetyLevel,
-    writeAddress: {
-      protocol: 'modbus',
-      slaveId: draft.slaveId || getDefaultSlaveId(dataSources.find((source) => source.id === draft.dataSourceId)),
-      area: 'coil',
-      functionCode: 5,
-      coilAddress: draft.coilAddress,
-      valueType: 'boolean'
-    },
+    writeAddress,
     createdAt: now,
     updatedAt: now
   };
@@ -815,4 +871,12 @@ function toggleCommand(commands: CommandType[], commandType: CommandType, checke
 
 function getDefaultSlaveId(dataSource?: DataSource): number {
   return typeof dataSource?.metadata?.slaveId === 'number' ? dataSource.metadata.slaveId : 1;
+}
+
+function clampInteger(value: number, min: number, max: number): number {
+  if (!Number.isFinite(value)) {
+    return min;
+  }
+
+  return Math.max(min, Math.min(max, Math.trunc(value)));
 }

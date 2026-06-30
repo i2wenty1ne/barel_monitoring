@@ -105,6 +105,7 @@ export type ModbusDataAddress = {
   functionCode: 1 | 2 | 3 | 4 | 5 | 6 | 15 | 16;
   registerAddress?: number;
   coilAddress?: number;
+  bitIndex?: number;
   registerCount?: number;
   valueType: Exclude<PointValueType, 'string'>;
   byteOrder?: 'ABCD' | 'CDAB' | 'BADC' | 'DCBA';
