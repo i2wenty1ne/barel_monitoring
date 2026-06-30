@@ -45,6 +45,7 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "4.3.1",
+    "@xyflow/react": "^12.11.1",
     "modbus-serial": "^8.0.25",
     "motion": "12.40.0",
     "react": "19.2.7",

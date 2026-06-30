@@ -12,7 +12,7 @@ import { Panel } from '../../../shared/ui/Panel';
 import { Tabs, type TabItem } from '../../../shared/ui/Tabs';
 import type { MonitoringProfile, Point } from '../../../../shared/types/config.types';
 
-type AssetDetailsTab = 'points' | 'history' | 'actuators';
+type AssetDetailsTab = 'points' | 'history' | 'actuators' | 'graph';
 
 export function AssetDetailsPage(): React.JSX.Element {
   const { assetId } = useParams<{ assetId: string }>();
@@ -42,7 +42,8 @@ export function AssetDetailsPage(): React.JSX.Element {
   const tabs: TabItem<AssetDetailsTab>[] = [
     { id: 'points', label: 'Параметры' },
     { id: 'history', label: 'История' },
-    { id: 'actuators', label: 'Механизмы' }
+    { id: 'actuators', label: 'Механизмы' },
+    { id: 'graph', label: 'Связи' }
   ];
   const pointColumns: DataTableColumn<Point>[] = [
     { key: 'name', title: 'Точка', render: (point) => <div><div className="font-medium text-slate-100">{point.name}</div><div className="mt-1 font-mono text-xs text-slate-500">{point.id}</div></div> },
@@ -124,6 +125,37 @@ export function AssetDetailsPage(): React.JSX.Element {
                   ))}
                 </div>
               )}
+            </Panel>
+          ) : null}
+
+          {activeTab === 'graph' ? (
+            <Panel className="p-5" title="Связи">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap gap-2">
+                  <Badge tone="info">{points.length} points</Badge>
+                  <Badge tone="info">{actuators.length} actuators</Badge>
+                  <Badge tone="neutral">
+                    {new Set(points.map((point) => point.dataSourceId).filter(Boolean)).size} data sources
+                  </Badge>
+                </div>
+                <Link to="/graphs">
+                  <Button variant="primary">Открыть Asset graph</Button>
+                </Link>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                {points.map((point) => (
+                  <div className="rounded-md border border-white/10 bg-slate-950/35 p-3" key={point.id}>
+                    <div className="font-medium text-slate-100">{point.name}</div>
+                    <div className="mt-1 text-xs text-slate-500">Point {'->'} {point.dataSourceId ?? 'no dataSource'}</div>
+                  </div>
+                ))}
+                {actuators.map((actuator) => (
+                  <div className="rounded-md border border-white/10 bg-slate-950/35 p-3" key={actuator.id}>
+                    <div className="font-medium text-slate-100">{actuator.name}</div>
+                    <div className="mt-1 text-xs text-slate-500">Actuator {'->'} {actuator.commandPointIds.length} control points</div>
+                  </div>
+                ))}
+              </div>
             </Panel>
           ) : null}
         </div>
