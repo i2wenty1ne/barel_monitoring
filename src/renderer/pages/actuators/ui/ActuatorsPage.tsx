@@ -420,9 +420,9 @@ export function ActuatorsPage(): React.JSX.Element {
 
           <Panel className="p-5" title="Команды">
             <div className="space-y-4">
-              <Alert type={currentConfig.app.realWriteEnabled && !currentConfig.app.simulationCommandsOnly ? 'warning' : 'info'}>
-                {currentConfig.app.realWriteEnabled && !currentConfig.app.simulationCommandsOnly
-                  ? 'Real write mode enabled. Hardware write is still guarded by CommandService.'
+              <Alert type={currentConfig.app.mode === 'real' && currentConfig.app.realWriteEnabled && !currentConfig.app.simulationCommandsOnly ? 'warning' : 'info'}>
+                {currentConfig.app.mode === 'real' && currentConfig.app.realWriteEnabled && !currentConfig.app.simulationCommandsOnly
+                  ? 'Real write mode enabled. Команды выполнят реальную запись в Modbus после проверок CommandService.'
                   : 'Simulation mode: команды валидируются, пишутся в event log и command history без записи в железо.'}
               </Alert>
               {currentConfig.actuators.length === 0 ? (

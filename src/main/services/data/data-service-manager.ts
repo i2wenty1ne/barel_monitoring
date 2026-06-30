@@ -6,7 +6,8 @@ import type {
   MonitoringSnapshot,
   RegisterScanRequest,
   RegisterScanResult,
-  TestConnectionResult
+  TestConnectionResult,
+  WriteControlPointResult
 } from '../../../shared/types/monitoring.types';
 import type { EventLogService } from '../event-log/event-log.service';
 import type { DataService, MonitoringSnapshotListener } from './data-service.types';
@@ -56,6 +57,10 @@ export class DataServiceManager implements DataService {
 
   public async readRegisters(request: ManualReadRequest): Promise<ManualReadResult> {
     return this.service.readRegisters(request);
+  }
+
+  public async writeControlPoint(pointId: string, value: boolean | number | string): Promise<WriteControlPointResult> {
+    return this.service.writeControlPoint(pointId, value);
   }
 
   public async scanRegisters(request: RegisterScanRequest): Promise<RegisterScanResult> {

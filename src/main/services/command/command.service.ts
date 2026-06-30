@@ -118,6 +118,23 @@ export class CommandService {
     }
 
     const now = new Date().toISOString();
+    const isSimulation = config.app.mode !== 'real' || config.app.simulationCommandsOnly || !config.app.realWriteEnabled;
+    if (!isSimulation) {
+      const writeResult = await this.dataServiceManager.writeControlPoint(controlPoint.id, request.value ?? true);
+      if (!writeResult.success) {
+        return this.persistCommand({
+          id: commandId,
+          actuatorId: actuator.id,
+          commandType: request.commandType,
+          value: request.value,
+          requestedBy: request.requestedBy,
+          requestedAt,
+          status: 'failed',
+          error: writeResult.error ?? writeResult.message
+        });
+      }
+    }
+
     const feedback = await this.readFeedback(actuator.feedbackPointIds);
     const result: CommandResult = {
       commandId,
@@ -127,7 +144,6 @@ export class CommandService {
       feedbackPointId: feedback?.pointId,
       feedbackValue: feedback?.value ?? undefined
     };
-    const isSimulation = config.app.simulationCommandsOnly || !config.app.realWriteEnabled;
     const command: Command = {
       id: commandId,
       actuatorId: actuator.id,
@@ -149,7 +165,7 @@ export class CommandService {
       entityId: actuator.id,
       message: isSimulation
         ? 'Simulation command completed'
-        : 'Real write command accepted but hardware write is not implemented in this stage',
+        : 'Real Modbus write command completed',
       details: {
         command,
         controlPointId: controlPoint.id,

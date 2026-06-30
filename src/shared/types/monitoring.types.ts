@@ -72,6 +72,16 @@ export type ManualReadResult = {
   error?: string;
 };
 
+export type WriteControlPointResult = {
+  success: boolean;
+  pointId: string;
+  dataSourceId?: string;
+  value: boolean | number | string;
+  message: string;
+  error?: string;
+  details?: Record<string, unknown>;
+};
+
 export type RegisterScanRequest = {
   dataSourceId: string;
   startAddress: number;

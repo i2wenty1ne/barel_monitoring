@@ -5,7 +5,8 @@ import type {
   ModbusDataAddress,
   ModbusNumericValueType,
   Point,
-  PointStatus
+  PointStatus,
+  ControlPoint
 } from '../../../shared/types/config.types';
 import type {
   DataSourceStatus,
@@ -18,7 +19,8 @@ import type {
   RegisterScanRequest,
   RegisterScanResult,
   RegisterScanRow,
-  TestConnectionResult
+  TestConnectionResult,
+  WriteControlPointResult
 } from '../../../shared/types/monitoring.types';
 import { applyScaling } from '../../../shared/lib/scaling';
 import { getWorstStatus } from '../../../shared/lib/thresholds';
@@ -182,6 +184,82 @@ export class ModbusDataService implements DataService {
 
       return {
         success: false,
+        message,
+        error: getTechnicalErrorMessage(error)
+      };
+    }
+  }
+
+  public async writeControlPoint(pointId: string, value: boolean | number | string): Promise<WriteControlPointResult> {
+    const point = this.config.points.find((item): item is ControlPoint => item.id === pointId && item.kind === 'control');
+    if (!point) {
+      return {
+        success: false,
+        pointId,
+        value,
+        message: `ControlPoint '${pointId}' not found`,
+        error: `ControlPoint '${pointId}' not found`
+      };
+    }
+
+    try {
+      if (!point.dataSourceId) {
+        throw new Error(`ControlPoint '${point.id}' has no dataSourceId`);
+      }
+
+      const address = point.writeAddress;
+      if (address.protocol !== 'modbus') {
+        throw new Error(`ControlPoint '${point.id}' writeAddress protocol '${address.protocol}' is not supported`);
+      }
+
+      if (address.area !== 'coil' || address.functionCode !== 5 || address.coilAddress === undefined) {
+        throw new Error('Only Modbus single coil writes (function 5) are supported');
+      }
+
+      const source = this.getDataSourceById(point.dataSourceId);
+      if (!source.enabled) {
+        throw new Error(`DataSource '${source.id}' is disabled`);
+      }
+
+      const client = await this.ensureConnected(source);
+      const slaveId = getSlaveId(source, address);
+      client.setID(slaveId);
+      await client.writeCoil(address.coilAddress, Boolean(value));
+      await this.logEvent('warning', 'control point coil write completed', {
+        pointId: point.id,
+        dataSourceId: source.id,
+        slaveId,
+        coilAddress: address.coilAddress,
+        value: Boolean(value)
+      });
+
+      return {
+        success: true,
+        pointId: point.id,
+        dataSourceId: source.id,
+        value: Boolean(value),
+        message: 'Modbus coil write completed',
+        details: {
+          slaveId,
+          coilAddress: address.coilAddress,
+          functionCode: address.functionCode
+        }
+      };
+    } catch (error) {
+      const source = point.dataSourceId ? this.getDataSourceByIdOrNull(point.dataSourceId) : null;
+      const message = mapModbusError(error, source?.connection.port ?? '');
+      await this.logEvent('error', 'control point coil write failed', {
+        pointId: point.id,
+        dataSourceId: point.dataSourceId,
+        error: message,
+        technicalError: getTechnicalErrorMessage(error)
+      });
+
+      return {
+        success: false,
+        pointId: point.id,
+        dataSourceId: point.dataSourceId,
+        value,
         message,
         error: getTechnicalErrorMessage(error)
       };

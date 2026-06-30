@@ -10,7 +10,8 @@ import type {
   RegisterScanRequest,
   RegisterScanResult,
   RegisterScanRow,
-  TestConnectionResult
+  TestConnectionResult,
+  WriteControlPointResult
 } from '../../../shared/types/monitoring.types';
 import { applyScaling } from '../../../shared/lib/scaling';
 import { getWorstStatus } from '../../../shared/lib/thresholds';
@@ -77,6 +78,19 @@ export class MockDataService implements DataService {
       registers: Array.from({ length: request.registerCount }, (_, index) => 1000 + index),
       decodedValue: 42,
       message: 'Mock manual register read',
+    };
+  }
+
+  public async writeControlPoint(pointId: string, value: boolean | number | string): Promise<WriteControlPointResult> {
+    const point = this.config.points.find((item) => item.id === pointId);
+
+    return {
+      success: Boolean(point),
+      pointId,
+      dataSourceId: point?.dataSourceId,
+      value,
+      message: point ? 'Mock control point write accepted' : `ControlPoint '${pointId}' not found`,
+      error: point ? undefined : `ControlPoint '${pointId}' not found`
     };
   }
 
