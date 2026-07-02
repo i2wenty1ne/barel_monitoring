@@ -2,6 +2,7 @@ import type { AppConfig } from '../../../../shared/types/config.types';
 import type { SystemInfo } from '../../../../shared/types/ipc.types';
 import { Alert } from '../../../shared/ui/Alert';
 import { Button } from '../../../shared/ui/Button';
+import { Checkbox } from '../../../shared/ui/Checkbox';
 import { DangerZone } from '../../../shared/ui/DangerZone';
 import { Panel } from '../../../shared/ui/Panel';
 import { Select } from '../../../shared/ui/Select';
@@ -39,11 +40,25 @@ export function ServiceSettingsTab({
             value={config.app.mode}
           />
           <div className="rounded-md border border-white/10 bg-slate-950/45 p-3 text-sm text-slate-300">
-            При выборе реального режима будет использоваться Modbus RTU сервис только для чтения.
+            При выборе реального режима будет использоваться Modbus RTU сервис для чтения данных.
           </div>
+          <Checkbox
+            checked={config.app.simulationCommandsOnly}
+            hint="Когда включено, команды проходят проверки и историю, но не пишутся в оборудование."
+            label="Только симуляция команд"
+            onChange={(simulationCommandsOnly) => onChange({ ...config, app: { ...config.app, simulationCommandsOnly } })}
+          />
+          <Checkbox
+            checked={config.app.realWriteEnabled}
+            disabled={config.app.mode !== 'real'}
+            hint="Разрешает реальную запись команд в Modbus. Для выполнения записи также отключите симуляцию команд."
+            label="Разрешить реальную запись в Modbus"
+            onChange={(realWriteEnabled) => onChange({ ...config, app: { ...config.app, realWriteEnabled } })}
+          />
           {config.app.mode === 'real' ? (
             <Alert type="warning">
               Для реального режима требуется подключённый USB-RS485 адаптер и корректные параметры Modbus.
+              Команды пишутся в оборудование только когда включена реальная запись и выключена симуляция команд.
             </Alert>
           ) : null}
         </div>
