@@ -28,16 +28,18 @@ export function ServiceSettingsTab({
   onReloadConfig,
   onRequestResetToDefault
 }: ServiceSettingsTabProps): React.JSX.Element {
+  const { t } = useTranslation();
+
   return (
     <div className="grid gap-5 xl:grid-cols-[1fr_1.2fr]">
       <Panel className="p-5" title="Сервисные параметры">
         <div className="grid gap-4">
           <Select
-            label="Режим данных"
+            label="Режим"
             onChange={(mode) => onChange({ ...config, app: { ...config.app, mode } })}
             options={[
               { label: 'Симуляция', value: 'mock' },
-              { label: 'Реальное оборудование', value: 'real' }
+              { label: 'Оборудование', value: 'real' }
             ]}
             value={config.app.mode}
           />
@@ -72,7 +74,7 @@ export function ServiceSettingsTab({
           <InfoRow label="Платформа" value={systemInfo?.platform ?? '—'} />
           <InfoRow label="Конфиг" value={systemInfo?.configPath ?? '—'} />
           <InfoRow label="Журнал" value={systemInfo?.logsPath ?? '—'} />
-          <InfoRow label="Текущий режим" value={config.app.mode === 'mock' ? 'Симуляция' : 'Реальное оборудование'} />
+          <InfoRow label="Текущий режим" value={formatAppMode(config.app.mode, t)} />
         </dl>
         <div className="mt-5 flex flex-wrap gap-2">
           <Button onClick={onOpenConfigFolder} variant="secondary">
@@ -98,6 +100,10 @@ export function ServiceSettingsTab({
       </Panel>
     </div>
   );
+}
+
+function formatAppMode(mode: AppConfig['app']['mode'], t: (key: string) => string): string {
+  return mode === 'real' ? t('layout.modeEquipment') : t('layout.modeSimulation');
 }
 
 type InfoRowProps = {

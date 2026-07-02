@@ -14,6 +14,7 @@ import { StatusBadge } from '../../../shared/ui/StatusBadge';
 import { translateLiteral } from '../../../shared/i18n/translateLiteral';
 
 export function MonitoringPage(): React.JSX.Element {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const configState = useAppConfig();
   const snapshotState = useMonitoringSnapshot();
@@ -73,7 +74,7 @@ export function MonitoringPage(): React.JSX.Element {
           label="Общий статус"
           value={<StatusBadge status={snapshotState.data?.status ?? 'no-data'} />}
         />
-        <SummaryPanel label="Режим данных" value={snapshotState.data?.mode ?? 'mock'} />
+        <SummaryPanel label="Режим" value={formatAppMode(snapshotState.data?.mode ?? 'mock', t)} />
         <SummaryPanel
           label="Последнее обновление"
           value={formatDateTime(snapshotState.lastUpdatedAt)}
@@ -109,6 +110,10 @@ export function MonitoringPage(): React.JSX.Element {
       )}
     </section>
   );
+}
+
+function formatAppMode(mode: 'mock' | 'real', t: (key: string) => string): string {
+  return mode === 'real' ? t('layout.modeEquipment') : t('layout.modeSimulation');
 }
 
 function getGridClassName(columns: number | 'auto' | undefined): string {

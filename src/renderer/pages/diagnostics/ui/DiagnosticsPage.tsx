@@ -17,6 +17,7 @@ import { StatusBadge } from '../../../shared/ui/StatusBadge';
 import { translateLiteral } from '../../../shared/i18n/translateLiteral';
 
 export function DiagnosticsPage(): React.JSX.Element {
+  const { t } = useTranslation();
   const diagnostics = useDiagnostics();
 
   if (diagnostics.isLoading && !diagnostics.data) {
@@ -58,7 +59,7 @@ export function DiagnosticsPage(): React.JSX.Element {
 
       <div className="space-y-5">
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
-          <SummaryPanel label="Режим данных" value={snapshot.mode} />
+          <SummaryPanel label="Режим" value={formatAppMode(snapshot.mode, t)} />
           <SummaryPanel label="Общий статус" value={<StatusBadge status={snapshot.status} />} />
           <SummaryPanel label="Последнее обновление" value={formatDateTime(snapshot.updatedAt)} />
           <SummaryPanel label="Предупреждения" value={String(snapshot.activeWarningsCount)} />
@@ -66,9 +67,9 @@ export function DiagnosticsPage(): React.JSX.Element {
         </div>
 
         {config.app.mode === 'mock' ? (
-          <Alert type="info">Приложение работает в mock-режиме. Реальное оборудование не опрашивается.</Alert>
+          <Alert type="info">Приложение работает в режиме симуляции. Оборудование не опрашивается.</Alert>
         ) : (
-          <Alert type="warning">Приложение работает в real-режиме. Проверьте порт, адрес устройства и параметры Modbus перед ручным чтением.</Alert>
+          <Alert type="warning">Приложение работает в режиме оборудования. Проверьте порт, адрес устройства и параметры Modbus перед ручным чтением.</Alert>
         )}
 
         <div className="grid gap-5 xl:grid-cols-2">
@@ -94,6 +95,10 @@ export function DiagnosticsPage(): React.JSX.Element {
       </div>
     </section>
   );
+}
+
+function formatAppMode(mode: 'mock' | 'real', t: (key: string) => string): string {
+  return mode === 'real' ? t('layout.modeEquipment') : t('layout.modeSimulation');
 }
 
 type SummaryPanelProps = {
