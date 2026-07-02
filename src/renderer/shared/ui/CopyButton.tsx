@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from './Button';
 
 type CopyButtonProps = {
@@ -10,10 +11,11 @@ type CopyButtonProps = {
 
 export function CopyButton({
   getText,
-  label = 'Скопировать',
+  label,
   onCopied,
   onError
 }: CopyButtonProps): React.JSX.Element {
+  const { t } = useTranslation();
   const [isCopying, setIsCopying] = useState(false);
 
   async function handleCopy(): Promise<void> {
@@ -22,7 +24,7 @@ export function CopyButton({
       await navigator.clipboard.writeText(getText());
       onCopied?.();
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Clipboard недоступен';
+      const message = error instanceof Error ? error.message : t('common.clipboardUnavailable');
       onError?.(message);
     } finally {
       setIsCopying(false);
@@ -31,7 +33,7 @@ export function CopyButton({
 
   return (
     <Button disabled={isCopying} onClick={() => void handleCopy()} variant="secondary">
-      {isCopying ? 'Копирование...' : label}
+      {isCopying ? t('common.copying') : label ?? t('common.copy')}
     </Button>
   );
 }

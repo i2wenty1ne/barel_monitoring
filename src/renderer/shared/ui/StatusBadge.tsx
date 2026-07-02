@@ -1,12 +1,5 @@
+import { useTranslation } from 'react-i18next';
 import type { Status } from '../../../shared/types/monitoring.types';
-
-const statusLabels: Record<Status, string> = {
-  ok: 'OK',
-  warning: 'Предупреждение',
-  alarm: 'Авария',
-  'no-data': 'Нет данных',
-  'connection-error': 'Ошибка связи'
-};
 
 const statusClasses: Record<Status, string> = {
   ok: 'bg-teal-400/15 text-teal-200 ring-teal-300/30',
@@ -16,17 +9,27 @@ const statusClasses: Record<Status, string> = {
   'connection-error': 'bg-red-400/15 text-red-200 ring-red-300/30'
 };
 
+const statusLabelKeys: Record<Status, string> = {
+  ok: 'status.ok',
+  warning: 'status.warning',
+  alarm: 'status.alarm',
+  'no-data': 'status.noData',
+  'connection-error': 'status.connectionError'
+};
+
 type StatusBadgeProps = {
   status: Status;
   label?: string;
 };
 
 export function StatusBadge({ status, label }: StatusBadgeProps): React.JSX.Element {
+  const { t } = useTranslation();
+
   return (
     <span
       className={`inline-flex h-7 items-center rounded-md px-2.5 text-xs font-medium ring-1 ${statusClasses[status]}`}
     >
-      {label ?? statusLabels[status]}
+      {label ?? t(statusLabelKeys[status])}
     </span>
   );
 }

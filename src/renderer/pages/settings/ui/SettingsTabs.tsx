@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Tabs, type TabItem } from '../../../shared/ui/Tabs';
 
 export type SettingsTabId =
@@ -5,11 +6,7 @@ export type SettingsTabId =
   | 'interface'
   | 'service';
 
-export const settingsTabs: TabItem<SettingsTabId>[] = [
-  { id: 'thresholds', label: 'Пороги' },
-  { id: 'interface', label: 'Интерфейс' },
-  { id: 'service', label: 'Сервис' }
-];
+const settingsTabIds: SettingsTabId[] = ['thresholds', 'interface', 'service'];
 
 type SettingsTabsProps = {
   activeTab: SettingsTabId;
@@ -17,5 +14,11 @@ type SettingsTabsProps = {
 };
 
 export function SettingsTabs({ activeTab, onChange }: SettingsTabsProps): React.JSX.Element {
+  const { t } = useTranslation();
+  const settingsTabs: TabItem<SettingsTabId>[] = settingsTabIds.map((id) => ({
+    id,
+    label: t(`settings.tabs.${id}`)
+  }));
+
   return <Tabs activeTab={activeTab} items={settingsTabs} onChange={onChange} />;
 }

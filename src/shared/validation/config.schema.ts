@@ -409,6 +409,7 @@ export const appConfigSchema = z
     }),
     interface: z.object({
       theme: z.enum(['dark', 'light', 'system']),
+      language: z.enum(['ru', 'en']),
       cardSize: z.enum(['small', 'medium', 'large']),
       columns: z.union([z.literal('auto'), z.number().int().positive()]),
       showLastUpdate: z.boolean(),

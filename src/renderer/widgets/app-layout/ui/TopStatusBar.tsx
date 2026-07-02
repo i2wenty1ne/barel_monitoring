@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { formatDateTime } from '../../../../shared/lib/format';
 import type { DataServiceStatus } from '../../../../shared/types/monitoring.types';
 import { useMonitoringSnapshot } from '../../../entities/monitoring/model/useMonitoringSnapshot';
 import { StatusBadge } from '../../../shared/ui/StatusBadge';
 
 export function TopStatusBar(): React.JSX.Element {
+  const { t } = useTranslation();
   const { data, error, refresh } = useMonitoringSnapshot();
   const [serviceStatus, setServiceStatus] = useState<DataServiceStatus | null>(null);
 
@@ -29,15 +31,15 @@ export function TopStatusBar(): React.JSX.Element {
     };
   }, [data?.updatedAt]);
 
-  const connectionText = getConnectionText(serviceStatus);
+  const connectionText = getConnectionText(serviceStatus, t);
   const warningsCount = data?.activeWarningsCount ?? 0;
   const alarmsCount = data?.activeAlarmsCount ?? 0;
 
   return (
     <header className="flex min-h-14 flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-slate-950/70 px-6 py-2.5">
       <div className="flex flex-wrap items-center gap-4 text-sm">
-        <span className="text-slate-300">Операторская панель</span>
-        <span className="text-slate-500">Режим: {data?.mode ?? 'mock'}</span>
+        <span className="text-slate-300">{t('layout.operatorPanel')}</span>
+        <span className="text-slate-500">{t('layout.mode', { mode: data?.mode ?? 'mock' })}</span>
         <StatusBadge status={data?.status ?? (error ? 'connection-error' : 'no-data')} />
         <span className={serviceStatus?.connectionStatus === 'ok' ? 'text-teal-200' : 'text-amber-200'}>
           {connectionText}
@@ -45,49 +47,49 @@ export function TopStatusBar(): React.JSX.Element {
       </div>
       <div className="flex flex-wrap items-center gap-4 text-sm">
         <span className="text-slate-500">
-          Обновлено: {data ? formatDateTime(data.updatedAt) : 'Ожидание данных'}
+          {t('layout.updated', { value: data ? formatDateTime(data.updatedAt) : t('layout.waitingData') })}
         </span>
         {serviceStatus?.lastSuccessfulReadAt ? (
           <span className="text-slate-500">
-            Последний OK: {formatDateTime(serviceStatus.lastSuccessfulReadAt)}
+            {t('layout.lastOk', { value: formatDateTime(serviceStatus.lastSuccessfulReadAt) })}
           </span>
         ) : null}
         <span className={warningsCount > 0 ? 'text-amber-200' : 'text-slate-500'}>
-          Предупреждения: {warningsCount}
+          {t('layout.warnings', { count: warningsCount })}
         </span>
         <span className={alarmsCount > 0 ? 'text-rose-200' : 'text-slate-500'}>
-          Аварии: {alarmsCount}
+          {t('layout.alarms', { count: alarmsCount })}
         </span>
         <button
           className="rounded-md border border-white/10 bg-white/5 px-3 py-1.5 text-slate-100 transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-teal-300/40"
           onClick={() => void refresh()}
           type="button"
         >
-          Обновить
+          {t('layout.refresh')}
         </button>
       </div>
     </header>
   );
 }
 
-function getConnectionText(status: DataServiceStatus | null): string {
+function getConnectionText(status: DataServiceStatus | null, t: (key: string) => string): string {
   if (!status) {
-    return 'Связь: ожидание';
+    return t('layout.connectionWaiting');
   }
 
   if (status.connectionStatus === 'ok') {
-    return 'Связь OK';
+    return t('layout.connectionOk');
   }
 
   const error = status.lastError?.toLowerCase() ?? '';
 
   if (error.includes('порт') || error.includes('port')) {
-    return 'Ошибка порта';
+    return t('layout.portError');
   }
 
   if (error.includes('ответ') || error.includes('timeout')) {
-    return 'Нет ответа от устройства';
+    return t('layout.noDeviceResponse');
   }
 
-  return status.lastError ?? 'Ошибка связи';
+  return status.lastError ?? t('layout.connectionError');
 }

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AboutPage } from '../pages/about/ui/AboutPage';
 import { ActuatorsPage } from '../pages/actuators/ui/ActuatorsPage';
@@ -15,11 +16,17 @@ import { ProcessEditorPage } from '../pages/process-editor/ui/ProcessEditorPage'
 import { ProcessJobsPage } from '../pages/process-jobs/ui/ProcessJobsPage';
 import { ProcessesPage } from '../pages/processes/ui/ProcessesPage';
 import { SettingsPage } from '../pages/settings/ui/SettingsPage';
+import { I18nConfigSync } from '../shared/i18n/I18nConfigSync';
+import { LegacyDomTranslator } from '../shared/i18n/LegacyDomTranslator';
 import { AppLayout } from '../widgets/app-layout/ui/AppLayout';
 
 export function App(): React.JSX.Element {
+  useTranslation();
+
   return (
     <HashRouter>
+      <I18nConfigSync />
+      <LegacyDomTranslator />
       <Routes>
         <Route element={<AppLayout />}>
           <Route index element={<Navigate replace to="/monitoring" />} />
@@ -42,8 +49,8 @@ export function App(): React.JSX.Element {
             path="*"
             element={
               <PlaceholderPage
-                title="Страница не найдена"
-                message="Проверьте адрес или вернитесь в раздел мониторинга"
+                titleKey="pages.notFoundTitle"
+                messageKey="pages.notFoundMessage"
               />
             }
           />

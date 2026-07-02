@@ -1,4 +1,6 @@
+import { useTranslation } from 'react-i18next';
 import type { AppConfig } from '../../../../shared/types/config.types';
+import { languageOptions } from '../../../shared/i18n/i18n';
 import { Checkbox } from '../../../shared/ui/Checkbox';
 import { Panel } from '../../../shared/ui/Panel';
 import { Select } from '../../../shared/ui/Select';
@@ -12,11 +14,19 @@ export function InterfaceSettingsTab({
   config,
   onChange
 }: InterfaceSettingsTabProps): React.JSX.Element {
+  const { t } = useTranslation();
+
   return (
-    <Panel className="p-5" title="Интерфейс">
+    <Panel className="p-5" title={t('settings.interface.title')}>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <Select
-          label="Тема"
+          label={t('settings.interface.language')}
+          onChange={(language) => onChange({ ...config, interface: { ...config.interface, language } })}
+          options={languageOptions}
+          value={config.interface.language}
+        />
+        <Select
+          label={t('settings.interface.theme')}
           onChange={(theme) => onChange({ ...config, interface: { ...config.interface, theme } })}
           options={[
             { label: 'dark', value: 'dark' },
@@ -26,7 +36,7 @@ export function InterfaceSettingsTab({
           value={config.interface.theme}
         />
         <Select
-          label="Размер карточек"
+          label={t('settings.interface.cardSize')}
           onChange={(cardSize) =>
             onChange({ ...config, interface: { ...config.interface, cardSize } })
           }
@@ -38,7 +48,7 @@ export function InterfaceSettingsTab({
           value={config.interface.cardSize}
         />
         <Select
-          label="Количество колонок"
+          label={t('settings.interface.columns')}
           onChange={(columns) => onChange({ ...config, interface: { ...config.interface, columns } })}
           options={[
             { label: 'auto', value: 'auto' },
@@ -51,22 +61,22 @@ export function InterfaceSettingsTab({
         />
         <Checkbox
           checked={config.interface.showLastUpdate}
-          label="Показывать время обновления"
+          label={t('settings.interface.showLastUpdate')}
           onChange={(showLastUpdate) =>
             onChange({ ...config, interface: { ...config.interface, showLastUpdate } })
           }
         />
         <Checkbox
           checked={config.interface.showRawValuesInDetails}
-          label="Показывать сырые значения в деталях"
+          label={t('settings.interface.showRawValues')}
           onChange={(showRawValuesInDetails) =>
             onChange({ ...config, interface: { ...config.interface, showRawValuesInDetails } })
           }
         />
         <Checkbox
           checked={config.interface.fullscreenOnStart}
-          hint="Применится после перезапуска приложения."
-          label="Запускать в полноэкранном режиме"
+          hint={t('settings.interface.fullscreenHint')}
+          label={t('settings.interface.fullscreen')}
           onChange={(fullscreenOnStart) =>
             onChange({ ...config, interface: { ...config.interface, fullscreenOnStart } })
           }

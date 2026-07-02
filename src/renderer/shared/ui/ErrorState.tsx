@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next';
+
 type ErrorStateProps = {
   title?: string;
   message: string;
@@ -5,13 +7,15 @@ type ErrorStateProps = {
 };
 
 export function ErrorState({
-  title = 'Не удалось загрузить данные',
+  title,
   message,
   onRetry
 }: ErrorStateProps): React.JSX.Element {
+  const { t } = useTranslation();
+
   return (
     <div className="rounded-lg border border-rose-300/25 bg-rose-500/10 p-6">
-      <h2 className="text-lg font-medium text-rose-100">{title}</h2>
+      <h2 className="text-lg font-medium text-rose-100">{title ?? t('common.defaultErrorTitle')}</h2>
       <p className="mt-2 text-sm text-rose-100/80">{message}</p>
       {onRetry ? (
         <button
@@ -19,7 +23,7 @@ export function ErrorState({
           onClick={onRetry}
           type="button"
         >
-          Повторить
+          {t('common.retry')}
         </button>
       ) : null}
     </div>

@@ -36,7 +36,7 @@ export function formatDateTime(value: string | null | undefined): string {
     return '—';
   }
 
-  return new Intl.DateTimeFormat('ru-RU', {
+  return new Intl.DateTimeFormat(getLocale(), {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -57,7 +57,7 @@ export function formatTime(value: string | null | undefined): string {
     return '—';
   }
 
-  return new Intl.DateTimeFormat('ru-RU', {
+  return new Intl.DateTimeFormat(getLocale(), {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit'
@@ -67,10 +67,10 @@ export function formatTime(value: string | null | undefined): string {
 export function formatStatusLabel(value: string | null | undefined): string {
   const labels: Record<string, string> = {
     ok: 'OK',
-    warning: 'Предупреждение',
-    alarm: 'Авария',
-    'no-data': 'Нет данных',
-    'connection-error': 'Ошибка связи'
+    warning: i18next.t('status.warning', { defaultValue: 'Предупреждение' }),
+    alarm: i18next.t('status.alarm', { defaultValue: 'Авария' }),
+    'no-data': i18next.t('status.noData', { defaultValue: 'Нет данных' }),
+    'connection-error': i18next.t('status.connectionError', { defaultValue: 'Ошибка связи' })
   };
 
   return value ? (labels[value] ?? value) : '—';
@@ -78,9 +78,9 @@ export function formatStatusLabel(value: string | null | undefined): string {
 
 export function formatEventLevel(value: string | null | undefined): string {
   const labels: Record<string, string> = {
-    info: 'Информация',
-    warning: 'Предупреждение',
-    error: 'Ошибка'
+    info: i18next.t('events.levels.info', { defaultValue: 'Информация' }),
+    warning: i18next.t('events.levels.warning', { defaultValue: 'Предупреждение' }),
+    error: i18next.t('events.levels.error', { defaultValue: 'Ошибка' })
   };
 
   return value ? (labels[value] ?? value) : '—';
@@ -104,9 +104,14 @@ export function formatRelativeTime(value: string | null | undefined): string {
   const seconds = Math.max(0, Math.round((Date.now() - date.getTime()) / 1000));
 
   if (seconds < 60) {
-    return `${seconds} сек назад`;
+    return i18next.t('time.secondsAgo', { count: seconds, defaultValue: `${seconds} сек назад` });
   }
 
   const minutes = Math.round(seconds / 60);
-  return `${minutes} мин назад`;
+  return i18next.t('time.minutesAgo', { count: minutes, defaultValue: `${minutes} мин назад` });
 }
+
+function getLocale(): string {
+  return i18next.language === 'en' ? 'en-US' : 'ru-RU';
+}
+import i18next from 'i18next';

@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { ConfigValidationSummary } from '../../../features/config-editor/ui/ConfigValidationSummary';
 import { SaveConfigPanel } from '../../../features/config-editor/ui/SaveConfigPanel';
@@ -9,15 +10,24 @@ import { ThresholdsSettingsTab } from '../../../features/threshold-settings/ui/T
 import { Alert } from '../../../shared/ui/Alert';
 import { ConfirmDialog } from '../../../shared/ui/ConfirmDialog';
 import { ErrorState } from '../../../shared/ui/ErrorState';
+import { i18n, normalizeLanguage } from '../../../shared/i18n/i18n';
 import { LoadingState } from '../../../shared/ui/LoadingState';
 import { PageHeader } from '../../../shared/ui/PageHeader';
 import { SettingsTabs, type SettingsTabId } from './SettingsTabs';
 
 export function SettingsPage(): React.JSX.Element {
+  const { t } = useTranslation();
   const editor = useConfigEditor();
   const [searchParams, setSearchParams] = useSearchParams();
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
   const activeTab = getSettingsTab(searchParams.get('tab'));
+
+  useEffect(() => {
+    const language = normalizeLanguage(editor.config?.interface.language);
+    if (i18n.language !== language) {
+      void i18n.changeLanguage(language);
+    }
+  }, [editor.config?.interface.language]);
 
   function handleTabChange(tab: SettingsTabId): void {
     setSearchParams(tab === 'thresholds' ? {} : { tab });
@@ -26,7 +36,7 @@ export function SettingsPage(): React.JSX.Element {
   if (editor.isLoading && !editor.config) {
     return (
       <section className="mx-auto max-w-7xl">
-        <PageHeader eyebrow="Промышленный мониторинг" title="Настройки" />
+        <PageHeader eyebrow={t('common.appEyebrow')} title={t('settings.title')} />
         <LoadingState />
       </section>
     );
@@ -35,7 +45,7 @@ export function SettingsPage(): React.JSX.Element {
   if (editor.error && !editor.config) {
     return (
       <section className="mx-auto max-w-7xl">
-        <PageHeader eyebrow="Промышленный мониторинг" title="Настройки" />
+        <PageHeader eyebrow={t('common.appEyebrow')} title={t('settings.title')} />
         <ErrorState message={editor.error} onRetry={() => void editor.reloadConfig()} />
       </section>
     );
@@ -44,8 +54,8 @@ export function SettingsPage(): React.JSX.Element {
   if (!editor.config) {
     return (
       <section className="mx-auto max-w-7xl">
-        <PageHeader eyebrow="Промышленный мониторинг" title="Настройки" />
-        <ErrorState message="Config не загружен" onRetry={() => void editor.reloadConfig()} />
+        <PageHeader eyebrow={t('common.appEyebrow')} title={t('settings.title')} />
+        <ErrorState message={t('settings.configNotLoaded')} onRetry={() => void editor.reloadConfig()} />
       </section>
     );
   }
@@ -55,9 +65,9 @@ export function SettingsPage(): React.JSX.Element {
   return (
     <section className="mx-auto max-w-7xl">
       <PageHeader
-        eyebrow="Промышленный мониторинг"
-        title="Настройки"
-        description="Редактирование локального schema v2 config.json. Изменения применяются только после сохранения."
+        eyebrow={t('common.appEyebrow')}
+        title={t('settings.title')}
+        description={t('settings.description')}
       />
 
       <div className="space-y-5">
@@ -102,15 +112,15 @@ export function SettingsPage(): React.JSX.Element {
 
       {isResetDialogOpen ? (
         <ConfirmDialog
-          cancelText="Отмена"
-          confirmText="Сбросить"
-          message="Config.json будет перезаписан дефолтными настройками. Это действие нельзя отменить через UI."
+          cancelText={t('common.cancel')}
+          confirmText={t('settings.resetConfirm')}
+          message={t('settings.resetMessage')}
           onCancel={() => setIsResetDialogOpen(false)}
           onConfirm={() => {
             setIsResetDialogOpen(false);
             void editor.resetToDefault();
           }}
-          title="Сбросить настройки?"
+          title={t('settings.resetTitle')}
         />
       ) : null}
     </section>

@@ -326,8 +326,21 @@ function normalizeV2Config(config: Record<string, unknown> | Partial<AppConfig>)
     processGraphs: readArray(config.processGraphs),
     processJobs: readArray(config.processJobs),
     thresholds: isRecord(config.thresholds) ? (config.thresholds as AppConfig['thresholds']) : defaultConfig.thresholds,
-    interface: isRecord(config.interface) ? (config.interface as AppConfig['interface']) : defaultConfig.interface
+    interface: normalizeInterfaceConfig(config.interface)
   };
+}
+
+function normalizeInterfaceConfig(value: unknown): AppConfig['interface'] {
+  const interfaceConfig = isRecord(value) ? value : {};
+  const language = interfaceConfig.language === 'en' || interfaceConfig.language === 'ru'
+    ? interfaceConfig.language
+    : defaultConfig.interface.language;
+
+  return {
+    ...defaultConfig.interface,
+    ...interfaceConfig,
+    language
+  } as AppConfig['interface'];
 }
 
 function mergeById<TItem extends { id: string }>(

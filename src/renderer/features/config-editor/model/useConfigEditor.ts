@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { AppConfig } from '../../../../shared/types/config.types';
 import type { ConfigValidationError, SystemInfo } from '../../../../shared/types/ipc.types';
+import { i18n } from '../../../shared/i18n/i18n';
 import { cloneConfig, hasConfigChanged } from './config-editor.utils';
 import type { ConfigEditorState } from './config-editor.types';
 
@@ -48,9 +49,9 @@ export function useConfigEditor(): UseConfigEditorResult {
           ? [{ path: 'config', message: configResult.validationError }]
           : []
       );
-      setSuccessMessage(mode === 'reload' ? 'Config перечитан с диска' : null);
+      setSuccessMessage(mode === 'reload' ? i18n.t('settings.editor.reloaded') : null);
     } catch (caughtError) {
-      const message = caughtError instanceof Error ? caughtError.message : 'Config load error';
+      const message = caughtError instanceof Error ? caughtError.message : i18n.t('settings.editor.loadError');
       console.error(message, caughtError);
       if (isMountedRef.current) {
         setError(message);
@@ -103,10 +104,10 @@ export function useConfigEditor(): UseConfigEditorResult {
       setConfig(savedConfig);
       setOriginalConfig(cloneConfig(savedConfig));
       setValidationErrors([]);
-      setSuccessMessage(result.message ?? 'Config сохранён');
+      setSuccessMessage(i18n.t('settings.editor.saved'));
       await window.barrelMonitor.monitoring.readAllNow();
     } catch (caughtError) {
-      const message = caughtError instanceof Error ? caughtError.message : 'Config save error';
+      const message = caughtError instanceof Error ? caughtError.message : i18n.t('settings.editor.saveError');
       console.error(message, caughtError);
       if (isMountedRef.current) {
         setError(message);
@@ -123,7 +124,7 @@ export function useConfigEditor(): UseConfigEditorResult {
       setConfig(cloneConfig(originalConfig));
       setValidationErrors([]);
       setError(null);
-      setSuccessMessage('Черновик сброшен к последней сохранённой версии');
+      setSuccessMessage(i18n.t('settings.editor.draftReset'));
     }
   }, [originalConfig]);
 
@@ -149,10 +150,10 @@ export function useConfigEditor(): UseConfigEditorResult {
       setValidationErrors(
         result.validationError ? [{ path: 'config', message: result.validationError }] : []
       );
-      setSuccessMessage('Настройки сброшены к дефолтным');
+      setSuccessMessage(i18n.t('settings.editor.defaultsReset'));
       await window.barrelMonitor.monitoring.readAllNow();
     } catch (caughtError) {
-      const message = caughtError instanceof Error ? caughtError.message : 'Config reset error';
+      const message = caughtError instanceof Error ? caughtError.message : i18n.t('settings.editor.resetError');
       console.error(message, caughtError);
       if (isMountedRef.current) {
         setError(message);
@@ -167,14 +168,14 @@ export function useConfigEditor(): UseConfigEditorResult {
   const openConfigFolder = useCallback(async (): Promise<void> => {
     const result = await window.barrelMonitor.system.openConfigFolder();
     if (!result.success) {
-      setError(result.message ?? 'Не удалось открыть папку конфигурации');
+      setError(result.message ?? i18n.t('settings.editor.openConfigFolderError'));
     }
   }, []);
 
   const openLogsFolder = useCallback(async (): Promise<void> => {
     const result = await window.barrelMonitor.system.openLogsFolder();
     if (!result.success) {
-      setError(result.message ?? 'Не удалось открыть папку логов');
+      setError(result.message ?? i18n.t('settings.editor.openLogsFolderError'));
     }
   }, []);
 

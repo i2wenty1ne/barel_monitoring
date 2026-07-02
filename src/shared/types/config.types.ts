@@ -421,6 +421,7 @@ export type ExportResult = {
 };
 
 export type CardSize = 'small' | 'medium' | 'large';
+export type InterfaceLanguage = 'ru' | 'en';
 
 export type ValueThresholdConfig = {
   warningLow: number;
@@ -436,6 +437,7 @@ export type ThresholdConfig = {
 
 export type InterfaceConfig = {
   theme: 'dark' | 'light' | 'system';
+  language: InterfaceLanguage;
   cardSize: CardSize;
   columns: 'auto' | number;
   showLastUpdate: boolean;

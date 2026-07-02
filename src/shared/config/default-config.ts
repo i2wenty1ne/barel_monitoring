@@ -176,6 +176,7 @@ export const defaultConfig: AppConfig = {
   },
   interface: {
     theme: 'dark',
+    language: 'ru',
     cardSize: 'medium',
     columns: 'auto',
     showLastUpdate: true,
