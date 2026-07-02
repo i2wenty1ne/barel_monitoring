@@ -12,19 +12,25 @@ import { DataTable, type DataTableColumn } from '../../../shared/ui/DataTable';
 import { EmptyState } from '../../../shared/ui/EmptyState';
 import { ErrorState } from '../../../shared/ui/ErrorState';
 import { LoadingState } from '../../../shared/ui/LoadingState';
+import { Modal } from '../../../shared/ui/Modal';
 import { NumberInput } from '../../../shared/ui/NumberInput';
 import { PageHeader } from '../../../shared/ui/PageHeader';
 import { Panel } from '../../../shared/ui/Panel';
 import { Select } from '../../../shared/ui/Select';
 import { TextInput } from '../../../shared/ui/TextInput';
 
+type DataSourceFormState = {
+  draft: DataSource;
+  mode: 'create' | 'edit';
+  originalId: string;
+};
+
 export function DataSourcesPage(): React.JSX.Element {
   const { config, isLoading, error, refresh } = useAppConfig();
   const [message, setMessage] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [draft, setDraft] = useState<DataSource | null>(null);
-  const [editingSourceId, setEditingSourceId] = useState<string | null>(null);
+  const [formState, setFormState] = useState<DataSourceFormState | null>(null);
   const [ports, setPorts] = useState<SerialPortInfo[]>([]);
   const [testResult, setTestResult] = useState<TestConnectionResult | null>(null);
 
@@ -101,40 +107,38 @@ export function DataSourcesPage(): React.JSX.Element {
     }
   }
 
-  async function addSource(type: DataSourceType): Promise<void> {
+  function openCreateSource(type: DataSourceType): void {
     const now = new Date().toISOString();
     const id = createUniqueId(`${type}-1`, currentConfig.dataSources.map((source) => source.id));
     const source = createDefaultSource(id, type, currentConfig.app.pollingIntervalMs, now);
-    const isSaved = await save({ ...currentConfig, dataSources: [...currentConfig.dataSources, source] }, 'Источник данных добавлен');
-    if (isSaved) {
-      setDraft(source);
-      setEditingSourceId(source.id);
-    }
+    setFormState({ draft: source, mode: 'create', originalId: id });
+    setMessage(null);
+    setSaveError(null);
+    setTestResult(null);
   }
 
   function startEditSource(source: DataSource): void {
-    setDraft(source);
-    setEditingSourceId(source.id);
+    setFormState({ draft: cloneDataSource(source), mode: 'edit', originalId: source.id });
     setMessage(null);
     setSaveError(null);
     setTestResult(null);
   }
 
   async function saveDraft(): Promise<void> {
-    if (!draft) {
+    if (!formState) {
       return;
     }
 
-    const sourceId = editingSourceId ?? draft.id;
+    const sourceId = formState.originalId;
     const savedSource = currentConfig.dataSources.find((source) => source.id === sourceId);
     const nextSource = {
-      ...draft,
-      id: draft.id.trim(),
-      name: draft.name.trim(),
+      ...formState.draft,
+      id: formState.draft.id.trim(),
+      name: formState.draft.name.trim(),
       updatedAt: new Date().toISOString()
     };
 
-    if (!savedSource) {
+    if (formState.mode === 'edit' && !savedSource) {
       setSaveError('Редактируемый источник больше не найден. Обновите список и повторите изменение.');
       return;
     }
@@ -154,21 +158,25 @@ export function DataSourcesPage(): React.JSX.Element {
       return;
     }
 
+    const nextDataSources = formState.mode === 'create'
+      ? [...currentConfig.dataSources, nextSource]
+      : currentConfig.dataSources.map((source) =>
+          source.id === sourceId ? nextSource : source
+        );
     const isSaved = await save(
       {
         ...currentConfig,
-        dataSources: currentConfig.dataSources.map((source) =>
-          source.id === sourceId ? nextSource : source
-        ),
+        dataSources: nextDataSources,
         points: currentConfig.points.map((point) =>
-          point.dataSourceId === sourceId ? { ...point, dataSourceId: nextSource.id, updatedAt: nextSource.updatedAt } : point
+          formState.mode === 'edit' && point.dataSourceId === sourceId
+            ? { ...point, dataSourceId: nextSource.id, updatedAt: nextSource.updatedAt }
+            : point
         )
       },
-      'Источник данных сохранен'
+      formState.mode === 'create' ? 'Источник данных добавлен' : 'Источник данных сохранен'
     );
     if (isSaved) {
-      setDraft(null);
-      setEditingSourceId(null);
+      setFormState(null);
     }
   }
 
@@ -221,10 +229,10 @@ export function DataSourcesPage(): React.JSX.Element {
         description="Источник данных описывает текущие значения и команды: Modbus RTU, симуляцию, ручной ввод и будущие TCP/HTTP/MQTT."
         actions={
           <div className="flex flex-wrap gap-2">
-            <Button disabled={isSaving} onClick={() => void addSource('modbus-rtu')} variant="secondary">
+            <Button disabled={isSaving} onClick={() => openCreateSource('modbus-rtu')} variant="secondary">
               Добавить Modbus RTU
             </Button>
-            <Button disabled={isSaving} onClick={() => void addSource('mock')} variant="ghost">
+            <Button disabled={isSaving} onClick={() => openCreateSource('mock')} variant="ghost">
               Добавить mock
             </Button>
           </div>
@@ -247,28 +255,30 @@ export function DataSourcesPage(): React.JSX.Element {
             <DataTable compact columns={columns} getRowKey={(source) => source.id} rows={currentConfig.dataSources} />
           )}
         </Panel>
-
-        {draft ? (
-          <Panel className="p-5" title={`Редактирование: ${draft.name}`}>
-            <DataSourceForm
-              draft={draft}
-              onChange={setDraft}
-              ports={ports}
-            />
-            <div className="mt-5 flex flex-wrap gap-2">
+      </div>
+      {formState ? (
+        <Modal
+          footer={
+            <>
               <Button disabled={isSaving} onClick={() => void saveDraft()} variant="secondary">
-                Сохранить источник
+                {formState.mode === 'create' ? 'Создать источник' : 'Сохранить источник'}
               </Button>
-              <Button disabled={isSaving} onClick={() => {
-                setDraft(null);
-                setEditingSourceId(null);
-              }} variant="ghost">
+              <Button disabled={isSaving} onClick={() => setFormState(null)} variant="ghost">
                 Отмена
               </Button>
-            </div>
-          </Panel>
-        ) : null}
-      </div>
+            </>
+          }
+          isCloseDisabled={isSaving}
+          onClose={() => setFormState(null)}
+          title={formState.mode === 'create' ? `Создание: ${formState.draft.name}` : `Редактирование: ${formState.draft.name}`}
+        >
+          <DataSourceForm
+            draft={formState.draft}
+            onChange={(draft) => setFormState((current) => current ? { ...current, draft } : current)}
+            ports={ports}
+          />
+        </Modal>
+      ) : null}
     </section>
   );
 }
@@ -410,6 +420,14 @@ function createDefaultSource(
     createdAt: now,
     updatedAt: now
   } as DataSource;
+}
+
+function cloneDataSource(source: DataSource): DataSource {
+  return {
+    ...source,
+    connection: { ...source.connection },
+    metadata: source.metadata ? { ...source.metadata } : undefined
+  };
 }
 
 function formatConnection(source: DataSource): React.ReactNode {

@@ -11,6 +11,7 @@ import { DataTable, type DataTableColumn } from '../../../shared/ui/DataTable';
 import { EmptyState } from '../../../shared/ui/EmptyState';
 import { ErrorState } from '../../../shared/ui/ErrorState';
 import { LoadingState } from '../../../shared/ui/LoadingState';
+import { Modal } from '../../../shared/ui/Modal';
 import { NumberInput } from '../../../shared/ui/NumberInput';
 import { PageHeader } from '../../../shared/ui/PageHeader';
 import { Panel } from '../../../shared/ui/Panel';
@@ -32,12 +33,18 @@ const assetTypes: AssetType[] = [
   'custom'
 ];
 
+type AssetFormState = {
+  draft: Asset;
+  mode: 'create' | 'edit';
+  originalId: string;
+};
+
 export function AssetsPage(): React.JSX.Element {
   const { config, isLoading, error, refresh } = useAppConfig();
   const [message, setMessage] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [draft, setDraft] = useState<Asset | null>(null);
+  const [formState, setFormState] = useState<AssetFormState | null>(null);
 
   if (isLoading || !config) {
     return <LoadingState />;
@@ -70,7 +77,7 @@ export function AssetsPage(): React.JSX.Element {
       render: (asset) => {
         return (
           <div className="flex flex-wrap justify-end gap-2">
-            <Button disabled={isSaving} onClick={() => setDraft(asset)} variant="secondary">
+            <Button disabled={isSaving} onClick={() => openEditAsset(asset)} variant="secondary">
               Редактировать
             </Button>
             <Button disabled={isSaving} onClick={() => void deleteAsset(asset)} variant="danger">
@@ -82,7 +89,7 @@ export function AssetsPage(): React.JSX.Element {
     }
   ];
 
-  async function save(nextConfig: typeof currentConfig, successMessage: string): Promise<void> {
+  async function save(nextConfig: typeof currentConfig, successMessage: string): Promise<boolean> {
     setIsSaving(true);
     setMessage(null);
     setSaveError(null);
@@ -93,37 +100,49 @@ export function AssetsPage(): React.JSX.Element {
       }
       setMessage(successMessage);
       await refresh();
+      return true;
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : 'Ошибка сохранения config');
+      return false;
     } finally {
       setIsSaving(false);
     }
   }
 
-  async function addAsset(type: AssetType): Promise<void> {
+  function openCreateAsset(type: AssetType): void {
     const now = new Date().toISOString();
     const id = createUniqueId(`${type}-1`, currentConfig.assets.map((asset) => asset.id));
     const asset = createDefaultAsset(id, type, currentConfig.assets.length + 1, now);
-    await save({ ...currentConfig, assets: [...currentConfig.assets, asset] }, 'Объект добавлен');
-    setDraft(asset);
+    setFormState({ draft: asset, mode: 'create', originalId: id });
+    setMessage(null);
+    setSaveError(null);
+  }
+
+  function openEditAsset(asset: Asset): void {
+    setFormState({ draft: cloneAsset(asset), mode: 'edit', originalId: asset.id });
+    setMessage(null);
+    setSaveError(null);
   }
 
   async function saveDraft(): Promise<void> {
-    if (!draft) {
+    if (!formState) {
       return;
     }
 
     const now = new Date().toISOString();
-    const normalizedDraft = normalizeAssetDraft(draft);
-    await save(
+    const normalizedDraft = { ...normalizeAssetDraft(formState.draft), updatedAt: now };
+    const nextAssets = formState.mode === 'create'
+      ? [...currentConfig.assets, normalizedDraft]
+      : currentConfig.assets.map((asset) => asset.id === formState.originalId ? normalizedDraft : asset);
+    const saved = await save(
       {
         ...currentConfig,
-        assets: currentConfig.assets.map((asset) => asset.id === normalizedDraft.id ? { ...normalizedDraft, updatedAt: now } : asset),
+        assets: nextAssets,
         points: currentConfig.points.map((point) => ({
           ...point,
           assetId: normalizedDraft.pointIds.includes(point.id)
             ? normalizedDraft.id
-            : point.assetId === normalizedDraft.id
+            : point.assetId === formState.originalId
               ? undefined
               : point.assetId
         })),
@@ -131,14 +150,16 @@ export function AssetsPage(): React.JSX.Element {
           ...actuator,
           assetId: normalizedDraft.actuatorIds.includes(actuator.id)
             ? normalizedDraft.id
-            : actuator.assetId === normalizedDraft.id
+            : actuator.assetId === formState.originalId
               ? undefined
               : actuator.assetId
         }))
       },
-      'Объект сохранен'
+      formState.mode === 'create' ? 'Объект добавлен' : 'Объект сохранен'
     );
-    setDraft(null);
+    if (saved) {
+      setFormState(null);
+    }
   }
 
   async function deleteAsset(asset: Asset): Promise<void> {
@@ -172,13 +193,13 @@ export function AssetsPage(): React.JSX.Element {
         description="Модель объектов из SPEC 1.0.0: бочки, резервуары, насосы, весы, станции и другие промышленные объекты."
         actions={
           <div className="flex flex-wrap gap-2">
-            <Button disabled={isSaving} onClick={() => void addAsset('barrel')} variant="secondary">
+            <Button disabled={isSaving} onClick={() => openCreateAsset('barrel')} variant="secondary">
               Добавить бочку
             </Button>
-            <Button disabled={isSaving} onClick={() => void addAsset('pump')} variant="ghost">
+            <Button disabled={isSaving} onClick={() => openCreateAsset('pump')} variant="ghost">
               Добавить насос
             </Button>
-            <Button disabled={isSaving} onClick={() => void addAsset('scale')} variant="ghost">
+            <Button disabled={isSaving} onClick={() => openCreateAsset('scale')} variant="ghost">
               Добавить весы
             </Button>
           </div>
@@ -194,26 +215,31 @@ export function AssetsPage(): React.JSX.Element {
             <DataTable compact columns={columns} getRowKey={(asset) => asset.id} rows={currentConfig.assets} />
           )}
         </Panel>
-
-        {draft ? (
-          <Panel className="p-5" title={`Редактирование: ${draft.name}`}>
-            <AssetForm
-              actuators={currentConfig.actuators}
-              draft={draft}
-              onChange={setDraft}
-              points={currentConfig.points}
-            />
-            <div className="mt-5 flex flex-wrap gap-2">
+      </div>
+      {formState ? (
+        <Modal
+          footer={
+            <>
               <Button disabled={isSaving} onClick={() => void saveDraft()} variant="secondary">
-                Сохранить объект
+                {formState.mode === 'create' ? 'Создать объект' : 'Сохранить объект'}
               </Button>
-              <Button disabled={isSaving} onClick={() => setDraft(null)} variant="ghost">
+              <Button disabled={isSaving} onClick={() => setFormState(null)} variant="ghost">
                 Отмена
               </Button>
-            </div>
-          </Panel>
-        ) : null}
-      </div>
+            </>
+          }
+          isCloseDisabled={isSaving}
+          onClose={() => setFormState(null)}
+          title={formState.mode === 'create' ? `Создание: ${formState.draft.name}` : `Редактирование: ${formState.draft.name}`}
+        >
+          <AssetForm
+            actuators={currentConfig.actuators}
+            draft={formState.draft}
+            onChange={(draft) => setFormState((current) => current ? { ...current, draft } : current)}
+            points={currentConfig.points}
+          />
+        </Modal>
+      ) : null}
     </section>
   );
 }
@@ -399,6 +425,16 @@ function createDefaultAsset(id: string, type: AssetType, displayOrder: number, n
     },
     createdAt: now,
     updatedAt: now
+  };
+}
+
+function cloneAsset(asset: Asset): Asset {
+  return {
+    ...asset,
+    pointIds: [...asset.pointIds],
+    actuatorIds: [...asset.actuatorIds],
+    childAssetIds: asset.childAssetIds ? [...asset.childAssetIds] : undefined,
+    metadata: { ...asset.metadata }
   };
 }
 

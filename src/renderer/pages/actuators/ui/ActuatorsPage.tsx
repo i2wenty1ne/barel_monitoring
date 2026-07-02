@@ -21,6 +21,7 @@ import { DataTable, type DataTableColumn } from '../../../shared/ui/DataTable';
 import { EmptyState } from '../../../shared/ui/EmptyState';
 import { ErrorState } from '../../../shared/ui/ErrorState';
 import { LoadingState } from '../../../shared/ui/LoadingState';
+import { Modal } from '../../../shared/ui/Modal';
 import { NumberInput } from '../../../shared/ui/NumberInput';
 import { PageHeader } from '../../../shared/ui/PageHeader';
 import { Panel } from '../../../shared/ui/Panel';
@@ -191,7 +192,7 @@ export function ActuatorsPage(): React.JSX.Element {
     }
   ];
 
-  async function save(nextConfig: typeof currentConfig, successMessage: string): Promise<void> {
+  async function save(nextConfig: typeof currentConfig, successMessage: string): Promise<boolean> {
     setIsSaving(true);
     setMessage(null);
     setSaveError(null);
@@ -203,8 +204,10 @@ export function ActuatorsPage(): React.JSX.Element {
       }
       setMessage(successMessage);
       await refresh();
+      return true;
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : 'Ошибка сохранения config');
+      return false;
     } finally {
       setIsSaving(false);
     }
@@ -238,7 +241,7 @@ export function ActuatorsPage(): React.JSX.Element {
     const existingActuator = currentConfig.actuators.find((item) => item.id === draft.id);
     const pointIdsToReplace = new Set([draft.commandPointId, ...(existingActuator?.commandPointIds ?? [])]);
 
-    await save(
+    const saved = await save(
       {
         ...currentConfig,
         actuators: existingActuatorIds.has(actuator.id)
@@ -268,7 +271,9 @@ export function ActuatorsPage(): React.JSX.Element {
       },
       draft.isNew ? 'Actuator и ControlPoint созданы' : 'Actuator и ControlPoint сохранены'
     );
-    setDraft(null);
+    if (saved) {
+      setDraft(null);
+    }
   }
 
   async function deleteActuator(actuator: Actuator): Promise<void> {
@@ -377,14 +382,16 @@ export function ActuatorsPage(): React.JSX.Element {
       updatedAt: now
     };
 
-    await save(
+    const saved = await save(
       {
         ...currentConfig,
         interlocks: [...currentConfig.interlocks, interlock]
       },
       'Interlock сохранен'
     );
-    setInterlockDraft(null);
+    if (saved) {
+      setInterlockDraft(null);
+    }
   }
 
   async function deleteInterlock(interlock: Interlock): Promise<void> {
@@ -470,27 +477,6 @@ export function ActuatorsPage(): React.JSX.Element {
           </Panel>
         </div>
 
-        {draft ? (
-          <Panel className="p-5" title={draft.isNew ? 'Создание Actuator + ControlPoint' : `Редактирование: ${draft.name}`}>
-            <ActuatorForm
-              controlPoints={controlPoints}
-              dataSources={currentConfig.dataSources}
-              draft={draft}
-              feedbackPoints={telemetryPoints}
-              onChange={setDraft}
-              assets={currentConfig.assets}
-            />
-            <div className="mt-5 flex flex-wrap gap-2">
-              <Button disabled={isSaving} onClick={() => void saveDraft()} variant="primary">
-                Сохранить
-              </Button>
-              <Button disabled={isSaving} onClick={() => setDraft(null)} variant="ghost">
-                Отмена
-              </Button>
-            </div>
-          </Panel>
-        ) : null}
-
         <div className="grid gap-5 xl:grid-cols-[420px_1fr]">
           <Panel className="p-5" title="Блокировки">
             <div className="space-y-4">
@@ -498,24 +484,6 @@ export function ActuatorsPage(): React.JSX.Element {
                 <Button disabled={isSaving} onClick={() => setInterlockDraft(createDefaultInterlockDraft(currentConfig.actuators, telemetryPoints))} variant="secondary">
                   Создать interlock
                 </Button>
-              ) : null}
-              {interlockDraft ? (
-                <InterlockForm
-                  actuators={currentConfig.actuators}
-                  draft={interlockDraft}
-                  onChange={setInterlockDraft}
-                  points={telemetryPoints}
-                />
-              ) : null}
-              {interlockDraft ? (
-                <div className="flex flex-wrap gap-2">
-                  <Button disabled={isSaving} onClick={() => void saveInterlock()} variant="primary">
-                    Сохранить interlock
-                  </Button>
-                  <Button disabled={isSaving} onClick={() => setInterlockDraft(null)} variant="ghost">
-                    Отмена
-                  </Button>
-                </div>
               ) : null}
               {currentConfig.interlocks.length === 0 ? (
                 <EmptyState title="Interlocks не настроены" description="Добавьте правило, например запрет пуска при низком уровне." />
@@ -534,6 +502,59 @@ export function ActuatorsPage(): React.JSX.Element {
           </Panel>
         </div>
       </div>
+
+      {draft ? (
+        <Modal
+          footer={
+            <>
+              <Button disabled={isSaving} onClick={() => void saveDraft()} variant="primary">
+                {draft.isNew ? 'Создать actuator' : 'Сохранить'}
+              </Button>
+              <Button disabled={isSaving} onClick={() => setDraft(null)} variant="ghost">
+                Отмена
+              </Button>
+            </>
+          }
+          isCloseDisabled={isSaving}
+          onClose={() => setDraft(null)}
+          title={draft.isNew ? 'Создание Actuator + ControlPoint' : `Редактирование: ${draft.name}`}
+        >
+          <ActuatorForm
+            assets={currentConfig.assets}
+            controlPoints={controlPoints}
+            dataSources={currentConfig.dataSources}
+            draft={draft}
+            feedbackPoints={telemetryPoints}
+            onChange={setDraft}
+          />
+        </Modal>
+      ) : null}
+
+      {interlockDraft ? (
+        <Modal
+          footer={
+            <>
+              <Button disabled={isSaving} onClick={() => void saveInterlock()} variant="primary">
+                Сохранить interlock
+              </Button>
+              <Button disabled={isSaving} onClick={() => setInterlockDraft(null)} variant="ghost">
+                Отмена
+              </Button>
+            </>
+          }
+          isCloseDisabled={isSaving}
+          maxWidthClassName="max-w-3xl"
+          onClose={() => setInterlockDraft(null)}
+          title="Создание interlock"
+        >
+          <InterlockForm
+            actuators={currentConfig.actuators}
+            draft={interlockDraft}
+            onChange={setInterlockDraft}
+            points={telemetryPoints}
+          />
+        </Modal>
+      ) : null}
 
       {pendingCommand ? (
         <ConfirmDialog

@@ -11,18 +11,25 @@ import { DataTable, type DataTableColumn } from '../../../shared/ui/DataTable';
 import { EmptyState } from '../../../shared/ui/EmptyState';
 import { ErrorState } from '../../../shared/ui/ErrorState';
 import { LoadingState } from '../../../shared/ui/LoadingState';
+import { Modal } from '../../../shared/ui/Modal';
 import { NumberInput } from '../../../shared/ui/NumberInput';
 import { PageHeader } from '../../../shared/ui/PageHeader';
 import { Panel } from '../../../shared/ui/Panel';
 import { Select } from '../../../shared/ui/Select';
 import { TextInput } from '../../../shared/ui/TextInput';
 
+type PointFormState = {
+  draft: Point;
+  mode: 'create' | 'edit';
+  originalId: string;
+};
+
 export function PointsPage(): React.JSX.Element {
   const { config, isLoading, error, refresh } = useAppConfig();
   const [message, setMessage] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [draft, setDraft] = useState<Point | null>(null);
+  const [formState, setFormState] = useState<PointFormState | null>(null);
   const [manualReadResult, setManualReadResult] = useState<ManualReadResult | null>(null);
 
   if (isLoading || !config) {
@@ -56,7 +63,7 @@ export function PointsPage(): React.JSX.Element {
       title: '',
       render: (point) => (
         <div className="flex flex-wrap justify-end gap-2">
-          <Button disabled={isSaving} onClick={() => setDraft(point)} variant="secondary">
+          <Button disabled={isSaving} onClick={() => openEditPoint(point)} variant="secondary">
             Редактировать
           </Button>
           <Button disabled={isSaving || !canManualRead(point)} onClick={() => void manualRead(point)} variant="ghost">
@@ -70,7 +77,7 @@ export function PointsPage(): React.JSX.Element {
     }
   ];
 
-  async function save(nextConfig: typeof currentConfig, successMessage: string): Promise<void> {
+  async function save(nextConfig: typeof currentConfig, successMessage: string): Promise<boolean> {
     setIsSaving(true);
     setMessage(null);
     setSaveError(null);
@@ -81,14 +88,16 @@ export function PointsPage(): React.JSX.Element {
       }
       setMessage(successMessage);
       await refresh();
+      return true;
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : 'Ошибка сохранения config');
+      return false;
     } finally {
       setIsSaving(false);
     }
   }
 
-  async function addTelemetryPoint(): Promise<void> {
+  function openCreateTelemetryPoint(): void {
     const dataSource = currentConfig.dataSources.find((source) => source.enabled) ?? currentConfig.dataSources[0];
     const asset = currentConfig.assets[0];
 
@@ -100,41 +109,55 @@ export function PointsPage(): React.JSX.Element {
     const now = new Date().toISOString();
     const id = createUniqueId('telemetry-point-1', currentConfig.points.map((point) => point.id));
     const point = createDefaultTelemetryPoint(id, dataSource.id, asset?.id, now, getDefaultSlaveId(dataSource));
-    await save(
-      {
-        ...currentConfig,
-        points: [...currentConfig.points, point],
-        assets: asset
-          ? currentConfig.assets.map((item) =>
-              item.id === asset.id ? { ...item, pointIds: [...new Set([...item.pointIds, id])], updatedAt: now } : item
-            )
-          : currentConfig.assets
-      },
-      'Telemetry point добавлена'
-    );
-    setDraft(point);
+    setFormState({ draft: point, mode: 'create', originalId: id });
+    setMessage(null);
+    setSaveError(null);
+  }
+
+  function openEditPoint(point: Point): void {
+    setFormState({ draft: clonePoint(point), mode: 'edit', originalId: point.id });
+    setMessage(null);
+    setSaveError(null);
   }
 
   async function saveDraft(): Promise<void> {
-    if (!draft) {
+    if (!formState) {
       return;
     }
 
     const now = new Date().toISOString();
-    await save(
+    const savedPoint = { ...formState.draft, updatedAt: now };
+    const nextPoints = formState.mode === 'create'
+      ? [...currentConfig.points, savedPoint]
+      : currentConfig.points.map((point) => point.id === formState.originalId ? savedPoint : point);
+    const saved = await save(
       {
         ...currentConfig,
-        points: currentConfig.points.map((point) => point.id === draft.id ? { ...draft, updatedAt: now } : point),
+        points: nextPoints,
         assets: currentConfig.assets.map((asset) => {
-          const withoutPoint = asset.pointIds.filter((pointId) => pointId !== draft.id);
-          return asset.id === draft.assetId
-            ? { ...asset, pointIds: [...withoutPoint, draft.id], updatedAt: now }
-            : { ...asset, pointIds: withoutPoint, updatedAt: now };
-        })
+          const metadata = replaceMetadataPointId(asset.metadata, formState.originalId, savedPoint.id);
+          const withoutPoint = asset.pointIds.filter((pointId) => pointId !== formState.originalId && pointId !== savedPoint.id);
+          return asset.id === savedPoint.assetId
+            ? { ...asset, metadata, pointIds: [...withoutPoint, savedPoint.id], updatedAt: now }
+            : { ...asset, metadata, pointIds: withoutPoint, updatedAt: now };
+        }),
+        monitoringProfiles: currentConfig.monitoringProfiles.map((profile) => ({
+          ...profile,
+          pointConfigs: profile.pointConfigs.map((pointConfig) =>
+            pointConfig.pointId === formState.originalId ? { ...pointConfig, pointId: savedPoint.id } : pointConfig
+          )
+        })),
+        actuators: currentConfig.actuators.map((actuator) => ({
+          ...actuator,
+          commandPointIds: actuator.commandPointIds.map((pointId) => pointId === formState.originalId ? savedPoint.id : pointId),
+          feedbackPointIds: actuator.feedbackPointIds.map((pointId) => pointId === formState.originalId ? savedPoint.id : pointId)
+        }))
       },
-      'Точка данных сохранена'
+      formState.mode === 'create' ? 'Telemetry point добавлена' : 'Точка данных сохранена'
     );
-    setDraft(null);
+    if (saved) {
+      setFormState(null);
+    }
   }
 
   async function deletePoint(point: Point): Promise<void> {
@@ -211,7 +234,7 @@ export function PointsPage(): React.JSX.Element {
         title="Точки данных"
         description="Точки телеметрии и управления поверх источников данных."
         actions={
-          <Button disabled={isSaving} onClick={() => void addTelemetryPoint()} variant="secondary">
+          <Button disabled={isSaving} onClick={openCreateTelemetryPoint} variant="secondary">
             Добавить telemetry
           </Button>
         }
@@ -234,26 +257,31 @@ export function PointsPage(): React.JSX.Element {
             <DataTable compact columns={columns} getRowKey={(point) => point.id} maxHeight="620px" rows={currentConfig.points} />
           )}
         </Panel>
-
-        {draft ? (
-          <Panel className="p-5" title={`Редактирование: ${draft.name}`}>
-            <PointForm
-              assets={currentConfig.assets}
-              dataSources={currentConfig.dataSources}
-              draft={draft}
-              onChange={setDraft}
-            />
-            <div className="mt-5 flex flex-wrap gap-2">
+      </div>
+      {formState ? (
+        <Modal
+          footer={
+            <>
               <Button disabled={isSaving} onClick={() => void saveDraft()} variant="secondary">
-                Сохранить точку
+                {formState.mode === 'create' ? 'Создать точку' : 'Сохранить точку'}
               </Button>
-              <Button disabled={isSaving} onClick={() => setDraft(null)} variant="ghost">
+              <Button disabled={isSaving} onClick={() => setFormState(null)} variant="ghost">
                 Отмена
               </Button>
-            </div>
-          </Panel>
-        ) : null}
-      </div>
+            </>
+          }
+          isCloseDisabled={isSaving}
+          onClose={() => setFormState(null)}
+          title={formState.mode === 'create' ? `Создание: ${formState.draft.name}` : `Редактирование: ${formState.draft.name}`}
+        >
+          <PointForm
+            assets={currentConfig.assets}
+            dataSources={currentConfig.dataSources}
+            draft={formState.draft}
+            onChange={(draft) => setFormState((current) => current ? { ...current, draft } : current)}
+          />
+        </Modal>
+      ) : null}
     </section>
   );
 }
@@ -436,6 +464,33 @@ function createDefaultTelemetryPoint(id: string, dataSourceId: string, assetId: 
     createdAt: now,
     updatedAt: now
   };
+}
+
+function clonePoint(point: Point): Point {
+  return {
+    ...point,
+    address: point.address ? { ...point.address } : undefined,
+    scaling: point.scaling ? { ...point.scaling } : undefined,
+    thresholds: point.thresholds ? { ...point.thresholds } : undefined
+  };
+}
+
+function replaceMetadataPointId(
+  metadata: Record<string, unknown> | undefined,
+  previousPointId: string,
+  nextPointId: string
+): Record<string, unknown> | undefined {
+  if (!metadata) {
+    return metadata;
+  }
+
+  const nextMetadata = { ...metadata };
+  (['levelPointId', 'temperaturePointId', 'volumePointId'] as const).forEach((key) => {
+    if (nextMetadata[key] === previousPointId) {
+      nextMetadata[key] = nextPointId;
+    }
+  });
+  return nextMetadata;
 }
 
 function updateValueType(point: Point, valueType: PointValueType): Point {
