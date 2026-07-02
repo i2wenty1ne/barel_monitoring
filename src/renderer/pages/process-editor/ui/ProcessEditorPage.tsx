@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
 import {
   Background,
@@ -38,6 +39,7 @@ import { PageHeader } from '../../../shared/ui/PageHeader';
 import { Panel } from '../../../shared/ui/Panel';
 import { Select } from '../../../shared/ui/Select';
 import { TextInput } from '../../../shared/ui/TextInput';
+import { translateLiteral } from '../../../shared/i18n/translateLiteral';
 
 type ProcessNodeType = ProcessGraphNode['type'];
 
@@ -195,7 +197,7 @@ export function ProcessEditorPage(): React.JSX.Element {
       }
       const job = await window.barrelMonitor.processes.startJob(currentProcess.id, {});
       if (job.status !== 'completed') {
-        throw new Error(job.error ?? `Job status: ${job.status}`);
+        throw new Error(job.error ?? `Статус задания: ${job.status}`);
       }
       setMessage(`Симуляция завершена: ${job.id}`);
       await refresh();
@@ -469,6 +471,7 @@ function ProcessNodeInspector({
 }
 
 function ProcessGraphNodeView({ data, selected }: NodeProps<ProcessFlowNode>): React.JSX.Element {
+  const { t } = useTranslation();
   const type = data.processType;
   const tone = getProcessTone(type);
   const trueFalseHandles = type === 'condition';
@@ -480,17 +483,17 @@ function ProcessGraphNodeView({ data, selected }: NodeProps<ProcessFlowNode>): R
         <span className="rounded-md bg-slate-950/65 px-2 py-1 text-[10px] font-medium uppercase tracking-[0.12em] text-slate-300">
           {type}
         </span>
-        <span className="text-[11px] text-slate-400">{getNodeBadge(type)}</span>
+        <span className="text-[11px] text-slate-400">{translateLiteral(t, getNodeBadge(type))}</span>
       </div>
-      <div className="text-sm font-semibold text-white">{data.label}</div>
-      <div className="mt-1 text-xs text-slate-300">{data.subtitle}</div>
+      <div className="text-sm font-semibold text-white">{translateLiteral(t, data.label)}</div>
+      <div className="mt-1 text-xs text-slate-300">{translateLiteral(t, data.subtitle)}</div>
       {trueFalseHandles ? (
         <>
           <Handle className="!top-[34%] !bg-teal-300" id="true" position={Position.Right} type="source" />
           <Handle className="!top-[70%] !bg-rose-300" id="false" position={Position.Right} type="source" />
           <div className="mt-3 flex justify-between text-[11px] text-slate-400">
-            <span>да</span>
-            <span>нет</span>
+            <span>{t('common.yes')}</span>
+            <span>{t('common.no')}</span>
           </div>
         </>
       ) : (

@@ -1,5 +1,6 @@
 import { Link, useParams } from 'react-router-dom';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { formatDateTime } from '../../../../shared/lib/format';
 import type { MonitoringProfile, Point, PointStatus } from '../../../../shared/types/config.types';
 import type { Reading, Status } from '../../../../shared/types/monitoring.types';
@@ -15,6 +16,7 @@ import { PageHeader } from '../../../shared/ui/PageHeader';
 import { Panel } from '../../../shared/ui/Panel';
 import { StatusBadge } from '../../../shared/ui/StatusBadge';
 import { Tabs, type TabItem } from '../../../shared/ui/Tabs';
+import { translateLiteral, translateLiteralNode } from '../../../shared/i18n/translateLiteral';
 
 type AssetDetailsTab = 'points' | 'history' | 'actuators' | 'graph';
 
@@ -79,7 +81,7 @@ export function AssetDetailsPage(): React.JSX.Element {
     { key: 'status', title: 'Статус', render: (point) => point.readingStatus },
     { key: 'updated', title: 'Обновлено', render: (point) => point.updatedAt },
     { key: 'unit', title: 'Ед.', render: (point) => point.displayUnit ?? point.rawUnit ?? '—' },
-    { key: 'recordable', title: 'История', render: (point) => (point.recordable ? 'да' : 'нет') },
+    { key: 'recordable', title: 'История', render: (point) => (point.recordable ? 'Да' : 'Нет') },
     { key: 'error', title: 'Ошибка', render: (point) => point.error }
   ];
   const profileColumns: DataTableColumn<MonitoringProfile>[] = [
@@ -213,7 +215,7 @@ function formatReadingValue(value: Reading['displayValue'], unit?: string): stri
   }
 
   if (typeof value === 'boolean') {
-    return value ? 'да' : 'нет';
+    return value ? 'Да' : 'Нет';
   }
 
   return value ?? '—';
@@ -232,10 +234,12 @@ function pointStatusToStatus(status: PointStatus | undefined): Status {
 }
 
 function InfoRow({ label, value, monospace }: { label: string; value: string; monospace?: boolean }): React.JSX.Element {
+  const { t } = useTranslation();
+
   return (
     <div className="flex items-start justify-between gap-3 border-b border-white/10 pb-2 last:border-b-0 last:pb-0">
-      <span className="text-slate-500">{label}</span>
-      <span className={`text-right text-slate-100 ${monospace ? 'font-mono text-xs' : ''}`}>{value}</span>
+      <span className="text-slate-500">{translateLiteral(t, label)}</span>
+      <span className={`text-right text-slate-100 ${monospace ? 'font-mono text-xs' : ''}`}>{translateLiteralNode(t, value)}</span>
     </div>
   );
 }

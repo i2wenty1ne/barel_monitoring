@@ -1,11 +1,12 @@
 import { useTranslation } from 'react-i18next';
-import { translateLiteral } from '../i18n/translateLiteral';
+import { translateLiteral, translateLiteralNode } from '../i18n/translateLiteral';
 
 export type DataTableColumn<TRow> = {
   key: string;
   title: string;
   render: (row: TRow) => React.ReactNode;
   className?: string;
+  translateValue?: boolean;
 };
 
 type DataTableProps<TRow> = {
@@ -57,7 +58,7 @@ export function DataTable<TRow>({
               <tr className="hover:bg-white/[0.03]" key={getRowKey(row)}>
                 {columns.map((column) => (
                   <td className={`${cellPadding} align-top text-slate-200 ${column.className ?? ''}`} key={column.key}>
-                    {column.render(row)}
+                    {column.translateValue === false ? column.render(row) : translateLiteralNode(t, column.render(row))}
                   </td>
                 ))}
               </tr>

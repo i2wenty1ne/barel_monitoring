@@ -16,7 +16,7 @@ export function FormField({ label, error, hint, children }: FormFieldProps): Rea
       <span className="text-sm font-medium text-slate-200">{translateLiteral(t, label)}</span>
       <span className="mt-1 block">{children}</span>
       {hint ? <span className="mt-1 block text-xs text-slate-500">{translateLiteral(t, hint)}</span> : null}
-      {error ? <span className="mt-1 block text-xs text-rose-200">{error}</span> : null}
+      {error ? <span className="mt-1 block text-xs text-rose-200">{translateLiteral(t, error)}</span> : null}
     </label>
   );
 }

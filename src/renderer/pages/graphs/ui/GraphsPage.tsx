@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Background,
   Controls,
@@ -23,6 +24,7 @@ import { ErrorState } from '../../../shared/ui/ErrorState';
 import { LoadingState } from '../../../shared/ui/LoadingState';
 import { PageHeader } from '../../../shared/ui/PageHeader';
 import { Panel } from '../../../shared/ui/Panel';
+import { translateLiteral } from '../../../shared/i18n/translateLiteral';
 
 type AssetGraphNodeData = {
   label: string;
@@ -348,9 +350,11 @@ function isValidPosition(value: unknown): value is { x: number; y: number } {
 }
 
 function GraphMetric({ label, value }: { label: string; value: number }): React.JSX.Element {
+  const { t } = useTranslation();
+
   return (
     <div className="rounded-md border border-white/10 bg-slate-950/35 p-3">
-      <div className="text-xs text-slate-500">{label}</div>
+      <div className="text-xs text-slate-500">{translateLiteral(t, label)}</div>
       <div className="mt-1 text-2xl font-semibold text-slate-100">{value}</div>
     </div>
   );
@@ -380,6 +384,7 @@ function GraphNode({
   data,
   tone
 }: NodeProps<AssetGraphNode> & { tone: 'asset' | 'source' | 'point' | 'control' | 'actuator' }): React.JSX.Element {
+  const { t } = useTranslation();
   const toneClasses = {
     asset: 'border-teal-300/35 bg-teal-500/10',
     source: 'border-sky-300/35 bg-sky-500/10',
@@ -395,11 +400,11 @@ function GraphNode({
         <span className="rounded-md bg-slate-950/65 px-2 py-1 text-[10px] font-medium uppercase tracking-[0.12em] text-slate-300">
           {data.badge}
         </span>
-        {data.status ? <span className="text-[11px] text-slate-400">{data.status}</span> : null}
+        {data.status ? <span className="text-[11px] text-slate-400">{translateLiteral(t, data.status)}</span> : null}
       </div>
-      <div className="text-sm font-semibold text-white">{data.label}</div>
-      <div className="mt-1 text-xs text-slate-300">{data.subtitle}</div>
-      <div className="mt-2 text-xs text-slate-500">{data.details}</div>
+      <div className="text-sm font-semibold text-white">{translateLiteral(t, data.label)}</div>
+      <div className="mt-1 text-xs text-slate-300">{translateLiteral(t, data.subtitle)}</div>
+      <div className="mt-2 text-xs text-slate-500">{translateLiteral(t, data.details)}</div>
       <Handle className="!bg-teal-300" position={Position.Right} type="source" />
     </div>
   );

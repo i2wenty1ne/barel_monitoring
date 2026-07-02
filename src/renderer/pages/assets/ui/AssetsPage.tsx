@@ -210,7 +210,7 @@ export function AssetsPage(): React.JSX.Element {
           {message ? <div className="mb-4"><Alert type="success">{message}</Alert></div> : null}
           {saveError ? <div className="mb-4"><Alert type="error">{saveError}</Alert></div> : null}
           {currentConfig.assets.length === 0 ? (
-            <EmptyState title="Объекты не настроены" description="Добавьте Asset в конфигурации или выполните миграцию старого config." />
+            <EmptyState title="Объекты не настроены" description="Добавьте Asset в конфигурации." />
           ) : (
             <DataTable compact columns={columns} getRowKey={(asset) => asset.id} rows={currentConfig.assets} />
           )}

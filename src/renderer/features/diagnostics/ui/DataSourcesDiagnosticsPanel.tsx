@@ -1,4 +1,6 @@
+import { useTranslation } from 'react-i18next';
 import type { DataSource } from '../../../../shared/types/config.types';
+import { translateLiteral, translateLiteralNode } from '../../../shared/i18n/translateLiteral';
 import { Alert } from '../../../shared/ui/Alert';
 import { Panel } from '../../../shared/ui/Panel';
 
@@ -17,7 +19,7 @@ export function DataSourcesDiagnosticsPanel({ dataSources }: DataSourcesDiagnost
             <div className="rounded-md border border-white/10 bg-slate-950/35 p-4" key={source.id}>
               {!source.enabled ? (
                 <div className="mb-3">
-                  <Alert type="warning">Источник {source.name} отключен.</Alert>
+                  <Alert type="warning">{`Источник отключен: ${source.name}`}</Alert>
                 </div>
               ) : null}
               <dl className="grid gap-3 text-sm md:grid-cols-2">
@@ -47,10 +49,12 @@ type InfoRowProps = {
 };
 
 function InfoRow({ label, value }: InfoRowProps): React.JSX.Element {
+  const { t } = useTranslation();
+
   return (
     <div className="grid grid-cols-[140px_1fr] gap-3">
-      <dt className="text-slate-500">{label}</dt>
-      <dd className="min-w-0 break-words text-slate-200">{value}</dd>
+      <dt className="text-slate-500">{translateLiteral(t, label)}</dt>
+      <dd className="min-w-0 break-words text-slate-200">{translateLiteralNode(t, value)}</dd>
     </div>
   );
 }

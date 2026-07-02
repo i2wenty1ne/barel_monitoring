@@ -1,7 +1,9 @@
+import { useTranslation } from 'react-i18next';
 import { stringifyPrettyJson } from '../../../../shared/lib/format';
 import { PathsPanel } from '../../../features/system-info/ui/PathsPanel';
 import { RuntimeInfoPanel } from '../../../features/system-info/ui/RuntimeInfoPanel';
 import { SystemInfoPanel } from '../../../features/system-info/ui/SystemInfoPanel';
+import { translateLiteral, translateLiteralNode } from '../../../shared/i18n/translateLiteral';
 import { useSystemInfo } from '../../../features/system-info/model/useSystemInfo';
 import { Alert } from '../../../shared/ui/Alert';
 import { CopyButton } from '../../../shared/ui/CopyButton';
@@ -93,10 +95,12 @@ type InfoRowProps = {
 };
 
 function InfoRow({ label, value }: InfoRowProps): React.JSX.Element {
+  const { t } = useTranslation();
+
   return (
     <div className="grid grid-cols-[120px_1fr] gap-3">
-      <dt className="text-slate-500">{label}</dt>
-      <dd className="min-w-0 break-words text-slate-200">{value}</dd>
+      <dt className="text-slate-500">{translateLiteral(t, label)}</dt>
+      <dd className="min-w-0 break-words text-slate-200">{translateLiteralNode(t, value)}</dd>
     </div>
   );
 }

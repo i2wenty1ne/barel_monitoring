@@ -250,7 +250,7 @@ export function DataSourcesPage(): React.JSX.Element {
             </div>
           ) : null}
           {currentConfig.dataSources.length === 0 ? (
-            <EmptyState title="Источники не настроены" description="Создайте DataSource или мигрируйте старые устройства." />
+            <EmptyState title="Источники не настроены" description="Создайте DataSource." />
           ) : (
             <DataTable compact columns={columns} getRowKey={(source) => source.id} rows={currentConfig.dataSources} />
           )}

@@ -317,7 +317,7 @@ export function ActuatorsPage(): React.JSX.Element {
       if (!result.success) {
         throw new Error(result.error ?? 'Команда не выполнена');
       }
-      setMessage(`Command ${command.commandType} выполнена`);
+      setMessage(`Команда выполнена: ${command.commandType}`);
       setCommandHistory(await window.barrelMonitor.commands.getHistory({ limit: 50 }));
       await refresh();
     } catch (error) {

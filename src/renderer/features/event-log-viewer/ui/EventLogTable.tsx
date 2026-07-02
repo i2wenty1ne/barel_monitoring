@@ -19,7 +19,7 @@ export function EventLogTable({ events, onOpenDetails }: EventLogTableProps): Re
     },
     { key: 'source', title: 'Источник', render: (event) => <Badge>{event.source}</Badge> },
     { key: 'entityId', title: 'Объект', render: (event) => event.entityId ?? '—' },
-    { key: 'message', title: 'Сообщение', render: (event) => event.message },
+    { key: 'message', title: 'Сообщение', render: (event) => event.message, translateValue: false },
     {
       key: 'details',
       title: 'Детали',

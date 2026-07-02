@@ -1,5 +1,7 @@
+import { useTranslation } from 'react-i18next';
 import type { AppConfig } from '../../../../shared/types/config.types';
 import type { SystemInfo } from '../../../../shared/types/ipc.types';
+import { translateLiteral, translateLiteralNode } from '../../../shared/i18n/translateLiteral';
 import { Alert } from '../../../shared/ui/Alert';
 import { Button } from '../../../shared/ui/Button';
 import { Checkbox } from '../../../shared/ui/Checkbox';
@@ -104,10 +106,12 @@ type InfoRowProps = {
 };
 
 function InfoRow({ label, value }: InfoRowProps): React.JSX.Element {
+  const { t } = useTranslation();
+
   return (
     <div className="grid grid-cols-[130px_1fr] gap-3">
-      <dt className="text-slate-500">{label}</dt>
-      <dd className="min-w-0 break-words text-slate-200">{value}</dd>
+      <dt className="text-slate-500">{translateLiteral(t, label)}</dt>
+      <dd className="min-w-0 break-words text-slate-200">{translateLiteralNode(t, value)}</dd>
     </div>
   );
 }

@@ -1,8 +1,10 @@
+import { useTranslation } from 'react-i18next';
 import type { EventLogEntry } from '../../../../shared/types/event.types';
 import { formatDateTime, stringifyPrettyJson } from '../../../../shared/lib/format';
 import { Button } from '../../../shared/ui/Button';
 import { CodeBlock } from '../../../shared/ui/CodeBlock';
 import { CopyButton } from '../../../shared/ui/CopyButton';
+import { translateLiteral, translateLiteralNode } from '../../../shared/i18n/translateLiteral';
 
 type EventDetailsDialogProps = {
   event: EventLogEntry;
@@ -10,12 +12,14 @@ type EventDetailsDialogProps = {
 };
 
 export function EventDetailsDialog({ event, onClose }: EventDetailsDialogProps): React.JSX.Element {
+  const { t } = useTranslation();
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-6">
       <div className="max-h-[86vh] w-full max-w-3xl overflow-auto rounded-lg border border-white/10 bg-slate-900 p-6 shadow-2xl shadow-black/30">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h2 className="text-lg font-semibold text-white">Детали события</h2>
+            <h2 className="text-lg font-semibold text-white">{translateLiteral(t, 'Детали события')}</h2>
             <p className="mt-1 text-sm text-slate-400">{event.message}</p>
           </div>
           <Button onClick={onClose} variant="ghost">
@@ -44,10 +48,12 @@ type InfoRowProps = {
 };
 
 function InfoRow({ label, value }: InfoRowProps): React.JSX.Element {
+  const { t } = useTranslation();
+
   return (
     <div className="grid grid-cols-[120px_1fr] gap-3">
-      <dt className="text-slate-500">{label}</dt>
-      <dd className="min-w-0 break-words text-slate-200">{value}</dd>
+      <dt className="text-slate-500">{translateLiteral(t, label)}</dt>
+      <dd className="min-w-0 break-words text-slate-200">{translateLiteralNode(t, value)}</dd>
     </div>
   );
 }

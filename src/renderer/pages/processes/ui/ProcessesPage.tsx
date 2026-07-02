@@ -146,9 +146,9 @@ export function ProcessesPage(): React.JSX.Element {
     try {
       const job = await window.barrelMonitor.processes.startJob(process.id, {});
       if (job.status !== 'completed') {
-        throw new Error(job.error ?? `Job завершился со статусом ${job.status}`);
+        throw new Error(job.error ?? `Job завершился со статусом: ${job.status}`);
       }
-      setMessage(`ProcessJob ${job.id} завершён`);
+      setMessage(`ProcessJob завершён: ${job.id}`);
       await refresh();
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : 'Ошибка запуска процесса');

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { AppConfig, Point } from '../../../../shared/types/config.types';
 import type {
   RegisterScanRequest,
@@ -14,6 +15,7 @@ import { DataTable, type DataTableColumn } from '../../../shared/ui/DataTable';
 import { NumberInput } from '../../../shared/ui/NumberInput';
 import { Panel } from '../../../shared/ui/Panel';
 import { Select } from '../../../shared/ui/Select';
+import { translateLiteral } from '../../../shared/i18n/translateLiteral';
 
 type RegisterScanPanelProps = {
   config: AppConfig;
@@ -251,12 +253,13 @@ type SummaryTileProps = {
 };
 
 function SummaryTile({ label, value, tone = 'default' }: SummaryTileProps): React.JSX.Element {
+  const { t } = useTranslation();
   const valueClassName =
     tone === 'ok' ? 'text-teal-100' : tone === 'error' ? 'text-rose-100' : 'text-slate-100';
 
   return (
     <div className="rounded-md border border-white/10 bg-slate-950/35 p-3">
-      <div className="text-xs text-slate-500">{label}</div>
+      <div className="text-xs text-slate-500">{translateLiteral(t, label)}</div>
       <div className={`mt-1 font-medium ${valueClassName}`}>{value}</div>
     </div>
   );

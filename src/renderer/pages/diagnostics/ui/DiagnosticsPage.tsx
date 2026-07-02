@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { formatDateTime } from '../../../../shared/lib/format';
 import { AssetsDiagnosticsTable } from '../../../features/diagnostics/ui/AssetsDiagnosticsTable';
 import { ConnectionDiagnosticsPanel } from '../../../features/diagnostics/ui/ConnectionDiagnosticsPanel';
@@ -13,6 +14,7 @@ import { ErrorState } from '../../../shared/ui/ErrorState';
 import { LoadingState } from '../../../shared/ui/LoadingState';
 import { PageHeader } from '../../../shared/ui/PageHeader';
 import { StatusBadge } from '../../../shared/ui/StatusBadge';
+import { translateLiteral } from '../../../shared/i18n/translateLiteral';
 
 export function DiagnosticsPage(): React.JSX.Element {
   const diagnostics = useDiagnostics();
@@ -100,9 +102,11 @@ type SummaryPanelProps = {
 };
 
 function SummaryPanel({ label, value }: SummaryPanelProps): React.JSX.Element {
+  const { t } = useTranslation();
+
   return (
     <div className="rounded-md border border-white/10 bg-white/[0.035] px-3 py-2">
-      <div className="text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500">{label}</div>
+      <div className="text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500">{translateLiteral(t, label)}</div>
       <div className="mt-1 text-base font-semibold text-slate-100">{value}</div>
     </div>
   );

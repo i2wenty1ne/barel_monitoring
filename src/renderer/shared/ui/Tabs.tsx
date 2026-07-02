@@ -1,3 +1,6 @@
+import { useTranslation } from 'react-i18next';
+import { translateLiteral } from '../i18n/translateLiteral';
+
 export type TabItem<TTab extends string> = {
   id: TTab;
   label: string;
@@ -14,6 +17,8 @@ export function Tabs<TTab extends string>({
   activeTab,
   onChange
 }: TabsProps<TTab>): React.JSX.Element {
+  const { t } = useTranslation();
+
   return (
     <div className="flex flex-wrap gap-2 border-b border-white/10 pb-3">
       {items.map((item) => (
@@ -28,7 +33,7 @@ export function Tabs<TTab extends string>({
           onClick={() => onChange(item.id)}
           type="button"
         >
-          {item.label}
+          {translateLiteral(t, item.label)}
         </button>
       ))}
     </div>

@@ -1,3 +1,6 @@
+import { useTranslation } from 'react-i18next';
+import { translateLiteralNode } from '../i18n/translateLiteral';
+
 type BadgeTone = 'neutral' | 'info' | 'success' | 'warning' | 'danger';
 
 type BadgeProps = {
@@ -14,11 +17,13 @@ const toneClasses: Record<BadgeTone, string> = {
 };
 
 export function Badge({ children, tone = 'neutral' }: BadgeProps): React.JSX.Element {
+  const { t } = useTranslation();
+
   return (
     <span
       className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ${toneClasses[tone]}`}
     >
-      {children}
+      {translateLiteralNode(t, children)}
     </span>
   );
 }

@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { formatDateTime } from '../../../../shared/lib/format';
 import { selectAssetViewModels } from '../../../entities/asset/model/selectors';
@@ -10,6 +11,7 @@ import { ErrorState } from '../../../shared/ui/ErrorState';
 import { LoadingState } from '../../../shared/ui/LoadingState';
 import { PageHeader } from '../../../shared/ui/PageHeader';
 import { StatusBadge } from '../../../shared/ui/StatusBadge';
+import { translateLiteral } from '../../../shared/i18n/translateLiteral';
 
 export function MonitoringPage(): React.JSX.Element {
   const navigate = useNavigate();
@@ -136,12 +138,13 @@ type SummaryPanelProps = {
 };
 
 function SummaryPanel({ label, value, tone = 'default' }: SummaryPanelProps): React.JSX.Element {
+  const { t } = useTranslation();
   const valueClassName =
     tone === 'warning' ? 'text-amber-100' : tone === 'alarm' ? 'text-rose-100' : 'text-slate-100';
 
   return (
     <div className="rounded-md border border-white/10 bg-white/[0.035] px-3 py-2">
-      <div className="text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500">{label}</div>
+      <div className="text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500">{translateLiteral(t, label)}</div>
       <div className={`mt-1 text-base font-semibold ${valueClassName}`}>{value}</div>
     </div>
   );

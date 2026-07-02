@@ -4,6 +4,7 @@ import { formatDateTime, formatPercent, formatTemperature } from '../../../../sh
 import { Badge } from '../../../shared/ui/Badge';
 import { StatusBadge } from '../../../shared/ui/StatusBadge';
 import { BarrelTank } from '../../barrel/ui/BarrelTank';
+import { translateLiteral } from '../../../shared/i18n/translateLiteral';
 
 type AssetCardProps = {
   viewModel: AssetViewModel;
@@ -64,9 +65,11 @@ export function AssetCard({ viewModel, showLastUpdate, onClick }: AssetCardProps
 }
 
 function Metric({ label, value }: { label: string; value: React.ReactNode }): React.JSX.Element {
+  const { t } = useTranslation();
+
   return (
     <div className="rounded-md border border-white/10 bg-slate-950/45 p-2.5">
-      <dt className="truncate text-xs text-slate-500">{label}</dt>
+      <dt className="truncate text-xs text-slate-500">{translateLiteral(t, label)}</dt>
       <dd className="mt-0.5 text-sm font-medium text-slate-100">{value}</dd>
     </div>
   );

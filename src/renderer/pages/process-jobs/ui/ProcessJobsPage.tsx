@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { ProcessJob } from '../../../../shared/types/config.types';
 import { useAppConfig } from '../../../entities/config/model/useAppConfig';
 import { Badge } from '../../../shared/ui/Badge';
@@ -8,8 +9,10 @@ import { ErrorState } from '../../../shared/ui/ErrorState';
 import { LoadingState } from '../../../shared/ui/LoadingState';
 import { PageHeader } from '../../../shared/ui/PageHeader';
 import { Panel } from '../../../shared/ui/Panel';
+import { translateLiteral } from '../../../shared/i18n/translateLiteral';
 
 export function ProcessJobsPage(): React.JSX.Element {
+  const { t } = useTranslation();
   const { config, isLoading, error, refresh } = useAppConfig();
 
   if (isLoading || !config) {
@@ -72,15 +75,15 @@ export function ProcessJobsPage(): React.JSX.Element {
             </div>
             <div className="grid gap-4 lg:grid-cols-3">
               <div>
-                <div className="mb-2 text-sm font-medium text-slate-200">Входные данные</div>
+                <div className="mb-2 text-sm font-medium text-slate-200">{translateLiteral(t, 'Входные данные')}</div>
                 <CodeBlock maxHeightClassName="max-h-72" value={JSON.stringify(latestJob.input, null, 2)} />
               </div>
               <div>
-                <div className="mb-2 text-sm font-medium text-slate-200">Контекст</div>
+                <div className="mb-2 text-sm font-medium text-slate-200">{translateLiteral(t, 'Контекст')}</div>
                 <CodeBlock maxHeightClassName="max-h-72" value={JSON.stringify(latestJob.context, null, 2)} />
               </div>
               <div>
-                <div className="mb-2 text-sm font-medium text-slate-200">Result / Error</div>
+                <div className="mb-2 text-sm font-medium text-slate-200">{translateLiteral(t, 'Result / Error')}</div>
                 <CodeBlock
                   maxHeightClassName="max-h-72"
                   value={JSON.stringify({ result: latestJob.result ?? null, error: latestJob.error ?? null }, null, 2)}
@@ -95,9 +98,11 @@ export function ProcessJobsPage(): React.JSX.Element {
 }
 
 function JobMetric({ label, value }: { label: string; value: number }): React.JSX.Element {
+  const { t } = useTranslation();
+
   return (
     <div className="rounded-md border border-white/10 bg-slate-950/35 p-3">
-      <div className="text-xs text-slate-500">{label}</div>
+      <div className="text-xs text-slate-500">{translateLiteral(t, label)}</div>
       <div className="mt-1 text-2xl font-semibold text-slate-100">{value}</div>
     </div>
   );
