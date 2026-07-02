@@ -69,7 +69,7 @@ export function AssetsPage(): React.JSX.Element {
       )
     },
     { key: 'type', title: 'Тип', render: (asset) => <Badge tone="info">{asset.type}</Badge> },
-    { key: 'points', title: 'Точки', render: (asset) => asset.pointIds.length },
+    { key: 'points', title: 'Параметры', render: (asset) => asset.pointIds.length },
     { key: 'actuators', title: 'Механизмы', render: (asset) => asset.actuatorIds.length },
     {
       key: 'actions',
@@ -190,19 +190,11 @@ export function AssetsPage(): React.JSX.Element {
       <PageHeader
         eyebrow="Промышленный мониторинг"
         title="Объекты"
-        description="Модель объектов из SPEC 1.0.0: бочки, резервуары, насосы, весы, станции и другие промышленные объекты."
+        description="Каталог объектов: бочки, резервуары, насосы, весы, станции и другие промышленные объекты."
         actions={
-          <div className="flex flex-wrap gap-2">
-            <Button disabled={isSaving} onClick={() => openCreateAsset('barrel')} variant="secondary">
-              Добавить бочку
-            </Button>
-            <Button disabled={isSaving} onClick={() => openCreateAsset('pump')} variant="ghost">
-              Добавить насос
-            </Button>
-            <Button disabled={isSaving} onClick={() => openCreateAsset('scale')} variant="ghost">
-              Добавить весы
-            </Button>
-          </div>
+          <Button disabled={isSaving} onClick={() => openCreateAsset('barrel')} variant="secondary">
+            Добавить объект
+          </Button>
         }
       />
       <div className="space-y-5">
@@ -315,7 +307,7 @@ function AssetForm({
       <RelationEditor
         items={points}
         selectedIds={draft.pointIds}
-        title="Точки данных"
+        title="Параметры данных"
         onChange={(pointIds) => onChange(updateAssetPointIds(draft, pointIds))}
       />
       <RelationEditor

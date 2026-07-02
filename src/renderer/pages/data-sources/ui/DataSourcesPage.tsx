@@ -7,7 +7,6 @@ import { useAppConfig } from '../../../entities/config/model/useAppConfig';
 import { Alert } from '../../../shared/ui/Alert';
 import { Badge } from '../../../shared/ui/Badge';
 import { Button } from '../../../shared/ui/Button';
-import { Checkbox } from '../../../shared/ui/Checkbox';
 import { DataTable, type DataTableColumn } from '../../../shared/ui/DataTable';
 import { EmptyState } from '../../../shared/ui/EmptyState';
 import { ErrorState } from '../../../shared/ui/ErrorState';
@@ -50,15 +49,12 @@ export function DataSourcesPage(): React.JSX.Element {
   const columns: DataTableColumn<DataSource>[] = [
     {
       key: 'name',
-      title: 'Источник',
+      title: 'Название',
       render: (source) => (
-        <div>
-          <div className="font-medium text-slate-100">{source.name}</div>
-          <div className="mt-1 font-mono text-xs text-slate-500">{source.id}</div>
-        </div>
+        <div className="font-medium text-slate-100">{source.name}</div>
       )
     },
-    { key: 'type', title: 'Тип', render: (source) => <Badge tone="info">{source.type}</Badge> },
+    { key: 'id', title: 'ID', render: (source) => <span className="font-mono text-xs text-slate-400">{source.id}</span> },
     { key: 'enabled', title: 'Статус', render: (source) => <Badge tone={source.enabled ? 'success' : 'warning'}>{source.enabled ? 'Включен' : 'Отключен'}</Badge> },
     { key: 'connection', title: 'Подключение', render: formatConnection },
     { key: 'polling', title: 'Опрос', render: (source) => `${source.pollingIntervalMs ?? currentConfig.app.pollingIntervalMs} ms` },
@@ -107,8 +103,9 @@ export function DataSourcesPage(): React.JSX.Element {
     }
   }
 
-  function openCreateSource(type: DataSourceType): void {
+  function openCreateDevice(): void {
     const now = new Date().toISOString();
+    const type: DataSourceType = 'modbus-rtu';
     const id = createUniqueId(`${type}-1`, currentConfig.dataSources.map((source) => source.id));
     const source = createDefaultSource(id, type, currentConfig.app.pollingIntervalMs, now);
     setFormState({ draft: source, mode: 'create', originalId: id });
@@ -139,22 +136,22 @@ export function DataSourcesPage(): React.JSX.Element {
     };
 
     if (formState.mode === 'edit' && !savedSource) {
-      setSaveError('Редактируемый источник больше не найден. Обновите список и повторите изменение.');
+      setSaveError('Редактируемое устройство больше не найдено. Обновите список и повторите изменение.');
       return;
     }
 
     if (!nextSource.id) {
-      setSaveError('ID источника данных не может быть пустым.');
+      setSaveError('ID устройства не может быть пустым.');
       return;
     }
 
     if (!nextSource.name) {
-      setSaveError('Название источника данных не может быть пустым.');
+      setSaveError('Название устройства не может быть пустым.');
       return;
     }
 
     if (currentConfig.dataSources.some((source) => source.id !== sourceId && source.id === nextSource.id)) {
-      setSaveError(`Источник данных с ID "${nextSource.id}" уже существует.`);
+      setSaveError(`Устройство с ID "${nextSource.id}" уже существует.`);
       return;
     }
 
@@ -173,7 +170,7 @@ export function DataSourcesPage(): React.JSX.Element {
             : point
         )
       },
-      formState.mode === 'create' ? 'Источник данных добавлен' : 'Источник данных сохранен'
+      formState.mode === 'create' ? 'Устройство добавлено' : 'Устройство сохранено'
     );
     if (isSaved) {
       setFormState(null);
@@ -188,13 +185,13 @@ export function DataSourcesPage(): React.JSX.Element {
           item.id === source.id ? { ...item, enabled: !item.enabled, updatedAt: new Date().toISOString() } : item
         )
       },
-      source.enabled ? 'Источник отключен' : 'Источник включен'
+      source.enabled ? 'Устройство отключено' : 'Устройство включено'
     );
   }
 
   async function deleteSource(source: DataSource): Promise<void> {
     if (currentConfig.points.some((point) => point.dataSourceId === source.id)) {
-      setSaveError('Источник используется точками данных. Сначала переназначьте или удалите точки.');
+      setSaveError('Устройство используется параметрами данных. Сначала переназначьте или удалите параметры.');
       return;
     }
 
@@ -203,7 +200,7 @@ export function DataSourcesPage(): React.JSX.Element {
         ...currentConfig,
         dataSources: currentConfig.dataSources.filter((item) => item.id !== source.id)
       },
-      'Источник данных удален'
+      'Устройство удалено'
     );
   }
 
@@ -225,21 +222,16 @@ export function DataSourcesPage(): React.JSX.Element {
     <section className="mx-auto max-w-7xl">
       <PageHeader
         eyebrow="Промышленный мониторинг"
-        title="Источники данных"
-        description="Источник данных описывает текущие значения и команды: Modbus RTU, симуляцию, ручной ввод и будущие TCP/HTTP/MQTT."
+        title="Параметры данных"
+        description="Устройства и параметры подключения для чтения текущих значений и команд."
         actions={
-          <div className="flex flex-wrap gap-2">
-            <Button disabled={isSaving} onClick={() => openCreateSource('modbus-rtu')} variant="secondary">
-              Добавить Modbus RTU
-            </Button>
-            <Button disabled={isSaving} onClick={() => openCreateSource('mock')} variant="ghost">
-              Добавить mock
-            </Button>
-          </div>
+          <Button disabled={isSaving} onClick={openCreateDevice} variant="secondary">
+            Добавить устройство
+          </Button>
         }
       />
       <div className="space-y-5">
-        <Panel className="p-5" title="Источники">
+        <Panel className="p-5" title="Устройства">
           {message ? <div className="mb-4"><Alert type="success">{message}</Alert></div> : null}
           {saveError ? <div className="mb-4"><Alert type="error">{saveError}</Alert></div> : null}
           {testResult ? (
@@ -250,7 +242,7 @@ export function DataSourcesPage(): React.JSX.Element {
             </div>
           ) : null}
           {currentConfig.dataSources.length === 0 ? (
-            <EmptyState title="Источники не настроены" description="Создайте DataSource." />
+            <EmptyState title="Устройства не настроены" description="Добавьте устройство для чтения параметров." />
           ) : (
             <DataTable compact columns={columns} getRowKey={(source) => source.id} rows={currentConfig.dataSources} />
           )}
@@ -261,7 +253,7 @@ export function DataSourcesPage(): React.JSX.Element {
           footer={
             <>
               <Button disabled={isSaving} onClick={() => void saveDraft()} variant="secondary">
-                {formState.mode === 'create' ? 'Создать источник' : 'Сохранить источник'}
+                {formState.mode === 'create' ? 'Создать устройство' : 'Сохранить устройство'}
               </Button>
               <Button disabled={isSaving} onClick={() => setFormState(null)} variant="ghost">
                 Отмена
@@ -299,16 +291,6 @@ function DataSourceForm({
       <div className="grid gap-4 md:grid-cols-3">
         <TextInput label="ID" onChange={(id) => onChange({ ...draft, id })} value={draft.id} />
         <TextInput label="Название" onChange={(name) => onChange({ ...draft, name })} value={draft.name} />
-        <Select
-          label="Тип"
-          onChange={(type) => onChange(createDefaultSource(draft.id, type, draft.pollingIntervalMs ?? 1000, draft.createdAt, draft.name))}
-          options={[
-            { label: 'modbus-rtu', value: 'modbus-rtu' },
-            { label: 'mock', value: 'mock' },
-            { label: 'manual', value: 'manual' }
-          ]}
-          value={draft.type === 'modbus-tcp' || draft.type === 'http' || draft.type === 'mqtt' ? 'manual' : draft.type}
-        />
         <NumberInput
           label="Polling, ms"
           min={250}
@@ -327,7 +309,6 @@ function DataSourceForm({
           onChange={(retryCount) => onChange({ ...draft, retryCount })}
           value={draft.retryCount ?? 1}
         />
-        <Checkbox checked={draft.enabled} label="Включен" onChange={(enabled) => onChange({ ...draft, enabled })} />
       </div>
 
       {modbusConnection ? (
@@ -374,11 +355,6 @@ function DataSourceForm({
             onChange={(slaveId) => onChange({ ...draft, metadata: { ...draft.metadata, slaveId } })}
             value={typeof draft.metadata?.slaveId === 'number' ? draft.metadata.slaveId : 1}
           />
-          <TextInput
-            label="Модель"
-            onChange={(model) => onChange({ ...draft, metadata: { ...draft.metadata, model } })}
-            value={String(draft.metadata?.model ?? '')}
-          />
         </div>
       ) : null}
     </div>
@@ -390,7 +366,7 @@ function createDefaultSource(
   type: DataSourceType,
   pollingIntervalMs: number,
   now: string,
-  name = type === 'modbus-rtu' ? 'Modbus RTU источник' : type === 'mock' ? 'Mock source' : 'Manual source'
+  name = type === 'modbus-rtu' ? 'Modbus RTU устройство' : type === 'mock' ? 'Mock source' : 'Manual source'
 ): DataSource {
   if (type === 'modbus-rtu') {
     return {

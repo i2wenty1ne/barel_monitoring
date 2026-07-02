@@ -104,7 +104,7 @@ export function GraphsPage(): React.JSX.Element {
       <div className="flex min-h-0 flex-1 flex-col gap-4">
         <div className="grid gap-3 md:grid-cols-5">
           <GraphMetric label="Объекты" value={config.assets.length} />
-          <GraphMetric label="Источники данных" value={config.dataSources.length} />
+          <GraphMetric label="Устройства" value={config.dataSources.length} />
           <GraphMetric label="Телеметрия" value={config.points.filter((point) => point.kind !== 'control').length} />
           <GraphMetric label="Управление" value={config.points.filter((point) => point.kind === 'control').length} />
           <GraphMetric label="Механизмы" value={config.actuators.length} />
@@ -112,7 +112,7 @@ export function GraphsPage(): React.JSX.Element {
 
         {graph.nodes.length === 0 ? (
           <Panel className="p-5">
-            <EmptyState title="Граф пуст" description="Добавьте объекты, точки, источники данных или механизмы в config." />
+            <EmptyState title="Граф пуст" description="Добавьте объекты, параметры данных, устройства или механизмы в config." />
           </Panel>
         ) : (
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-md border border-white/10 bg-slate-950">

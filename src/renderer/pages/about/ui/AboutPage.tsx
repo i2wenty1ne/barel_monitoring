@@ -62,13 +62,13 @@ export function AboutPage(): React.JSX.Element {
           <SystemInfoPanel info={systemInfo.data} />
           <RuntimeInfoPanel info={systemInfo.data} />
         </div>
-        <Panel className="p-5" title="Источники данных и подключения">
+        <Panel className="p-5" title="Параметры данных и подключения">
           <div className="grid gap-4">
             {systemInfo.data.dataSources.map((source) => {
               const slaveId = typeof source.metadata?.slaveId === 'number' ? source.metadata.slaveId : '—';
               return (
                 <dl className="grid gap-3 rounded-md border border-white/10 bg-slate-950/35 p-4 text-sm md:grid-cols-2" key={source.id}>
-                  <InfoRow label="Источник" value={`${source.name} (${source.id})`} />
+                  <InfoRow label="Устройство" value={`${source.name} (${source.id})`} />
                   <InfoRow label="Тип" value={source.type} />
                   <InfoRow label="Включен" value={source.enabled ? 'да' : 'нет'} />
                   <InfoRow label="Адрес Modbus" value={slaveId} />

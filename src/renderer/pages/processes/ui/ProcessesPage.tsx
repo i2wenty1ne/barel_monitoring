@@ -40,7 +40,7 @@ export function ProcessesPage(): React.JSX.Element {
         <div className="flex flex-wrap justify-end gap-2">
           <Link to={`/processes/${item.id}/editor`}>
             <Button disabled={isSaving} variant="primary">
-              Редактировать graph
+              Редактировать граф
             </Button>
           </Link>
           <Button disabled={isSaving} onClick={() => void validateProcess(item)} variant="ghost">

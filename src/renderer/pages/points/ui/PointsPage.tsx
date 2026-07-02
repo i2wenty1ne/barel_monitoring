@@ -44,7 +44,7 @@ export function PointsPage(): React.JSX.Element {
   const columns: DataTableColumn<Point>[] = [
     {
       key: 'name',
-      title: 'Точка',
+      title: 'Параметр',
       render: (point) => (
         <div>
           <div className="font-medium text-slate-100">{point.name}</div>
@@ -54,7 +54,7 @@ export function PointsPage(): React.JSX.Element {
     },
     { key: 'kind', title: 'Kind', render: (point) => <Badge tone={point.kind === 'control' ? 'warning' : 'success'}>{point.kind}</Badge> },
     { key: 'asset', title: 'Asset', render: (point) => currentConfig.assets.find((asset) => asset.id === point.assetId)?.name ?? point.assetId ?? '—' },
-    { key: 'source', title: 'DataSource', render: (point) => currentConfig.dataSources.find((source) => source.id === point.dataSourceId)?.name ?? point.dataSourceId ?? '—' },
+    { key: 'source', title: 'Устройство', render: (point) => currentConfig.dataSources.find((source) => source.id === point.dataSourceId)?.name ?? point.dataSourceId ?? '—' },
     { key: 'valueType', title: 'Тип', render: (point) => point.valueType },
     { key: 'address', title: 'Адрес', render: formatAddress },
     { key: 'recordable', title: 'История', render: (point) => (point.recordable ? 'пишется' : 'нет') },
@@ -102,7 +102,7 @@ export function PointsPage(): React.JSX.Element {
     const asset = currentConfig.assets[0];
 
     if (!dataSource) {
-      setSaveError('Сначала добавьте источник данных.');
+      setSaveError('Сначала добавьте устройство.');
       return;
     }
 
@@ -153,7 +153,7 @@ export function PointsPage(): React.JSX.Element {
           feedbackPointIds: actuator.feedbackPointIds.map((pointId) => pointId === formState.originalId ? savedPoint.id : pointId)
         }))
       },
-      formState.mode === 'create' ? 'Telemetry point добавлена' : 'Точка данных сохранена'
+      formState.mode === 'create' ? 'Параметр добавлен' : 'Параметр сохранен'
     );
     if (saved) {
       setFormState(null);
@@ -193,7 +193,7 @@ export function PointsPage(): React.JSX.Element {
           feedbackPointIds: actuator.feedbackPointIds.filter((pointId) => pointId !== point.id)
         }))
       },
-      'Точка данных удалена'
+      'Параметр удален'
     );
   }
 
@@ -231,16 +231,16 @@ export function PointsPage(): React.JSX.Element {
     <section className="mx-auto max-w-7xl">
       <PageHeader
         eyebrow="Промышленный мониторинг"
-        title="Точки данных"
-        description="Точки телеметрии и управления поверх источников данных."
+        title="Параметры"
+        description="Параметры телеметрии и управления поверх устройств."
         actions={
           <Button disabled={isSaving} onClick={openCreateTelemetryPoint} variant="secondary">
-            Добавить telemetry
+            Добавить параметр
           </Button>
         }
       />
       <div className="space-y-5">
-        <Panel className="p-5" title="Точки">
+        <Panel className="p-5" title="Параметры">
           {message ? <div className="mb-4"><Alert type="success">{message}</Alert></div> : null}
           {saveError ? <div className="mb-4"><Alert type="error">{saveError}</Alert></div> : null}
           {manualReadResult ? (
@@ -252,7 +252,7 @@ export function PointsPage(): React.JSX.Element {
             </div>
           ) : null}
           {currentConfig.points.length === 0 ? (
-            <EmptyState title="Точки не настроены" description="Добавьте telemetry point или импортируйте регистры через диагностику." />
+            <EmptyState title="Параметры не настроены" description="Добавьте параметр или импортируйте регистры через диагностику." />
           ) : (
             <DataTable compact columns={columns} getRowKey={(point) => point.id} maxHeight="620px" rows={currentConfig.points} />
           )}
@@ -263,7 +263,7 @@ export function PointsPage(): React.JSX.Element {
           footer={
             <>
               <Button disabled={isSaving} onClick={() => void saveDraft()} variant="secondary">
-                {formState.mode === 'create' ? 'Создать точку' : 'Сохранить точку'}
+                {formState.mode === 'create' ? 'Создать параметр' : 'Сохранить параметр'}
               </Button>
               <Button disabled={isSaving} onClick={() => setFormState(null)} variant="ghost">
                 Отмена
@@ -317,7 +317,7 @@ function PointForm({
           value={draft.assetId ?? ''}
         />
         <Select
-          label="Источник данных"
+          label="Устройство"
           onChange={(dataSourceId) => onChange({ ...draft, dataSourceId: dataSourceId || undefined })}
           options={[{ label: '—', value: '' }, ...dataSources.map((source) => ({ label: source.name, value: source.id }))]}
           value={draft.dataSourceId ?? ''}

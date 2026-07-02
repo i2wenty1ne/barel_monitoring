@@ -10,16 +10,16 @@ type DataSourcesDiagnosticsPanelProps = {
 
 export function DataSourcesDiagnosticsPanel({ dataSources }: DataSourcesDiagnosticsPanelProps): React.JSX.Element {
   return (
-    <Panel className="p-5" title="Источники данных">
+    <Panel className="p-5" title="Устройства">
       {dataSources.length === 0 ? (
-        <Alert type="warning">Источники данных не настроены.</Alert>
+        <Alert type="warning">Устройства не настроены.</Alert>
       ) : (
         <div className="grid gap-4">
           {dataSources.map((source) => (
             <div className="rounded-md border border-white/10 bg-slate-950/35 p-4" key={source.id}>
               {!source.enabled ? (
                 <div className="mb-3">
-                  <Alert type="warning">{`Источник отключен: ${source.name}`}</Alert>
+                  <Alert type="warning">{`Устройство отключено: ${source.name}`}</Alert>
                 </div>
               ) : null}
               <dl className="grid gap-3 text-sm md:grid-cols-2">

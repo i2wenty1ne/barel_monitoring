@@ -51,7 +51,7 @@ export function PointsDiagnosticsTable({
   ];
 
   return (
-    <Panel className="p-5" title="Точки данных">
+    <Panel className="p-5" title="Параметры">
       <DataTable compact columns={columns} getRowKey={(row) => row.id} maxHeight="420px" rows={rows} />
     </Panel>
   );

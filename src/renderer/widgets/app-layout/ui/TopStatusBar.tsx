@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatDateTime } from '../../../../shared/lib/format';
-import type { DataServiceStatus } from '../../../../shared/types/monitoring.types';
+import type { DataServiceStatus, Status } from '../../../../shared/types/monitoring.types';
 import { useMonitoringSnapshot } from '../../../entities/monitoring/model/useMonitoringSnapshot';
 import { StatusBadge } from '../../../shared/ui/StatusBadge';
 
@@ -31,7 +31,9 @@ export function TopStatusBar(): React.JSX.Element {
     };
   }, [data?.updatedAt]);
 
-  const connectionText = getConnectionText(serviceStatus, t);
+  const modeText = data?.mode === 'real' ? t('layout.modeEquipment') : t('layout.modeSimulation');
+  const deviceConnection = getDeviceConnectionStatus(data?.status, Boolean(error), t);
+  const modbusConnectionText = getModbusConnectionText(serviceStatus, t);
   const warningsCount = data?.activeWarningsCount ?? 0;
   const alarmsCount = data?.activeAlarmsCount ?? 0;
 
@@ -39,10 +41,10 @@ export function TopStatusBar(): React.JSX.Element {
     <header className="flex min-h-14 flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-slate-950/70 px-6 py-2.5">
       <div className="flex flex-wrap items-center gap-4 text-sm">
         <span className="text-slate-300">{t('layout.operatorPanel')}</span>
-        <span className="text-slate-500">{t('layout.mode', { mode: data?.mode ?? 'mock' })}</span>
-        <StatusBadge status={data?.status ?? (error ? 'connection-error' : 'no-data')} />
+        <span className="text-slate-500">{modeText}</span>
+        <StatusBadge label={deviceConnection.label} status={deviceConnection.status} />
         <span className={serviceStatus?.connectionStatus === 'ok' ? 'text-teal-200' : 'text-amber-200'}>
-          {connectionText}
+          {modbusConnectionText}
         </span>
       </div>
       <div className="flex flex-wrap items-center gap-4 text-sm">
@@ -72,24 +74,40 @@ export function TopStatusBar(): React.JSX.Element {
   );
 }
 
-function getConnectionText(status: DataServiceStatus | null, t: (key: string) => string): string {
+function getDeviceConnectionStatus(
+  status: Status | undefined,
+  hasError: boolean,
+  t: (key: string) => string
+): { status: Status; label: string } {
+  if (hasError || status === 'connection-error') {
+    return { status: 'connection-error', label: t('layout.deviceConnectionError') };
+  }
+
+  if (!status || status === 'no-data') {
+    return { status: 'no-data', label: t('layout.deviceConnectionWaiting') };
+  }
+
+  return { status: 'ok', label: t('layout.deviceConnectionOk') };
+}
+
+function getModbusConnectionText(status: DataServiceStatus | null, t: (key: string) => string): string {
   if (!status) {
-    return t('layout.connectionWaiting');
+    return t('layout.modbusConnectionWaiting');
   }
 
   if (status.connectionStatus === 'ok') {
-    return t('layout.connectionOk');
+    return t('layout.modbusConnectionOk');
   }
 
   const error = status.lastError?.toLowerCase() ?? '';
 
   if (error.includes('порт') || error.includes('port')) {
-    return t('layout.portError');
+    return t('layout.modbusPortError');
   }
 
   if (error.includes('ответ') || error.includes('timeout')) {
-    return t('layout.noDeviceResponse');
+    return t('layout.modbusNoDeviceResponse');
   }
 
-  return status.lastError ?? t('layout.connectionError');
+  return t('layout.modbusConnectionError');
 }
