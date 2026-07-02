@@ -17,7 +17,7 @@
 создания и выполнения процессов
 ```
 
-Текущие возможности приложения должны быть сохранены и мигрированы на новую архитектуру.
+Текущие runtime-возможности приложения должны работать на новой архитектуре. Старые форматы config не поддерживаются в runtime: приложение принимает только canonical schema v2.
 
 Технологический стек оставляем:
 
@@ -1479,7 +1479,7 @@ EventLog
 хранилище должно быть локальным
 должно работать без интернета
 должно быть переносимым
-должно поддерживать миграции схемы
+должно валидировать schema v2 без runtime-миграций
 должно уметь экспортировать историю в CSV
 ```
 
@@ -1489,22 +1489,11 @@ EventLog
 
 ---
 
-## 8.2 Миграция старого config
+## 8.2 Config schema v2
 
-Старый config должен мигрировать автоматически.
+Приложение принимает только canonical schema v2.
 
-Старые сущности:
-
-```text
-devices
-channels
-barrels
-thresholds
-interface
-connection
-```
-
-Новые сущности:
+Актуальные top-level сущности:
 
 ```text
 dataSources
@@ -1513,27 +1502,14 @@ assets
 monitoringProfiles
 ```
 
-Маппинг:
+Правила загрузки:
 
 ```text
-device → dataSource
-channel → telemetryPoint
-barrel → asset
-barrel.channelIds → asset.pointIds
-channel.registerAddress → point.address.registerAddress
-channel.modbusFunction → point.address.functionCode
-channel.dataType → point.valueType / point.address.valueType
-channel.scaling → point.scaling
-barrel.thresholds → point.thresholds
-```
-
-После миграции нужно:
-
-```text
-1. создать backup старого config
-2. создать новый config
-3. записать событие "config migrated"
-4. показать пользователю результат миграции
+1. отсутствующий config создает default schema v2 config
+2. некорректный JSON дает default config и validation error
+3. невалидная schema v2 дает default config и validation error
+4. валидная schema v2 используется напрямую
+5. ConfigService не создает backup и не выполняет write-back нормализацию
 ```
 
 ---
@@ -2337,7 +2313,6 @@ reading errors
 monitoring session events
 command events
 process events
-migration events
 ```
 
 Фильтры:
@@ -2367,7 +2342,6 @@ search
 Modbus
 История
 Команды
-Миграция
 ```
 
 В безопасности:
@@ -2398,8 +2372,7 @@ type EventLogEntry = {
     | 'command'
     | 'process'
     | 'history'
-    | 'diagnostics'
-    | 'migration';
+    | 'diagnostics';
 
   message: string;
 
@@ -2512,17 +2485,16 @@ Coil 1 = светодиод включен
 
 # 18. Acceptance criteria
 
-## 18.1 Миграция
+## 18.1 Config schema v2
 
 Готово, если:
 
 ```text
-старый config читается
-создается backup
-barrels мигрируют в assets
-devices мигрируют в dataSources
-channels мигрируют в telemetryPoints
-старый monitoring screen показывает те же значения через новую модель
+отсутствующий config создает default schema v2 config
+валидный schema v2 config читается напрямую
+старый config не мигрирует автоматически
+невалидный config переводит приложение в default/error flow
+schema v2 требует interface.language
 ручное чтение Modbus работает
 event log сохраняется
 ```
@@ -2611,12 +2583,12 @@ ProcessJob сохраняет result
 
 # 19. Поэтапная реализация
 
-## Stage 1 — новая доменная модель и миграция
+## Stage 1 — новая доменная модель
 
 Цель:
 
 ```text
-перенести приложение с Barrel/Device/Channel на Asset/DataSource/Point
+закрепить Asset/DataSource/Point как runtime-модель
 ```
 
 Задачи:
@@ -2625,8 +2597,6 @@ ProcessJob сохраняет result
 создать новые TypeScript-типы
 создать zod schemas
 создать AppConfig v2
-создать migration service
-замаппить старые entities
 обновить ConfigService
 обновить EventLogService
 обновить MockDataService

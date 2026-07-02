@@ -17,7 +17,6 @@ import { ProcessJobsPage } from '../pages/process-jobs/ui/ProcessJobsPage';
 import { ProcessesPage } from '../pages/processes/ui/ProcessesPage';
 import { SettingsPage } from '../pages/settings/ui/SettingsPage';
 import { I18nConfigSync } from '../shared/i18n/I18nConfigSync';
-import { LegacyDomTranslator } from '../shared/i18n/LegacyDomTranslator';
 import { AppLayout } from '../widgets/app-layout/ui/AppLayout';
 
 export function App(): React.JSX.Element {
@@ -26,7 +25,6 @@ export function App(): React.JSX.Element {
   return (
     <HashRouter>
       <I18nConfigSync />
-      <LegacyDomTranslator />
       <Routes>
         <Route element={<AppLayout />}>
           <Route index element={<Navigate replace to="/monitoring" />} />

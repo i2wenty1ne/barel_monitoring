@@ -1,3 +1,6 @@
+import { useTranslation } from 'react-i18next';
+import { translateLiteral } from '../i18n/translateLiteral';
+
 type FormFieldProps = {
   label: string;
   error?: string;
@@ -6,11 +9,13 @@ type FormFieldProps = {
 };
 
 export function FormField({ label, error, hint, children }: FormFieldProps): React.JSX.Element {
+  const { t } = useTranslation();
+
   return (
     <label className="block">
-      <span className="text-sm font-medium text-slate-200">{label}</span>
+      <span className="text-sm font-medium text-slate-200">{translateLiteral(t, label)}</span>
       <span className="mt-1 block">{children}</span>
-      {hint ? <span className="mt-1 block text-xs text-slate-500">{hint}</span> : null}
+      {hint ? <span className="mt-1 block text-xs text-slate-500">{translateLiteral(t, hint)}</span> : null}
       {error ? <span className="mt-1 block text-xs text-rose-200">{error}</span> : null}
     </label>
   );

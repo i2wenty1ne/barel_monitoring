@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { AssetViewModel } from '../model/selectors';
 import { formatDateTime, formatPercent, formatTemperature } from '../../../../shared/lib/format';
 import { Badge } from '../../../shared/ui/Badge';
@@ -11,6 +12,7 @@ type AssetCardProps = {
 };
 
 export function AssetCard({ viewModel, showLastUpdate, onClick }: AssetCardProps): React.JSX.Element {
+  const { t } = useTranslation();
   const { asset, readings, status, level, temperature, volume, updatedAt } = viewModel;
   const isTankLike = asset.type === 'barrel' || asset.type === 'tank';
 
@@ -42,20 +44,20 @@ export function AssetCard({ viewModel, showLastUpdate, onClick }: AssetCardProps
               <Metric
                 key={reading.pointId}
                 label={reading.pointId}
-                value={formatReadingValue(reading.displayValue, reading.displayUnit)}
+                value={formatReadingValue(reading.displayValue, reading.displayUnit, t)}
               />
             ))}
-            {readings.length === 0 ? <Metric label="Текущие показания" value="нет данных" /> : null}
+            {readings.length === 0 ? <Metric label={t('literal.Текущие показания')} value={t('common.noData')} /> : null}
           </div>
         </div>
       )}
 
       <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
-        {isTankLike ? <Metric label="Заполненность" value={formatPercent(asNumber(level?.displayValue))} /> : null}
-        {isTankLike ? <Metric label="Объем" value={volume ? formatReadingValue(volume.displayValue, volume.displayUnit) : '—'} /> : null}
-        {temperature ? <Metric label="Температура" value={formatTemperature(asNumber(temperature.displayValue))} /> : null}
-        {!isTankLike ? <Metric label="Точек" value={String(readings.length)} /> : null}
-        {showLastUpdate ? <Metric label="Обновлено" value={formatDateTime(updatedAt)} /> : null}
+        {isTankLike ? <Metric label={t('literal.Заполненность')} value={formatPercent(asNumber(level?.displayValue))} /> : null}
+        {isTankLike ? <Metric label={t('literal.Объем')} value={volume ? formatReadingValue(volume.displayValue, volume.displayUnit, t) : '—'} /> : null}
+        {temperature ? <Metric label={t('literal.Температура')} value={formatTemperature(asNumber(temperature.displayValue))} /> : null}
+        {!isTankLike ? <Metric label={t('literal.Точек')} value={String(readings.length)} /> : null}
+        {showLastUpdate ? <Metric label={t('literal.Обновлено')} value={formatDateTime(updatedAt)} /> : null}
       </dl>
     </button>
   );
@@ -76,13 +78,13 @@ function asNumber(value: ReadingValue | undefined): number | null {
 
 type ReadingValue = number | boolean | string | null;
 
-function formatReadingValue(value: ReadingValue, unit?: string): string {
+function formatReadingValue(value: ReadingValue, unit?: string, t?: (key: string) => string): string {
   if (typeof value === 'number') {
     return `${Number(value.toFixed(2))}${unit ? ` ${unit}` : ''}`;
   }
 
   if (typeof value === 'boolean') {
-    return value ? 'да' : 'нет';
+    return value ? t?.('common.yes') ?? 'да' : t?.('common.no') ?? 'нет';
   }
 
   return value ?? '—';

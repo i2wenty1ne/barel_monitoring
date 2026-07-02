@@ -30,7 +30,7 @@ export function DiagnosticActionsPanel({
           Проверить подключение
         </Button>
         <Button onClick={onReadAll} variant="secondary">
-          Прочитать все каналы
+          Прочитать все точки
         </Button>
         <Button onClick={onRefresh} variant="ghost">
           Обновить диагностику

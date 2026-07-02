@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next';
+import { translateLiteral } from '../i18n/translateLiteral';
 import { Button } from './Button';
 
 type ConfirmDialogProps = {
@@ -21,11 +23,13 @@ export function ConfirmDialog({
   onConfirm,
   onCancel
 }: ConfirmDialogProps): React.JSX.Element {
+  const { t } = useTranslation();
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-6">
       <div className="w-full max-w-md rounded-lg border border-white/10 bg-slate-900 p-6 shadow-2xl shadow-black/30">
-        <h2 className="text-lg font-semibold text-white">{title}</h2>
-        <p className="mt-2 text-sm text-slate-300">{message}</p>
+        <h2 className="text-lg font-semibold text-white">{translateLiteral(t, title)}</h2>
+        <p className="mt-2 text-sm text-slate-300">{translateLiteral(t, message)}</p>
         {details ? <div className="mt-4">{details}</div> : null}
         <div className="mt-6 flex justify-end gap-3">
           <Button onClick={onCancel} variant="secondary">

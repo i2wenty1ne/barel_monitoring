@@ -1,3 +1,6 @@
+import { useTranslation } from 'react-i18next';
+import { translateLiteral } from '../i18n/translateLiteral';
+
 type CheckboxProps = {
   label: string;
   checked: boolean;
@@ -13,6 +16,8 @@ export function Checkbox({
   hint,
   disabled
 }: CheckboxProps): React.JSX.Element {
+  const { t } = useTranslation();
+
   return (
     <label className="flex items-start gap-3 rounded-md border border-white/10 bg-slate-950/35 p-3">
       <input
@@ -23,8 +28,8 @@ export function Checkbox({
         type="checkbox"
       />
       <span>
-        <span className="block text-sm font-medium text-slate-200">{label}</span>
-        {hint ? <span className="mt-1 block text-xs text-slate-500">{hint}</span> : null}
+        <span className="block text-sm font-medium text-slate-200">{translateLiteral(t, label)}</span>
+        {hint ? <span className="mt-1 block text-xs text-slate-500">{translateLiteral(t, hint)}</span> : null}
       </span>
     </label>
   );

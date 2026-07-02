@@ -1,4 +1,6 @@
 import { FormField } from './FormField';
+import { useTranslation } from 'react-i18next';
+import { translateLiteral } from '../i18n/translateLiteral';
 
 export type SelectOption<TValue extends string | number = string> = {
   label: string;
@@ -24,6 +26,8 @@ export function Select<TValue extends string | number>({
   hint,
   disabled
 }: SelectProps<TValue>): React.JSX.Element {
+  const { t } = useTranslation();
+
   return (
     <FormField error={error} hint={hint} label={label}>
       <select
@@ -39,7 +43,7 @@ export function Select<TValue extends string | number>({
       >
         {options.map((option) => (
           <option key={String(option.value)} value={String(option.value)}>
-            {option.label}
+            {translateLiteral(t, option.label)}
           </option>
         ))}
       </select>

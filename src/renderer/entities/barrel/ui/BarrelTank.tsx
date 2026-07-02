@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { Status } from '../../../../shared/types/monitoring.types';
 import { clamp } from '../../../../shared/lib/scaling';
 import { formatPercent } from '../../../../shared/lib/format';
@@ -37,6 +38,7 @@ export function BarrelTank({
   size = 'medium',
   showPercent = true
 }: BarrelTankProps): React.JSX.Element {
+  const { t } = useTranslation();
   const safeLevel =
     levelPercent === null || levelPercent === undefined || Number.isNaN(levelPercent)
       ? null
@@ -47,7 +49,7 @@ export function BarrelTank({
     <div className="flex flex-col items-center gap-2">
       <div
         className={`relative overflow-hidden rounded-[28px] border-2 bg-slate-950/80 shadow-inner ${sizeClasses[size]} ${borderClasses[status]}`}
-        aria-label={`Уровень жидкости ${formatPercent(safeLevel)}`}
+        aria-label={t('tank.levelAria', { value: formatPercent(safeLevel) })}
       >
         <div className="absolute left-1/2 top-2 h-2 w-1/2 -translate-x-1/2 rounded-full border border-white/10 bg-white/10" />
         <div

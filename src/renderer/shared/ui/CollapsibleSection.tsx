@@ -1,4 +1,6 @@
 import { useId, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { translateLiteralNode } from '../i18n/translateLiteral';
 
 type CollapsibleSectionProps = {
   title: React.ReactNode;
@@ -15,6 +17,7 @@ export function CollapsibleSection({
   defaultOpen = false,
   actions
 }: CollapsibleSectionProps): React.JSX.Element {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const contentId = useId();
 
@@ -29,8 +32,8 @@ export function CollapsibleSection({
           type="button"
         >
           <div className="flex items-center gap-2">
-            <span className="text-sm text-slate-400">{isOpen ? 'Свернуть' : 'Развернуть'}</span>
-            <span className="text-base font-medium text-white">{title}</span>
+            <span className="text-sm text-slate-400">{isOpen ? t('literal.Свернуть') : t('literal.Развернуть')}</span>
+            <span className="text-base font-medium text-white">{translateLiteralNode(t, title)}</span>
           </div>
           {summary ? <div className="mt-3">{summary}</div> : null}
         </button>

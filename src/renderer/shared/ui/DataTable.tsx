@@ -1,3 +1,6 @@
+import { useTranslation } from 'react-i18next';
+import { translateLiteral } from '../i18n/translateLiteral';
+
 export type DataTableColumn<TRow> = {
   key: string;
   title: string;
@@ -24,6 +27,7 @@ export function DataTable<TRow>({
   maxHeight,
   stickyHeader = true
 }: DataTableProps<TRow>): React.JSX.Element {
+  const { t } = useTranslation();
   const cellPadding = compact ? 'px-3 py-2' : 'px-3 py-3';
 
   return (
@@ -36,7 +40,7 @@ export function DataTable<TRow>({
                 className={`${cellPadding} text-left text-xs font-medium uppercase tracking-[0.12em] text-slate-500 ${column.className ?? ''}`}
                 key={column.key}
               >
-                {column.title}
+                {translateLiteral(t, column.title)}
               </th>
             ))}
           </tr>
@@ -45,7 +49,7 @@ export function DataTable<TRow>({
           {rows.length === 0 ? (
             <tr>
               <td className="px-3 py-6 text-center text-slate-500" colSpan={columns.length}>
-                {emptyText}
+                {translateLiteral(t, emptyText)}
               </td>
             </tr>
           ) : (

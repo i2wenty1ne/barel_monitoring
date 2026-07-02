@@ -1,3 +1,6 @@
+import { useTranslation } from 'react-i18next';
+import { translateLiteralNode } from '../i18n/translateLiteral';
+
 type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost';
 
 type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -15,13 +18,18 @@ export function Button({
   variant = 'secondary',
   className = '',
   type = 'button',
+  children,
   ...props
 }: ButtonProps): React.JSX.Element {
+  const { t } = useTranslation();
+
   return (
     <button
       className={`rounded-md px-4 py-2 text-sm font-medium transition focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-50 ${variantClasses[variant]} ${className}`}
       type={type}
       {...props}
-    />
+    >
+      {translateLiteralNode(t, children)}
+    </button>
   );
 }

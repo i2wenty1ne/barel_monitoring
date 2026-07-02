@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { translateLiteral } from '../i18n/translateLiteral';
 import { Button } from './Button';
 
 type CopyButtonProps = {
@@ -33,7 +34,7 @@ export function CopyButton({
 
   return (
     <Button disabled={isCopying} onClick={() => void handleCopy()} variant="secondary">
-      {isCopying ? t('common.copying') : label ?? t('common.copy')}
+      {isCopying ? t('common.copying') : label ? translateLiteral(t, label) : t('common.copy')}
     </Button>
   );
 }

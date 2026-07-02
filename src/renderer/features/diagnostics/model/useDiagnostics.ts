@@ -91,7 +91,7 @@ export function useDiagnostics(): UseDiagnosticsResult {
             ? {
                 ...current,
                 data: { ...current.data, snapshot, serviceStatus },
-                actionResult: { type: 'success', message: 'Все каналы прочитаны' }
+                actionResult: { type: 'success', message: 'Все точки прочитаны' }
               }
             : current
         );

@@ -28,7 +28,7 @@ export function selectAssetViewModels(
       const readings = assetPoints
         .map((point) => readingsByPointId[point.id])
         .filter((reading): reading is Reading => Boolean(reading));
-      const status = getWorstStatus(readings.map((reading) => pointStatusToLegacyStatus(reading.status)));
+      const status = getWorstStatus(readings.map((reading) => mapReadingStatusToAssetStatus(reading.status)));
 
       return {
         asset,
@@ -73,7 +73,7 @@ function findPointReading(readings: Reading[], patterns: string[]): Reading | nu
   );
 }
 
-function pointStatusToLegacyStatus(status: Reading['status']): Status {
+function mapReadingStatusToAssetStatus(status: Reading['status']): Status {
   if (status === 'error') {
     return 'connection-error';
   }

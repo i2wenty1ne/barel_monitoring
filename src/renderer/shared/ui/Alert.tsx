@@ -1,3 +1,6 @@
+import { useTranslation } from 'react-i18next';
+import { translateLiteral, translateLiteralNode } from '../i18n/translateLiteral';
+
 type AlertType = 'info' | 'warning' | 'error' | 'success';
 
 type AlertProps = {
@@ -14,10 +17,12 @@ const classes: Record<AlertType, string> = {
 };
 
 export function Alert({ type = 'info', title, children }: AlertProps): React.JSX.Element {
+  const { t } = useTranslation();
+
   return (
     <div className={`rounded-lg border p-4 text-sm ${classes[type]}`}>
-      {title ? <div className="mb-1 font-medium">{title}</div> : null}
-      <div>{children}</div>
+      {title ? <div className="mb-1 font-medium">{translateLiteral(t, title)}</div> : null}
+      <div>{translateLiteralNode(t, children)}</div>
     </div>
   );
 }
